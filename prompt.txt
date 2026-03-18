@@ -1,0 +1,116 @@
+Magic Link & Invitation System 
+  1. Magic Link Authentication
+
+  What it does: Auto-login users via clickable token links (no password required for first access)
+
+  Two Types:
+  - Email Verification - New user signup confirmation
+  - Invitation - Existing users inviting team members
+
+  Flow:
+  1. User creation (signup or invitation)
+     ↓
+  2. Generate unique token (UUID)
+     ↓
+  3. Send email with magic link: /api/auth/magic-link/{token}/
+     ↓
+  4. User clicks link
+     ↓
+  5. Backend validates token:
+     - Check if token exists
+     - Check if not expired (7 days)
+     - Check if not already used
+     ↓
+  6. Auto-authenticate user:
+     - Activate user account (is_active=True)
+     - Create Django session
+     - Mark email as verified
+     - Mark token as used
+     ↓
+  7. Redirect user:
+     - Email verification → /onboard (setup company)
+     - Invitation → /setup-account (set password) OR /dashboard
+
+  Key Code: auth_views.py:868-1023 (MagicLinkAuthView)
+
+  Token Storage: EmailVerificationToken model with fields:
+  - token (UUID)
+  - token_type ('invitation' or 'email_verification')
+  - verification_code (6-digit backup)
+  - created_at
+  - used_at
+
+  ---
+  2. User Invitation System
+
+  Who can invite: Super User, Admin, Site Manager (role hierarchy enforced)
+
+  Invitation Flow:
+  1. Super User/Admin creates user via /api/users/
+     - Email, name, role required
+     - Password NOT required (magic link instead)
+     ↓
+  2. Backend creates user:
+     - username = email prefix
+     - password = None (unusable password)
+     - is_active = False
+     - must_reset_password = True
+     - Assign to inviter's company
+     ↓
+  3. Generate invitation token
+     ↓
+  4. Send invitation email automatically
+     - Subject: "You're invited to join ESG Portal"
+     - Contains magic link
+     - Valid for 7 days
+     ↓
+  5. Invitee clicks link
+     ↓
+  6. Auto-login + redirect to /setup-account
+     ↓
+  7. Invitee sets their password
+     ↓
+  8. Access granted to company data
+
+  Key Code: user_views.py:57-185 (UserViewSet.create)
+
+  Role Hierarchy for Invitations:
+  - Super User can invite: Anyone (including other Super Users)
+  - Admin can invite: Admin, Site Manager, Uploader, Viewer, Meter Manager
+  - Site Manager can invite: Uploader, Viewer, Meter Manager
+
+  Email Template Variables:
+  - User name
+  - Company name
+  - Inviter name
+  - Magic link URL
+  - Invitation expiry (7 days)
+
+ 
+  Magic Link Benefits:
+  - No password sharing via email
+  - Better security (unique tokens)
+  - Seamless user onboarding
+  - Email verification built-in
+
+  Invitation Benefits:
+  - Quick team onboarding
+  - Company-scoped access control
+  - Role hierarchy enforcement
+  - Audit trail (token usage)
+
+● Magic Link & Invitation System ✅ 
+
+  Magic Link Auth:
+  - Clickable token links for auto-login
+  - 7-day expiry, single-use
+  - Two types: email verification (signup) + invitation (team invites)    
+  - Auto-activates users, creates session, verifies email
+
+  Invitation Flow:
+  - Super User/Admin/Site Manager create users via /api/users/
+  - No password needed - magic link instead
+  - User gets unusable password + must_reset_password flag
+  - Clicks link → auto-login → sets password → accesses company data
+
+  

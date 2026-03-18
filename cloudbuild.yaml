@@ -1,0 +1,58 @@
+steps:
+  # ── Step 1: Build the backend Docker image ─────────────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/esg-backend:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/esg-backend:latest'
+      - './backend'
+
+  # ── Step 2: Push to Artifact Registry ──────────────────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/esg-backend:${SHORT_SHA}'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/esg-backend:latest'
+
+  # ── Step 3: Deploy to Cloud Run ────────────────────────────────────────────────
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'esg-backend'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/esg-backend:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'ENVIRONMENT=production,FRONTEND_URL=${_FRONTEND_URL}'
+      - '--set-secrets'
+      - 'DATABASE_URL=DATABASE_URL:latest,SECRET_KEY=SECRET_KEY:latest,DEVELOPER_ADMIN_SECRET=DEVELOPER_ADMIN_SECRET:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest,EMAILS_FROM_EMAIL=EMAILS_FROM_EMAIL:latest'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '3'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '300'
+
+substitutions:
+  _REGION: me-central1
+  _REPO: esg-portal
+  _FRONTEND_URL: https://your-app.web.app
+
+options:
+  logging: CLOUD_LOGGING_ONLY

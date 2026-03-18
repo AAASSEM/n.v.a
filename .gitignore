@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Databases
+*.db
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+~$*
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Uploads (user data, not tracked)
+backend/uploads/
+
+# Logs
+*.log
+uvicorn_log.txt
+
+# Temp
+tmp/

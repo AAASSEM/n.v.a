@@ -1,0 +1,55 @@
+Yes, in a strict production environment, access tokens are usually kept short (15-30 minutes) for security reasons, and the frontend silently refreshes them using a "Refresh Token" in the background so the user doesn't notice.
+
+Since we haven't built the automated silent-refresh logic on the frontend yet, those short token lifespans mean you get kicked out very frequently during testing!
+
+I've just updated the backend configuration (app/core/config.py) to increase the ACCESS_TOKEN_EXPIRE_MINUTES to 8 Days (11,520 minutes).
+
+
+
+
+Listed directory pages
+Viewed App.tsx:1-179
+Viewed Dashboard.tsx:1-206
+Viewed ChecklistView.tsx:1-481
+
+Based on a review of the current codebase and the standard requirements for a professional ESG platform, here is an assessment of what is missing to make the application truly **launch-ready**:
+
+### 1. User Profile & Account Settings
+Currently, you have a beautiful [UserManagementView](cci:1://file:///c:/Users/20100/thefinal/n.v.a/frontend/src/pages/Users/UserManagementView.tsx:54:0-615:1) for admins, but there is no dedicated **"My Profile"** page where an individual user can:
+*   Update their own name or email.
+*   Change their password.
+*   Manage notification preferences (e.g., "Email me when a checklist item is assigned").
+
+### 2. Company / Entity Management
+While the `OnboardingWizard` sets up the initial company, a dedicated **"Organization Settings"** page is missing. This would allow admins to:
+*   Update the Company Name or Logo (which should then reflect in the sidebar).
+*   Change the reporting period (e.g., Fiscal Year vs. Calendar Year).
+*   Add multiple "Sites" or "Facilities" if the app scales beyond a single-building model.
+
+### 3. Dedicated Reporting & Exports
+The [Dashboard](cci:1://file:///c:/Users/20100/thefinal/n.v.a/frontend/src/pages/Dashboard/Dashboard.tsx:59:0-204:1) is great for a visual summary, but for official compliance (like BRSR or CSRD), users need a **"Reports"** section to:
+*   **Generate PDF Reports**: A professional document for stakeholders.
+*   **Export to Excel**: For further analysis or data auditing.
+*   **Audit Trails**: A view showing *who* entered *what* data and *when* (essential for ESG auditing).
+
+### 4. Task / Notification Center
+As you add more users, they need a way to track their responsibilities.
+*   **"My Tasks" View**: A simplified version of the checklist showing only what's assigned to the current user.
+*   **Notification Bell**: An indicator in the [AppLayout](cci:1://file:///c:/Users/20100/thefinal/n.v.a/frontend/src/components/layout/AppLayout.tsx:67:0-146:1) showing if a submission was approved or if a deadline is approaching.
+
+### 5. Help & Documentation
+ESG reporting has a steep learning curve. Adding a **"Help Center"** or "Metric Definitions" page would provide users with guidance on how to calculate specific emissions or what evidence is required.
+
+### 6. Legal & Support Pages
+For a public launch, you'll need the "boring but essential" pages:
+*   **Terms of Service / Privacy Policy**: Usually linked from the footer or login/signup screens.
+*   **Contact Support**: A simple form or email link for technical issues.
+
+---
+
+### 🎨 UI Polish Opportunities
+While the UI is already very high-fidelity, a few "Premium" touches could be added:
+*   **Empty States**: Beautiful illustrations for when a user has no data yet (e.g., "No meters found yet—let's add one").
+*   **Loading skeletons**: For a smoother experience during data fetching instead of just the central spinner.
+
+**Which of these would you like to tackle first?** I recommend starting with either the **Organization Settings** or the **User Profile** to close the loop on basic account management.

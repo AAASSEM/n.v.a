@@ -1,0 +1,87 @@
+2026-03-08 18:50:23,860 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 18:50:23,896 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at
+FROM users
+WHERE users.id = ?
+2026-03-08 18:50:23,901 INFO sqlalchemy.engine.Engine [cached since 151.4s ago] (13,)
+2026-03-08 18:50:24,017 INFO sqlalchemy.engine.Engine SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?)
+2026-03-08 18:50:24,068 INFO sqlalchemy.engine.Engine [cached since 150.5s ago] (13,)
+INFO:     127.0.0.1:2460 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+2026-03-08 18:50:24,074 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-08 18:50:24,166 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 18:50:24,193 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at
+FROM users
+WHERE users.id = ?
+2026-03-08 18:50:24,195 INFO sqlalchemy.engine.Engine [cached since 151.7s ago] (13,)
+2026-03-08 18:50:24,202 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 18:50:24,209 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at
+FROM users
+WHERE users.id = ?
+2026-03-08 18:50:24,213 INFO sqlalchemy.engine.Engine [cached since 151.7s ago] (13,)
+2026-03-08 18:50:24,231 INFO sqlalchemy.engine.Engine SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?)
+2026-03-08 18:50:24,256 INFO sqlalchemy.engine.Engine [cached since 150.7s ago] (13,)
+2026-03-08 18:50:24,268 INFO sqlalchemy.engine.Engine SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?)
+2026-03-08 18:50:24,293 INFO sqlalchemy.engine.Engine [cached since 150.7s ago] (13,)
+INFO:     127.0.0.1:2461 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+2026-03-08 18:50:24,354 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-08 18:50:24,354 INFO sqlalchemy.engine.Engine SELECT companies.id AS companies_id, companies.owner_id AS companies_owner_id, companies.name AS companies_name, companies.registration_number AS companies_registration_number, companies.trade_license_number AS companies_trade_license_number, companies.company_code AS companies_company_code, companies.emirate AS companies_emirate, companies.sector AS companies_sector, companies.active_frameworks AS 
+companies_active_frameworks, companies.has_green_key AS companies_has_green_key, companies.created_at AS companies_created_at, companies.updated_at AS companies_updated_at
+FROM companies
+WHERE companies.id = ?
+2026-03-08 18:50:24,369 INFO sqlalchemy.engine.Engine [cached since 150.6s ago] (5,)
+INFO:     127.0.0.1:2460 - "GET /api/v1/companies/me HTTP/1.1" 200 OK
+2026-03-08 18:50:24,500 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:2507 - "GET /api/v1/frameworks HTTP/1.1" 307 Temporary Redirect
+2026-03-08 18:50:24,832 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 18:50:24,892 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at
+FROM users
+WHERE users.id = ?
+2026-03-08 18:50:24,924 INFO sqlalchemy.engine.Engine [cached since 152.4s ago] (13,)
+2026-03-08 18:50:24,977 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 18:50:24,990 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at
+FROM users
+WHERE users.id = ?
+2026-03-08 18:50:25,027 INFO sqlalchemy.engine.Engine [cached since 152.5s ago] (13,)
+2026-03-08 18:50:25,071 INFO sqlalchemy.engine.Engine SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?)
+2026-03-08 18:50:25,098 INFO sqlalchemy.engine.Engine [cached since 151.5s ago] (13,)
+2026-03-08 18:50:25,115 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-03-08 18:50:25,159 INFO sqlalchemy.engine.Engine SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at
+FROM users
+WHERE users.id = ?
+2026-03-08 18:50:25,187 INFO sqlalchemy.engine.Engine [cached since 152.7s ago] (13,)
+2026-03-08 18:50:25,205 INFO sqlalchemy.engine.Engine SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?)
+2026-03-08 18:50:25,210 INFO sqlalchemy.engine.Engine [cached since 151.7s ago] (13,)
+2026-03-08 18:50:25,213 INFO sqlalchemy.engine.Engine SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?)
+2026-03-08 18:50:25,228 INFO sqlalchemy.engine.Engine [cached since 151.7s ago] (13,)
+2026-03-08 18:50:25,232 INFO sqlalchemy.engine.Engine SELECT company_profile_answers.id, company_profile_answers.company_id, company_profile_answers.question_id, company_profile_answers.answer, company_profile_answers.answered_by, company_profile_answers.answered_at
+FROM company_profile_answers
+WHERE company_profile_answers.company_id = ?
+2026-03-08 18:50:25,239 INFO sqlalchemy.engine.Engine [cached since 151.2s ago] (5,)
+2026-03-08 18:50:25,241 INFO sqlalchemy.engine.Engine SELECT profiling_questions.id, profiling_questions.framework_id, profiling_questions.question_text, profiling_questions.question_order, profiling_questions.frameworks, profiling_questions.created_at
+FROM profiling_questions ORDER BY profiling_questions.question_order
+2026-03-08 18:50:25,259 INFO sqlalchemy.engine.Engine [cached since 150.9s ago] ()
+2026-03-08 18:50:25,270 INFO sqlalchemy.engine.Engine SELECT companies.id AS companies_id, companies.owner_id AS companies_owner_id, companies.name AS companies_name, companies.registration_number AS companies_registration_number, companies.trade_license_number AS companies_trade_license_number, companies.company_code AS companies_company_code, companies.emirate AS companies_emirate, companies.sector AS companies_sector, companies.active_frameworks AS 
+companies_active_frameworks, companies.has_green_key AS companies_has_green_key, companies.created_at AS companies_created_at, companies.updated_at AS companies_updated_at
+FROM companies
+WHERE companies.id = ?
+2026-03-08 18:50:25,274 INFO sqlalchemy.engine.Engine [cached since 151.5s ago] (5,)
+INFO:     127.0.0.1:2505 - "GET /api/v1/profiling/answers/me HTTP/1.1" 200 OK
+2026-03-08 18:50:25,311 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-03-08 18:50:25,316 INFO sqlalchemy.engine.Engine SELECT frameworks.id, frameworks.framework_id, frameworks.name, frameworks.type, frameworks.description, frameworks.created_at
+FROM frameworks ORDER BY frameworks.type, frameworks.name
+2026-03-08 18:50:25,321 INFO sqlalchemy.engine.Engine [cached since 151.1s ago] ()
+INFO:     127.0.0.1:2506 - "GET /api/v1/profiling/questions HTTP/1.1" 200 OK
+2026-03-08 18:50:25,373 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:2507 - "GET /api/v1/frameworks/ HTTP/1.1" 200 OK
+2026-03-08 18:50:25,486 INFO sqlalchemy.engine.Engine ROLLBACK
