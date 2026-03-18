@@ -66,14 +66,15 @@ class Settings(BaseSettings):
     # Developer Admin
     DEVELOPER_ADMIN_SECRET: str = "super_secret_developer_key_change_me"
 
-    # Email
+    # Email — SMTP (development) or Resend (production)
+    RESEND_API_KEY: Optional[str] = None  # Set in production → uses Resend instead of SMTP
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
     SMTP_PORT: int = 587
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
-    EMAILS_FROM_EMAIL: Optional[str] = None
+    EMAILS_FROM_EMAIL: Optional[str] = "noreply@esgportal.com"
     EMAILS_FROM_NAME: str = "ESG Compass"
     
     # Google Cloud Storage (production uploads)
