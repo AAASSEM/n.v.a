@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '../../components/layout/AppLayout';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../../services/api';

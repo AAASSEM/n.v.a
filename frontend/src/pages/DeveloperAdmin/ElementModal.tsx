@@ -79,7 +79,7 @@ export default function ElementModal({ isOpen, onClose, initialData, reqConfig }
         staleTime: 5 * 60 * 1000
     });
 
-    const { data: dbMeterTypes, isLoading: loadingMeterTypes } = useQuery({
+    const { data: dbMeterTypes } = useQuery({
         queryKey: ['meter_types_list', isOpen],
         queryFn: async () => {
             if (!isOpen) return [];

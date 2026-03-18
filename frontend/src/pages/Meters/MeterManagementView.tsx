@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -20,11 +20,6 @@ interface Meter {
     created_at: string;
 }
 
-const CAT_COLORS: Record<string, string> = {
-    E: 'var(--color-env)',
-    S: 'var(--color-soc)',
-    G: 'var(--color-gov)',
-};
 
 // Selection Card Styles
 const selectionCardStyle = {

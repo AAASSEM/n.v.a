@@ -33,14 +33,6 @@ const ROLE_LABELS: Record<string, string> = {
     'viewer': 'Viewer',
 };
 
-const ROLE_COLORS: Record<string, string> = {
-    'super_user': 'badge-red',
-    'admin': 'badge-orange',
-    'site_manager': 'badge-amber',
-    'meter_manager': 'badge-purple',
-    'uploader': 'badge-green',
-    'viewer': 'badge-blue',
-};
 
 function getInitials(user: User) {
     return `${(user.first_name || '').charAt(0)}${(user.last_name || '').charAt(0)}`.toUpperCase() || user.email.charAt(0).toUpperCase();
@@ -160,7 +152,6 @@ export default function UserManagementView() {
     };
 
     const availableRolesToAssign = ROLE_HIERARCHY[currentUserRole] || [];
-    const roleOptions = [{ value: 'all', label: 'All Roles' }, ...Object.entries(ROLE_LABELS).map(([v, l]) => ({ value: v, label: l }))];
 
     const filteredUsers = users?.filter(u => {
         const fullName = `${u.first_name} ${u.last_name}`.toLowerCase();
