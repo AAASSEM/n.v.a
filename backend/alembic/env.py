@@ -24,11 +24,15 @@ from app.core.config import settings
 # Build synchronous URL from the async one for Alembic
 db_uri = settings.SQLALCHEMY_DATABASE_URI
 if "+asyncpg" in db_uri:
-    sync_url = db_uri.replace("+asyncpg", "")  # PostgreSQL: asyncpg → psycopg2
+    sync_url = db_uri.replace("+asyncpg", "")  # PostgreSQL: asyncpg -> psycopg2
 elif "+aiosqlite" in db_uri:
     sync_url = db_uri.replace("+aiosqlite", "")  # SQLite: strip async driver
 else:
     sync_url = db_uri
+
+# Fix SSL param: asyncpg uses 'ssl=require', psycopg2 uses 'sslmode=require'
+sync_url = sync_url.replace("ssl=require", "sslmode=require")
+sync_url = sync_url.replace("ssl=true", "sslmode=require")
 
 config.set_main_option("sqlalchemy.url", sync_url)
 

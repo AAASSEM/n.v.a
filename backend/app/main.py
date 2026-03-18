@@ -53,7 +53,7 @@ async def run_migrations():
 
         def _run_alembic():
             alembic_cfg = Config("alembic.ini")
-            # Override the DB URL to use the sync driver
+            # Build synchronous URL from the async one
             db_uri = settings.SQLALCHEMY_DATABASE_URI
             if "+asyncpg" in db_uri:
                 sync_url = db_uri.replace("+asyncpg", "")
@@ -61,6 +61,12 @@ async def run_migrations():
                 sync_url = db_uri.replace("+aiosqlite", "")
             else:
                 sync_url = db_uri
+
+            # Fix SSL param: asyncpg uses 'ssl=require', psycopg2 uses 'sslmode=require'
+            sync_url = sync_url.replace("ssl=require", "sslmode=require")
+            sync_url = sync_url.replace("ssl=true", "sslmode=require")
+
+            print(f"[MIGRATE] Using sync URL: {sync_url[:50]}...", flush=True)
             alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
             command.upgrade(alembic_cfg, "head")
 
