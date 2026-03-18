@@ -35,12 +35,21 @@ class EmailService:
         if token.token_type == "invitation":
             subject = f"You're invited to join {context.get('company_name', 'ESG Portal')}"
 
+        # ALWAYS log the link — visible in Render logs as a backup
+        print("=" * 60, flush=True)
+        print(f"[EMAIL] To: {email}", flush=True)
+        print(f"[EMAIL] Subject: {subject}", flush=True)
+        print(f"[EMAIL] Magic Link: {magic_link_url}", flush=True)
+        print(f"[EMAIL] Backup Code: {token.verification_code}", flush=True)
+        print("=" * 60, flush=True)
+        logger.info(f"Magic link for {email}: {magic_link_url}")
+
         # Build the HTML body
         html = self._build_html(token, context, magic_link_url)
 
-        # No credentials at all → mock
+        # No credentials at all -> mock only (link already logged above)
         if not self.use_resend and (not settings.SMTP_USER or not settings.SMTP_PASSWORD):
-            print(f"MOCK EMAIL → To: {email} | Subject: {subject}\nLink: {magic_link_url}")
+            print("[EMAIL] No credentials set — link logged above (copy from logs)", flush=True)
             return
 
         # Send via the appropriate provider

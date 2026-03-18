@@ -5,41 +5,19 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Print startup diagnostics immediately — visible in Render logs
 print("=" * 60, flush=True)
 print("ESG Compass Backend - Starting up...", flush=True)
 print(f"Python: {sys.version}", flush=True)
 print(f"PORT: {os.environ.get('PORT', 'not set')}", flush=True)
 print(f"ENVIRONMENT: {os.environ.get('ENVIRONMENT', 'not set')}", flush=True)
 print(f"DATABASE_URL set: {bool(os.environ.get('DATABASE_URL'))}", flush=True)
-print(f"SECRET_KEY set: {bool(os.environ.get('SECRET_KEY'))}", flush=True)
 print("=" * 60, flush=True)
 
-try:
-    from fastapi import FastAPI
-    from fastapi.staticfiles import StaticFiles
-    from fastapi.middleware.cors import CORSMiddleware
-    print("[OK] FastAPI imported", flush=True)
-except Exception as e:
-    print(f"[FAIL] FastAPI import error: {e}", flush=True)
-    sys.exit(1)
-
-try:
-    from app.core.config import settings
-    print(f"[OK] Config loaded - ENVIRONMENT={settings.ENVIRONMENT}", flush=True)
-    db_preview = settings.SQLALCHEMY_DATABASE_URI[:40] if settings.SQLALCHEMY_DATABASE_URI else "NONE"
-    print(f"     DB starts with: {db_preview}...", flush=True)
-    print(f"     FRONTEND_URL: {settings.FRONTEND_URL}", flush=True)
-except Exception as e:
-    print(f"[FAIL] Config error: {e}", flush=True)
-    sys.exit(1)
-
-try:
-    from app.api.api import api_router
-    print("[OK] API router loaded", flush=True)
-except Exception as e:
-    print(f"[FAIL] API router error: {e}", flush=True)
-    sys.exit(1)
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.api.api import api_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -51,7 +29,6 @@ app = FastAPI(
 origins = list(set(settings.BACKEND_CORS_ORIGINS or []))
 if not origins:
     origins = ["*"]
-print(f"[OK] CORS origins: {origins}", flush=True)
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,6 +38,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Auto-run database migrations on startup ─────────────────────────────
+@app.on_event("startup")
+async def run_migrations():
+    """
+    Automatically runs Alembic migrations on every startup.
+    Safe to run repeatedly — Alembic only applies pending migrations.
+    """
+    print("[MIGRATE] Running database migrations...", flush=True)
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import asyncio
+
+        def _run_alembic():
+            alembic_cfg = Config("alembic.ini")
+            # Override the DB URL to use the sync driver
+            db_uri = settings.SQLALCHEMY_DATABASE_URI
+            if "+asyncpg" in db_uri:
+                sync_url = db_uri.replace("+asyncpg", "")
+            elif "+aiosqlite" in db_uri:
+                sync_url = db_uri.replace("+aiosqlite", "")
+            else:
+                sync_url = db_uri
+            alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
+            command.upgrade(alembic_cfg, "head")
+
+        # Run in thread to not block the async event loop
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _run_alembic)
+        print("[MIGRATE] Database migrations complete!", flush=True)
+    except Exception as e:
+        # Don't crash the app if migrations fail — log and continue
+        print(f"[MIGRATE] WARNING: Migration error: {e}", flush=True)
+        logger.error(f"Migration error: {e}")
+
+# ── Routes ──────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health_check():
     return {
@@ -73,19 +86,13 @@ async def health_check():
 async def root():
     return {"message": "ESG Compass API is running", "docs": "/docs"}
 
-try:
-    app.include_router(api_router, prefix=settings.API_V1_STR)
-    print("[OK] Routes mounted", flush=True)
-except Exception as e:
-    print(f"[FAIL] Route mounting error: {e}", flush=True)
-    sys.exit(1)
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Uploads directory
 os.makedirs("uploads", exist_ok=True)
 try:
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-    print("[OK] Uploads directory mounted", flush=True)
 except Exception as e:
-    print(f"[WARN] Uploads mount issue: {e}", flush=True)
+    logger.warning(f"Uploads mount warning: {e}")
 
 print("[OK] Application startup complete!", flush=True)
