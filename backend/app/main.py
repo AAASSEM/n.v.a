@@ -27,8 +27,11 @@ app = FastAPI(
 
 # CORS
 origins = list(set(settings.BACKEND_CORS_ORIGINS or []))
-if not origins:
+if not origins or "*" in origins:
     origins = ["*"]
+    logger.info("CORS initialized with wildcard *")
+else:
+    logger.info(f"CORS initialized with origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,

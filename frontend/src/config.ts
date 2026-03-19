@@ -1,6 +1,15 @@
 // On Render, VITE_API_URL should be set in the build environment.
 // For example: https://esg-compass-backend.onrender.com/api/v1
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+let rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+// HELP: If the user accidentally pasted "VITE_API_URL = https://..." into Render
+if (rawUrl.includes('VITE_API_URL =')) {
+    rawUrl = rawUrl.split('VITE_API_URL =')[1].trim();
+} else if (rawUrl.includes('VITE_API_URL=')) {
+    rawUrl = rawUrl.split('VITE_API_URL=')[1].trim();
+}
+
+export const API_URL = rawUrl;
 
 // The base backend URL (without /api/v1) for media/static files
 export const BASE_URL = API_URL.replace('/api/v1', '');

@@ -31,10 +31,19 @@ class Settings(BaseSettings):
         else:
             raise ValueError(v)
             
+        # Add Render frontend URL if ENVIRONMENT == production
+        env = values.get("ENVIRONMENT", "development")
+        if env == "production":
+            # Add common Render pattern if not present
+            render_domain = "https://esg-compass.onrender.com"
+            if render_domain not in origins:
+                origins.append(render_domain)
+            
         # Always include FRONTEND_URL
-        frontend = values.get("FRONTEND_URL", "http://localhost:5173")
+        frontend = values.get("FRONTEND_URL")
         if frontend and frontend not in origins:
             origins.append(frontend)
+            
         return origins
 
     # Database
