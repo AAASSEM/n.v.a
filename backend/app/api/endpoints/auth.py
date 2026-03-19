@@ -11,8 +11,11 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User, UserProfile
 from app.schemas.user import Token, User as UserSchema, UserCreate
 from app.core.permissions import Role
+import logging
 from app.services.email_service import email_service
 from app.models.token import EmailVerificationToken, TokenType
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
