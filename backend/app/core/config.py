@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     def assemble_db_connection(cls, v, values):
         db_url = values.get("DATABASE_URL")
         if db_url:
+            # Clean up pgbouncer param which asyncpg doesn't like
+            db_url = db_url.replace("?pgbouncer=true", "")
+            db_url = db_url.replace("&pgbouncer=true", "")
             return db_url
         return v  # Keep default (SQLite for local dev)
 
