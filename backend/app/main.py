@@ -25,18 +25,40 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
+# Request logging middleware
+from fastapi import Request
+import time
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = None
+    try:
+        response = await call_next(request)
+        process_time = (time.time() - start_time) * 1000
+        formatted_process_time = "{0:.2f}".format(process_time)
+        logger.info(f"REQUEST: {request.method} {request.url.path} - STATUS: {response.status_code} - TIME: {formatted_process_time}ms")
+    except Exception as e:
+        logger.exception(f"CRASH: {request.method} {request.url.path} - ERROR: {str(e)}")
+        raise e
+    return response
+
 # CORS
 origins = list(set(settings.BACKEND_CORS_ORIGINS or []))
+# Credentials (cookies/headers) cannot be allowed with * origin
+allow_creds = True
+
 if not origins or "*" in origins:
     origins = ["*"]
-    logger.info("CORS initialized with wildcard *")
+    allow_creds = False # Spec requirement
+    logger.info("CORS: Using wildcard * (Credentials disabled)")
 else:
-    logger.info(f"CORS initialized with origins: {origins}")
+    logger.info(f"CORS: Allowed origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )

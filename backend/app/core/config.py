@@ -28,18 +28,16 @@ class Settings(BaseSettings):
             origins = [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, (list,)):
             origins = list(v)
-        else:
-            raise ValueError(v)
             
         # Add Render frontend URL if ENVIRONMENT == production
         env = values.get("ENVIRONMENT", "development")
         if env == "production":
-            # Add common Render pattern if not present
+            # Direct domain
             render_domain = "https://esg-compass.onrender.com"
             if render_domain not in origins:
                 origins.append(render_domain)
             
-        # Always include FRONTEND_URL
+        # Also include the FRONTEND_URL if set
         frontend = values.get("FRONTEND_URL")
         if frontend and frontend not in origins:
             origins.append(frontend)
