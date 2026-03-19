@@ -3,7 +3,7 @@ import sys
 import logging
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+m_logger = logging.getLogger("app.main")
 
 print("=" * 60, flush=True)
 print("ESG Compass Backend - Starting up...", flush=True)
@@ -157,7 +157,7 @@ async def run_migrations():
     except Exception as e:
         # Don't crash the app if migrations fail — log and continue
         print(f"[MIGRATE] WARNING: Migration error: {e}", flush=True)
-        logger.error(f"Migration error: {e}")
+        m_logger.error(f"Migration error: {e}")
 
 # ── Routes ──────────────────────────────────────────────────────────────
 @app.get("/health")
@@ -179,6 +179,6 @@ os.makedirs("uploads", exist_ok=True)
 try:
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 except Exception as e:
-    logger.warning(f"Uploads mount warning: {e}")
+    m_logger.warning(f"Uploads mount warning: {e}")
 
 print("[OK] Application startup complete!", flush=True)
