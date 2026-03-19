@@ -175,43 +175,38 @@ async def seed_system_defaults(
     db: AsyncSession = Depends(get_db),
     _secret: bool = Depends(verify_developer_secret),
 ) -> Any:
-    """Populate Frameworks, MeterTypes, and ProfilingQuestions with initial required data."""
+    """Populate Frameworks, MeterTypes, ProfilingQuestions, and Data Elements with the full library."""
+    from app.core.seed_data import SEED_DATA
+    
     # 1. Seed Core Frameworks
-    fws = [
-        {"framework_id": "DST", "name": "Department of Economy & Tourism", "type": "mandatory", "region": "Dubai", "version": "V1.0"},
-        {"framework_id": "ESG", "name": "Global ESG Reporting Base", "type": "voluntary", "region": "Global", "version": "2024"},
-        {"framework_id": "G-KEY", "name": "Green Key Certification", "type": "voluntary", "region": "Global", "version": "V6"}
-    ]
-    for f in fws:
+    for f in SEED_DATA["fws"]:
         res = await db.execute(select(Framework).where(Framework.framework_id == f["framework_id"]))
         if not res.scalars().first():
             db.add(Framework(**f))
 
     # 2. Seed Meter Types
-    mts = [
-        {"name": "Electricity", "unit": "kWh", "category": "Energy", "description": "Electric power from grid"},
-        {"name": "LPG / Gas", "unit": "kg", "category": "Energy", "description": "Cooking and heating gas"},
-        {"name": "Potable Water", "unit": "m3", "category": "Water", "description": "Municipal water supply"},
-        {"name": "Diesel", "unit": "Litres", "category": "Energy", "description": "Generator and transport fuel"}
-    ]
-    for m in mts:
+    for m in SEED_DATA["mts"]:
         res = await db.execute(select(MeterType).where(MeterType.name == m["name"]))
         if not res.scalars().first():
             db.add(MeterType(**m))
 
     # 3. Seed Profiling Questions
-    pqs = [
-        {"question_text": "Do you have local water recycling?", "question_order": 1, "input_type": "boolean", "is_required": True, "frameworks": "DST,G-KEY"},
-        {"question_text": "Is the property more than 100 rooms?", "question_order": 2, "input_type": "boolean", "is_required": True, "frameworks": "DST,ESG"},
-        {"question_text": "Do you use a building BMS?", "question_order": 3, "input_type": "boolean", "is_required": False, "frameworks": "ESG"}
-    ]
-    for p in pqs:
+    for p in SEED_DATA["pqs"]:
         res = await db.execute(select(ProfilingQuestion).where(ProfilingQuestion.question_text == p["question_text"]))
         if not res.scalars().first():
             db.add(ProfilingQuestion(**p))
+            
+    # 4. Seed Data Elements
+    for de in SEED_DATA["des"]:
+        # Ensure correct boolean mapping for postgres
+        de["is_metered"] = bool(de.get("is_metered", False))
+        res = await db.execute(select(DataElement).where(DataElement.element_code == de["element_code"]))
+        if not res.scalars().first():
+            db.add(DataElement(**de))
 
     await db.commit()
-    return {"msg": "System defaults seeded successfully"}
+    msg = f"System defaults seeded! Loaded {len(SEED_DATA['fws'])} Frameworks, {len(SEED_DATA['mts'])} Meter Types, {len(SEED_DATA['pqs'])} Questions, and {len(SEED_DATA['des'])} Elements."
+    return {"msg": msg}
 
 # --- User & Company Management ---
 
@@ -335,30 +330,17 @@ async def list_frameworks(
     db: AsyncSession = Depends(get_db),
     _secret: bool = Depends(verify_developer_secret),
 ) -> Any:
-    # Check for columns to avoid crash if migration is pending
-    from sqlalchemy import text
-    try:
-        res = await db.execute(text("PRAGMA table_info(frameworks)"))
-        cols = [r[1] for r in res.fetchall()]
-        has_region = "region" in cols
-        has_version = "version" in cols
-        
-        result = await db.execute(select(Framework))
-        frameworks = result.scalars().all()
-        return [{
-            "id": f.id,
-            "code": f.framework_id,
-            "name": f.name,
-            "type": f.type,
-            "region": getattr(f, "region", "Global") if has_region else "Global",
-            "version": getattr(f, "version", "1.0") if has_version else "1.0",
-            "description": f.description
-        } for f in frameworks]
-    except Exception:
-        # Extreme fallback
-        result = await db.execute(select(Framework))
-        frameworks = result.scalars().all()
-        return [{"id": f.id, "code": f.framework_id, "name": f.name, "type": f.type} for f in frameworks]
+    result = await db.execute(select(Framework))
+    frameworks = result.scalars().all()
+    return [{
+        "id": f.id,
+        "code": f.framework_id,
+        "name": f.name,
+        "type": f.type,
+        "region": getattr(f, "region", "Global"),
+        "version": getattr(f, "version", "1.0"),
+        "description": f.description
+    } for f in frameworks]
 
 @router.post("/frameworks")
 async def create_framework(
@@ -393,19 +375,14 @@ async def list_profiling_questions(
     db: AsyncSession = Depends(get_db),
     _secret: bool = Depends(verify_developer_secret),
 ) -> Any:
-    from sqlalchemy import text
-    res = await db.execute(text("PRAGMA table_info(profiling_questions)"))
-    cols = [r[1] for r in res.fetchall()]
-    has_input = "input_type" in cols
-    
     result = await db.execute(select(ProfilingQuestion).order_by(ProfilingQuestion.question_order))
     questions = result.scalars().all()
     return [{
         "id": q.id,
         "question": q.question_text,
         "order": q.question_order,
-        "input_type": getattr(q, "input_type", "boolean") if has_input else "boolean",
-        "is_required": getattr(q, "is_required", True) if "is_required" in cols else True,
+        "input_type": getattr(q, "input_type", "boolean"),
+        "is_required": getattr(q, "is_required", True),
         "frameworks": q.frameworks
     } for q in questions]
 
@@ -442,17 +419,13 @@ async def list_meter_types(
     db: AsyncSession = Depends(get_db),
     _secret: bool = Depends(verify_developer_secret),
 ) -> Any:
-    from sqlalchemy import text
-    res = await db.execute(text("PRAGMA table_info(meter_types)"))
-    cols = [r[1] for r in res.fetchall()]
-    
     result = await db.execute(select(MeterType))
     types = result.scalars().all()
     return [{
         "id": m.id,
         "name": m.name,
-        "unit": getattr(m, "unit", "Units") if "unit" in cols else "Units",
-        "category": getattr(m, "category", "General") if "category" in cols else "General",
+        "unit": getattr(m, "unit", "Units"),
+        "category": getattr(m, "category", "General"),
         "description": m.description
     } for m in types]
 
