@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { KeyRound } from 'lucide-react';
-import { API_URL } from '../../config';
 import { api } from '../../services/api';
 
 const SetupAccount: React.FC = () => {
   const navigate = useNavigate();
-  const { user, accessToken, fetchUser } = useAuthStore();
+  const { user, fetchUser } = useAuthStore();
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
