@@ -387,10 +387,10 @@ export default function DeveloperAdminView() {
         mutationFn: async () =>
             api.post('/developer-admin/seed-system-defaults', {}, reqConfig),
         onSuccess: () => {
-            ['admin_frameworks', 'admin_meter_types', 'admin_profiling', 'admin_diagnostics'].forEach((k) =>
+            ['admin_frameworks', 'admin_meter_types', 'admin_profiling', 'admin_diagnostics', 'admin_elements'].forEach((k) =>
                 queryClient.invalidateQueries({ queryKey: [k] }),
             );
-            alert('System defaults (Frameworks, Meters, Profiling) seeded successfully.');
+            alert('System defaults (Frameworks, Meters, Profiling, Elements) seeded successfully.');
         },
     });
 
