@@ -29,7 +29,7 @@ class EmailService:
         """Sends a magic-link / invitation email."""
         frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
         base_url = (frontend_url or "http://localhost:5173").rstrip("/")
-        magic_link_url = f"{base_url}/magic-link/{token.token}"
+        magic_link_url = f"{base_url}/#/magic-link/{token.token}"
 
         # Determine subject
         subject = "Your ESG Portal Magic Link"
