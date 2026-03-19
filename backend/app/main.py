@@ -120,7 +120,7 @@ async def run_migrations():
                     print(f"[MIGRATE] Current version: {current}", flush=True)
                     
                     # If stuck on a partial migration, reset everything
-                    if current and current != '420c36d11686':
+                    if current and current != 'de33973c150e':
                         print("[MIGRATE] Partial migration detected — resetting for clean run...", flush=True)
                         # Drop all app tables so we can re-create them cleanly
                         conn.execute(text("DROP TABLE IF EXISTS data_submissions CASCADE"))
@@ -147,6 +147,12 @@ async def run_migrations():
                         print("[MIGRATE] Tables cleared — running fresh migration...", flush=True)
                 except Exception:
                     print("[MIGRATE] No existing migration state — fresh database", flush=True)
+                    # Even in a 'fresh' database, hidden types may exist from failed partial migrations
+                    try:
+                        conn.execute(text("DROP TYPE IF EXISTS tokentype CASCADE"))
+                        conn.commit()
+                    except Exception:
+                        pass
                     pass
             sync_engine.dispose()
             
