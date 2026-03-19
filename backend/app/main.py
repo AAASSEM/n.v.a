@@ -72,6 +72,47 @@ async def run_migrations():
 
             print(f"[MIGRATE] Using sync URL: {sync_url[:50]}...", flush=True)
             alembic_cfg.set_main_option("sqlalchemy.url", sync_url)
+            
+            # Fresh database: drop alembic version tracking so migrations run clean
+            # This is safe because there's no real user data yet
+            from sqlalchemy import create_engine, text
+            sync_engine = create_engine(sync_url)
+            with sync_engine.connect() as conn:
+                # Check if we have a broken migration state
+                try:
+                    result = conn.execute(text("SELECT version_num FROM alembic_version"))
+                    current = result.scalar()
+                    print(f"[MIGRATE] Current version: {current}", flush=True)
+                    
+                    # If stuck on a partial migration, reset everything
+                    if current and current != '420c36d11686':
+                        print("[MIGRATE] Partial migration detected — resetting for clean run...", flush=True)
+                        # Drop all app tables so we can re-create them cleanly
+                        conn.execute(text("DROP TABLE IF EXISTS data_submissions CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS user_profiles CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS meters CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS company_profile_answers CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS company_frameworks CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS company_checklists CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS sites CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS audit_logs CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS system_settings CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS profiling_questions CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS data_elements CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS email_verification_tokens CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS generated_reports CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS meter_types CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS companies CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS users CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS frameworks CASCADE"))
+                        conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+                        conn.commit()
+                        print("[MIGRATE] Tables cleared — running fresh migration...", flush=True)
+                except Exception:
+                    print("[MIGRATE] No existing migration state — fresh database", flush=True)
+                    pass
+            sync_engine.dispose()
+            
             command.upgrade(alembic_cfg, "head")
 
         # Run in thread to not block the async event loop
