@@ -64,7 +64,10 @@ const SetupAccount: React.FC = () => {
             boxShadow: 'var(--shadow-glow-green)',
           }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              <circle cx="12" cy="12" r="10" opacity="0.4" />
+              <path d="M12 12L12 3C12 3 14 4.5 14 6C14 7.5 12 9 12 9" fill="white" stroke="white" strokeWidth="1" />
+              <path d="M12 12L12 21" opacity="0.6" />
+              <circle cx="12" cy="12" r="1.5" fill="white" stroke="none" />
             </svg>
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
