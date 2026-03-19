@@ -42,6 +42,7 @@ class Settings(BaseSettings):
         if frontend and frontend not in origins:
             origins.append(frontend)
             
+        origins = [o.rstrip("/") for o in origins]
         return origins
 
     # Database

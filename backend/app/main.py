@@ -32,14 +32,16 @@ import time
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
+    origin = request.headers.get("origin")
+    host = request.headers.get("host")
     response = None
     try:
         response = await call_next(request)
         process_time = (time.time() - start_time) * 1000
         formatted_process_time = "{0:.2f}".format(process_time)
-        logger.info(f"REQUEST: {request.method} {request.url.path} - STATUS: {response.status_code} - TIME: {formatted_process_time}ms")
+        logger.info(f"REQUEST: {request.method} {request.url.path} - FROM: {origin} (via {host}) - STATUS: {response.status_code} - TIME: {formatted_process_time}ms")
     except Exception as e:
-        logger.exception(f"CRASH: {request.method} {request.url.path} - ERROR: {str(e)}")
+        logger.exception(f"CRASH: {request.method} {request.url.path} - FROM: {origin} - ERROR: {str(e)}")
         raise e
     return response
 
