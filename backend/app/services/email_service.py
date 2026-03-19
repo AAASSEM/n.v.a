@@ -16,9 +16,12 @@ class EmailService:
     """
 
     def __init__(self):
+        self.use_sendgrid = bool(settings.SENDGRID_API_KEY)
         self.use_resend = bool(settings.RESEND_API_KEY)
         
-        if self.use_resend:
+        if self.use_sendgrid:
+            logger.info("EmailService: Using SENDGRID provider")
+        elif self.use_resend:
             logger.info("EmailService: Using RESEND provider")
         else:
             logger.info(f"EmailService: Using SMTP provider ({settings.SMTP_HOST})")
@@ -53,12 +56,14 @@ class EmailService:
         html = self._build_html(token, context, magic_link_url)
 
         # No credentials at all -> mock only (link already logged above)
-        if not self.use_resend and (not settings.SMTP_USER or not settings.SMTP_PASSWORD):
+        if not self.use_sendgrid and not self.use_resend and (not settings.SMTP_USER or not settings.SMTP_PASSWORD):
             print("[EMAIL] No credentials set — link logged above (copy from logs)", flush=True)
             return
 
         # Send via the appropriate provider
-        if self.use_resend:
+        if self.use_sendgrid:
+            await self._send_via_sendgrid(email, subject, html)
+        elif self.use_resend:
             await self._send_via_resend(email, subject, html)
         else:
             await self._send_via_smtp(email, subject, html)
@@ -95,6 +100,53 @@ class EmailService:
         except Exception as e:
             logger.error(f"Resend: Exception sending to {to}: {e}")
             print(f"RESEND EXCEPTION: {e}")
+
+    # ─── SendGrid Provider ───────────────────────────────────────────────────────────
+
+    async def _send_via_sendgrid(self, to: str, subject: str, html: str):
+        """Send an email using the SendGrid HTTP API."""
+        import httpx
+
+        sender_email = settings.EMAILS_FROM_EMAIL or "noreply@esgportal.com"
+        sender_name = settings.EMAILS_FROM_NAME or "ESG Compass"
+
+        payload = {
+            "personalizations": [{
+                "to": [{"email": to}],
+                "subject": subject
+            }],
+            "from": {
+                "email": sender_email,
+                "name": sender_name
+            },
+            "content": [{
+                "type": "text/html",
+                "value": html
+            }]
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.sendgrid.com/v3/mail/send",
+                    headers={
+                        "Authorization": f"Bearer {settings.SENDGRID_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json=payload,
+                    timeout=15.0,
+                )
+
+            if response.status_code in (200, 202):
+                logger.info(f"SendGrid: Email sent to {to}")
+                print(f"SENDGRID SUCCESS: Email sent to {to}")
+            else:
+                logger.error(f"SendGrid: Failed ({response.status_code}) → {response.text}")
+                print(f"SENDGRID ERROR: {response.status_code} {response.text}")
+
+        except Exception as e:
+            logger.error(f"SendGrid: Exception sending to {to}: {e}")
+            print(f"SENDGRID EXCEPTION: {e}")
 
     # ─── SMTP Provider ─────────────────────────────────────────────────────────────
 

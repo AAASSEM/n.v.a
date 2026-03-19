@@ -77,7 +77,8 @@ class Settings(BaseSettings):
     # Developer Admin
     DEVELOPER_ADMIN_SECRET: str = "super_secret_developer_key_change_me"
 
-    # Email — SMTP (development) or Resend (production)
+    # Email — SMTP (development) or Resend (production) or Sendgrid
+    SENDGRID_API_KEY: Optional[str] = None
     RESEND_API_KEY: Optional[str] = None  # Set in production → uses Resend instead of SMTP
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
