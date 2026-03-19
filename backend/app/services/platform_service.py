@@ -56,12 +56,13 @@ class PlatformService:
         total_subs = await db.execute(select(func.count()).select_from(DataSubmission))
         
         # Evidence Metrics
-        # This is a bit tricky with JSONEncodedDict, but let's count non-empty lists in evidence_files
-        # For simplicity, count any row that has a non-null evidence_files field 
-        # (Assuming it's not null, check if len > 0)
-        # Note: In SQLite, JSON functions are limited, but we can search for not []
+        # Note: In Postgres, comparing JSONB/JSON to '[]' (string) might vary by driver.
+        # We'll use a safer check for non-empty evidence.
         evidence_count = await db.execute(
-            select(func.count()).select_from(DataSubmission).where(DataSubmission.evidence_files != '[]')
+            select(func.count()).select_from(DataSubmission).where(
+                DataSubmission.evidence_files != None,
+                DataSubmission.evidence_files != '[]'
+            )
         )
         
         return {
