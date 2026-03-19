@@ -34,6 +34,10 @@ else:
 sync_url = sync_url.replace("ssl=require", "sslmode=require")
 sync_url = sync_url.replace("ssl=true", "sslmode=require")
 
+# psycopg2 doesn't understand pgbouncer=true, so we strip it
+sync_url = sync_url.replace("?pgbouncer=true", "")
+sync_url = sync_url.replace("&pgbouncer=true", "")
+
 config.set_main_option("sqlalchemy.url", sync_url)
 
 target_metadata = Base.metadata
