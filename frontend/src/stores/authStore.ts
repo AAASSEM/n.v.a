@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { API_URL } from '../config';
 import type { User, LoginCredentials } from '../types/user.ts';
 
 interface AuthState {
@@ -32,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
 
                     // We use the raw axios instance here to avoid the interceptor loop
                     // since we are just obtaining the token
-                    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/login`, {
+                    const response = await fetch(`${API_URL}/auth/login`, {
                         method: 'POST',
                         body: formData,
                     });
@@ -56,7 +57,7 @@ export const useAuthStore = create<AuthState>()(
             magicLinkLogin: async (token: string) => {
                 set({ isLoading: true, error: null });
                 try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/magic-link/${token}`, {
+                    const response = await fetch(`${API_URL}/auth/magic-link/${token}`, {
                         method: 'POST',
                     });
 
@@ -85,7 +86,7 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const token = get().accessToken;
                     if (!token) throw new Error("No token");
-                    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/me`, {
+                    const response = await fetch(`${API_URL}/auth/me`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }

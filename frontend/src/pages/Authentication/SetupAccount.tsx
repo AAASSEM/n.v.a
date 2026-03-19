@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { KeyRound } from 'lucide-react';
-import axios from 'axios';
+import { API_URL } from '../../config';
+import { api } from '../../services/api';
 
 const SetupAccount: React.FC = () => {
   const navigate = useNavigate();
@@ -30,10 +31,9 @@ const SetupAccount: React.FC = () => {
 
     try {
       // Direct axios call to the backend to update user password
-      await axios.put(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/users/me/password`, 
-        { password },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+      await api.put(
+        '/users/me/password', 
+        { password }
       );
       
       // Refresh the user state so they no longer have must_reset_password=True

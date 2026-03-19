@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
+import { BASE_URL } from '../../config';
 import { useAuthStore } from '../../stores/authStore';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
@@ -561,7 +562,7 @@ export default function DataEntryView() {
                         <div className="progress-metric">
                             <div className="progress-metric-header">
                                 <span className="progress-metric-label">Evidence Uploads</span>
-                                <span className="progress-metric-value" style={{ color: '#818cf8' }}>{evidenceProgress}%</span>
+                                <span style={{ color: '#818cf8' }} className="progress-metric-value">{evidenceProgress}%</span>
                             </div>
                             <div className="progress-bar-track">
                                 <div className="progress-bar-fill blue" style={{ width: `${evidenceProgress}%` }} />
@@ -728,7 +729,7 @@ export default function DataEntryView() {
                                                                 <polyline points="14 2 14 8 20 8" />
                                                             </svg>
                                                             <a
-                                                                href={`http://localhost:8000${local.evidence_files}`}
+                                                                href={`${BASE_URL}${local.evidence_files}`}
                                                                 target="_blank"
                                                                 rel="noreferrer"
                                                                 style={{ fontSize: 12, fontWeight: 600, color: 'var(--status-complete)', textDecoration: 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
