@@ -110,6 +110,8 @@ async def register_user(
     """
     Public registration endpoint for new users.
     """
+    logger.info(f"REGISTRATION START: New user signup attempt for email: {user_in.email}")
+    
     # Check registration toggle
     if await platform_service.get_system_setting(db, "disable_registration"):
         raise HTTPException(
