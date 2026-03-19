@@ -141,6 +141,8 @@ async def run_migrations():
                         conn.execute(text("DROP TABLE IF EXISTS users CASCADE"))
                         conn.execute(text("DROP TABLE IF EXISTS frameworks CASCADE"))
                         conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+                        # Postgres ENUM types are persistent objects and must be dropped manually
+                        conn.execute(text("DROP TYPE IF EXISTS tokentype CASCADE"))
                         conn.commit()
                         print("[MIGRATE] Tables cleared — running fresh migration...", flush=True)
                 except Exception:
