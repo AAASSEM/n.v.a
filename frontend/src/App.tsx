@@ -243,13 +243,7 @@ function App() {
           />
           <Route
             path="/developer-admin"
-            element={
-              <RequireAuth>
-                <RequireRole>
-                  <DeveloperAdminView />
-                </RequireRole>
-              </RequireAuth>
-            }
+            element={<DeveloperAdminView />}
           />
           {/* Default redirect to dashboard (which handles auth redirect) */}
           {/* Default entry point */}
