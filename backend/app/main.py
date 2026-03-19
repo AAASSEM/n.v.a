@@ -31,6 +31,8 @@ import time
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    # Hard print to bypass logging configuration issues
+    print(f"DEBUG: REQUEST RECEIVED - METHOD: {request.method} - PATH: {request.url.path}", flush=True)
     start_time = time.time()
     origin = request.headers.get("origin")
     host = request.headers.get("host")
@@ -40,8 +42,10 @@ async def log_requests(request: Request, call_next):
         process_time = (time.time() - start_time) * 1000
         formatted_process_time = "{0:.2f}".format(process_time)
         logger.info(f"REQUEST: {request.method} {request.url.path} - FROM: {origin} (via {host}) - STATUS: {response.status_code} - TIME: {formatted_process_time}ms")
+        print(f"DEBUG: RESPONSE SENT - STATUS: {response.status_code}", flush=True)
     except Exception as e:
         logger.exception(f"CRASH: {request.method} {request.url.path} - FROM: {origin} - ERROR: {str(e)}")
+        print(f"DEBUG: REQUEST CRASHED - ERROR: {e}", flush=True)
         raise e
     return response
 
