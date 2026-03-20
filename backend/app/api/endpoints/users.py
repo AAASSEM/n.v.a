@@ -1,5 +1,5 @@
 from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -104,6 +104,7 @@ async def invite_user(
     *,
     db: AsyncSession = Depends(get_db),
     user_in: UserInvite,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
@@ -157,8 +158,9 @@ async def invite_user(
     result = await db.execute(select(Company).where(Company.id == current_user.profile.company_id))
     company = result.scalars().first()
     
-    # Send mock email
-    await email_service.send_magic_link_email(
+    # Send email via background task
+    background_tasks.add_task(
+        email_service.send_magic_link_email,
         email=user.email,
         token=token_obj,
         context={

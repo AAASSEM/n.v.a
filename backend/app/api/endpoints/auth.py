@@ -1,6 +1,6 @@
 from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -109,6 +109,7 @@ async def register_user(
     *,
     db: AsyncSession = Depends(get_db),
     user_in: UserCreate,
+    background_tasks: BackgroundTasks,
 ) -> Any:
     """
     Public registration endpoint for new users.
@@ -156,8 +157,9 @@ async def register_user(
     await db.commit()
     await db.refresh(token_obj)
     
-    # Send verification email
-    await email_service.send_magic_link_email(
+    # Send verification email via background task
+    background_tasks.add_task(
+        email_service.send_magic_link_email,
         email=user.email,
         token=token_obj,
         context={

@@ -201,20 +201,20 @@ async def bulk_assign_category(
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not associated with a company")
         
-    # Get all checklist items for this company that match the category
-    result = await db.execute(
-        select(CompanyChecklist)
-        .join(DataElement, CompanyChecklist.data_element_id == DataElement.id)
+    from sqlalchemy import update
+    
+    # Perform a true bulk UPDATE directly in the database without moving rows to server memory
+    stmt = (
+        update(CompanyChecklist)
         .where(
             CompanyChecklist.company_id == current_user.profile.company_id,
-            DataElement.category == bulk_req.category
+            CompanyChecklist.data_element_id.in_(
+                select(DataElement.id).where(DataElement.category == bulk_req.category)
+            )
         )
+        .values(assigned_to=bulk_req.user_id)
     )
-    items = result.scalars().all()
-    
-    for item in items:
-        item.assigned_to = bulk_req.user_id
-        db.add(item)
-        
+    result = await db.execute(stmt)
     await db.commit()
-    return {"msg": f"Bulk assigned {len(items)} items", "updated": len(items)}
+    
+    return {"msg": f"Bulk assignment completed successfully", "updated": result.rowcount}
