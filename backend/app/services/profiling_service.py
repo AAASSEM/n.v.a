@@ -22,15 +22,13 @@ class ProfilingService:
         if not company:
             raise ValueError("Company not found")
 
-        # 1. Save Answers
+        # 1. Save Answers - Batch loaded to prevent N+1 delay
+        ans_stmt = select(CompanyProfileAnswer).where(CompanyProfileAnswer.company_id == company_id)
+        existing_answers = {a.question_id: a for a in (await db.execute(ans_stmt)).scalars().all()}
+        
         saved_answers = []
         for ans in answers:
-            # Check if answer exists to update, else create
-            stmt = select(CompanyProfileAnswer).where(
-                CompanyProfileAnswer.company_id == company_id,
-                CompanyProfileAnswer.question_id == ans['question_id']
-            )
-            existing = (await db.execute(stmt)).scalars().first()
+            existing = existing_answers.get(ans['question_id'])
             if existing:
                  existing.answer = ans['answer']
                  saved_answers.append(existing)
@@ -64,6 +62,13 @@ class ProfilingService:
         stmt = select(DataElement).where(DataElement.category.in_(["E", "S", "G"]))
         all_elements = (await db.execute(stmt)).scalars().all()
 
+        # Batch load Checklists and Meters entirely to memory to skip 160+ sequential queries
+        cl_stmt = select(CompanyChecklist).where(CompanyChecklist.company_id == company_id)
+        existing_checklists = {c.data_element_id: c for c in (await db.execute(cl_stmt)).scalars().all()}
+
+        mtr_stmt = select(Meter).where(Meter.company_id == company_id)
+        existing_meters = {m.data_element_id: m for m in (await db.execute(mtr_stmt)).scalars().all() if m.name.startswith("Main ")}
+
         requires_meter_setup = []
 
         for element in all_elements:
@@ -89,11 +94,8 @@ class ProfilingService:
             # Must satisfy both
             target_element = framework_match and condition_match
 
-            check_stmt = select(CompanyChecklist).where(
-                 CompanyChecklist.company_id == company_id,
-                 CompanyChecklist.data_element_id == element.id
-            )
-            existing_checklist = (await db.execute(check_stmt)).scalars().first()
+            # O(1) Memory lookup instead of sequential DB queries
+            existing_checklist = existing_checklists.get(element.id)
 
             if target_element:
                 if not existing_checklist:
@@ -112,12 +114,7 @@ class ProfilingService:
                     await db.delete(existing_checklist)
                 
                 if element.is_metered:
-                    meter_del_stmt = select(Meter).where(
-                        Meter.company_id == company_id,
-                        Meter.data_element_id == element.id,
-                        Meter.name == f"Main {element.name} Meter"
-                    )
-                    meter_to_delete = (await db.execute(meter_del_stmt)).scalars().first()
+                    meter_to_delete = existing_meters.get(element.id)
                     if meter_to_delete:
                         await db.delete(meter_to_delete)
                      
@@ -125,12 +122,7 @@ class ProfilingService:
 
         # 3. Auto-Create "Main" Meters
         for element in requires_meter_setup:
-            meter_stmt = select(Meter).where(
-                Meter.company_id == company_id,
-                Meter.data_element_id == element.id,
-                Meter.name == f"Main {element.name} Meter"
-            )
-            meter_exists = (await db.execute(meter_stmt)).scalars().first()
+            meter_exists = existing_meters.get(element.id)
             if not meter_exists:
                  new_meter = Meter(
                      company_id=company_id,
