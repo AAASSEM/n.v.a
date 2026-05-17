@@ -74,6 +74,28 @@ class SystemSettingUpdate(BaseModel):
     value: Any
     description: Optional[str] = None
 
+class AuditLogSchema(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    company_id: Optional[int] = None
+    action: str
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    details: Optional[Any] = None
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
+
+class AuditLogListSchema(BaseModel):
+    logs: List[AuditLogSchema]
+    total: int
+    limit: int
+    offset: int
+
+
 # --- System Health & Diagnostics ---
 
 @router.get("/diagnostics")
@@ -111,14 +133,14 @@ async def update_setting(
 
 # --- Audit Logs ---
 
-@router.get("/logs")
+@router.get("/logs", response_model=AuditLogListSchema)
 async def list_audit_logs(
     limit: int = Query(50, le=500),
     offset: int = 0,
     action: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     _secret: bool = Depends(verify_developer_secret),
-) -> Any:
+):
     query = select(AuditLog).order_by(desc(AuditLog.created_at)).limit(limit).offset(offset)
     if action:
         query = query.where(AuditLog.action == action.upper())
