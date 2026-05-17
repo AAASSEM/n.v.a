@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { BASE_URL } from '../../config';
 import { useAuthStore } from '../../stores/authStore';
+import { useSiteStore } from '../../stores/siteStore';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
 import { canPerformAction } from '../../config/rbac';
@@ -72,6 +73,7 @@ function StatusBadge({ value, evidence }: { value: string | number, evidence: st
 export default function DataEntryView() {
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
+    const currentSiteId = useSiteStore(s => s.currentSiteId);
     const currentDate = new Date();
     const [year, setYear] = useState(currentDate.getFullYear());
     const [month, setMonth] = useState(currentDate.getMonth() + 1);
@@ -93,7 +95,7 @@ export default function DataEntryView() {
     }>({ isOpen: false, checklistId: null, assignedUserId: '', rowName: '' });
 
     const { data: gridData, isLoading, error } = useQuery<GridRow[]>({
-        queryKey: ['submissions', year, month],
+        queryKey: ['submissions', year, month, currentSiteId],
         queryFn: async () => {
             const res = await api.get(`/submissions/grid/${year}/${month}`);
             return res.data;
@@ -103,7 +105,7 @@ export default function DataEntryView() {
     const isForbidden = (error as any)?.response?.status === 403;
 
     const { data: users = [] } = useQuery<User[]>({
-        queryKey: ['companyUsers'],
+        queryKey: ['companyUsers', currentSiteId],
         queryFn: async () => {
             const res = await api.get('/users/company/me');
             return res.data;
@@ -167,7 +169,7 @@ export default function DataEntryView() {
                 setSaveMessage({ type: 'success', text: `Saved! Created ${result.data.created}, updated ${result.data.updated} records.` });
                 setTimeout(() => setSaveMessage(null), 4000);
             }
-            queryClient.invalidateQueries({ queryKey: ['submissions', year, month] });
+            queryClient.invalidateQueries({ queryKey: ['submissions', year, month, currentSiteId] });
         },
         onError: (error: any) => {
             const msg = error.response?.data?.detail || 'Failed to save data.';

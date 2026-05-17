@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import { useSiteStore } from '../../stores/siteStore';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -40,6 +41,7 @@ const selectionCardStyle = {
 export default function MeterManagementView() {
     const queryClient = useQueryClient();
     const userRole = useAuthStore(state => state.user?.profile?.role);
+    const currentSiteId = useSiteStore(s => s.currentSiteId);
     const [editingMeter, setEditingMeter] = useState<Meter | null>(null);
     const [editForm, setEditForm] = useState({ name: '', account_number: '', location: '' });
     const [isCreating, setIsCreating] = useState(false);
@@ -108,7 +110,7 @@ export default function MeterManagementView() {
     });
 
     const { data: meters, isLoading, error } = useQuery<Meter[]>({
-        queryKey: ['meters'],
+        queryKey: ['meters', currentSiteId],
         queryFn: async () => {
             const res = await api.get('/meters/me');
             return res.data;
@@ -123,13 +125,13 @@ export default function MeterManagementView() {
             const res = await api.put(`/meters/${id}`, data);
             return res.data;
         },
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['meters'] }); setEditingMeter(null); }
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['meters', currentSiteId] }); setEditingMeter(null); }
     });
 
     const createMeterMutation = useMutation({
         mutationFn: async (data: any) => { const res = await api.post('/meters/', data); return res.data; },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['meters'] });
+            queryClient.invalidateQueries({ queryKey: ['meters', currentSiteId] });
             setIsCreating(false);
             setCreationStep(1);
             setCreateForm({ data_element_id: '', name: '', account_number: '', location: '' });
@@ -142,12 +144,12 @@ export default function MeterManagementView() {
 
     const toggleStatusMutation = useMutation({
         mutationFn: async (id: number) => { const res = await api.post(`/meters/${id}/toggle-active`); return res.data; },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meters'] })
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meters', currentSiteId] })
     });
 
     const deleteMeterMutation = useMutation({
         mutationFn: async (id: number) => { const res = await api.delete(`/meters/${id}`); return res.data; },
-        onSuccess: () => { setConfirmDeleteMeter(null); queryClient.invalidateQueries({ queryKey: ['meters'] }); },
+        onSuccess: () => { setConfirmDeleteMeter(null); queryClient.invalidateQueries({ queryKey: ['meters', currentSiteId] }); },
         onError: (error: any) => {
             setErrorMessage(error.response?.status === 400 ? error.response.data.detail : 'Failed to delete meter.');
             setConfirmDeleteMeter(null);

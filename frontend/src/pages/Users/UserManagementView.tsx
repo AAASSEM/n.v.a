@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import { useSiteStore } from '../../stores/siteStore';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -49,6 +50,7 @@ export default function UserManagementView() {
     const queryClient = useQueryClient();
     const currentUser = useAuthStore(state => state.user);
     const currentUserRole = currentUser?.profile?.role || '';
+    const currentSiteId = useSiteStore(s => s.currentSiteId);
 
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [creationStep, setCreationStep] = useState(1);
@@ -100,7 +102,7 @@ export default function UserManagementView() {
     const [editRole, setEditRole] = useState('');
 
     const { data: users, isLoading, error } = useQuery<User[]>({
-        queryKey: ['users', 'company'],
+        queryKey: ['users', 'company', currentSiteId],
         queryFn: async () => {
             const res = await api.get('/users/company/me');
             return res.data;
@@ -111,9 +113,16 @@ export default function UserManagementView() {
     const isForbidden = (error as any)?.response?.status === 403;
 
     const inviteMutation = useMutation({
-        mutationFn: async (data: any) => { const res = await api.post('/users/invite', data); return res.data; },
+        mutationFn: async (data: any) => {
+            // Backend requires site_id for non-admin invites from company-wide admins.
+            // Default to the admin's currently-selected site unless the role is an admin itself.
+            const isAdminRole = data.role === 'admin' || data.role === 'super_user';
+            const payload = { ...data, site_id: isAdminRole ? null : (data.site_id ?? currentSiteId) };
+            const res = await api.post('/users/invite', payload);
+            return res.data;
+        },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['users', 'company'] });
+            queryClient.invalidateQueries({ queryKey: ['users', 'company', currentSiteId] });
             setIsInviteModalOpen(false);
             setCreationStep(1);
             setInviteForm({ email: '', first_name: '', last_name: '', password: '', role: '' });
@@ -128,7 +137,7 @@ export default function UserManagementView() {
             return res.data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['users', 'company'] });
+            queryClient.invalidateQueries({ queryKey: ['users', 'company', currentSiteId] });
             setIsEditModalOpen(false);
             setSelectedUser(null);
             setErrorMessage(null);
@@ -139,7 +148,7 @@ export default function UserManagementView() {
     const deleteMutation = useMutation({
         mutationFn: async (userId: number) => { const res = await api.delete(`/users/${userId}`); return res.data; },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['users', 'company'] });
+            queryClient.invalidateQueries({ queryKey: ['users', 'company', currentSiteId] });
             setConfirmDelete(null);
             setErrorMessage(null);
         },

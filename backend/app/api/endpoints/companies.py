@@ -78,6 +78,17 @@ async def create_company(
         db.add(current_user.profile)
         await db.commit()
         
+    # Create a default site for the company
+    from app.models.company import Site
+    default_site = Site(
+        company_id=company.id,
+        name="Main Site",
+        location=company_in.emirate.capitalize()
+    )
+    db.add(default_site)
+    await db.commit()
+    await db.refresh(default_site)
+        
     return company
 
 @router.get("/me", response_model=CompanySchema)

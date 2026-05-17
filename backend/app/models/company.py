@@ -48,6 +48,7 @@ class Site(Base):
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"))
     name = Column(String(255), nullable=False)
     location = Column(String(255), nullable=True)
+    sector = Column(String(50), nullable=True, default="hospitality")
     is_active = Column(Boolean(), default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

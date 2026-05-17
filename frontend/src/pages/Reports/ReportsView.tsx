@@ -4,11 +4,13 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useAuthStore } from '../../stores/authStore';
+import { useSiteStore } from '../../stores/siteStore';
 import { canPerformAction } from '../../config/rbac';
 import AccessDenied from '../../components/ui/AccessDenied';
 
 export default function ReportsView() {
     const { user } = useAuthStore();
+    const currentSiteId = useSiteStore(s => s.currentSiteId);
     const currentYear = new Date().getFullYear();
     const [selectedPeriod, setSelectedPeriod] = useState(String(currentYear));
     const [showMissingModal, setShowMissingModal] = useState(false);
@@ -30,13 +32,13 @@ export default function ReportsView() {
 
     // 1. Fetch completion status
     const { data: completionStatus, isLoading: loadingStatus, refetch } = useQuery({
-        queryKey: ['report_completion', selectedPeriod],
+        queryKey: ['report_completion', selectedPeriod, currentSiteId],
         queryFn: async () => (await api.get(`/reports/check-completion/${selectedPeriod}`)).data,
     });
 
     // 2. Fetch report history
     const { data: reportsList, isLoading: loadingReports, refetch: refetchReports, error } = useQuery({
-        queryKey: ['reports_list'],
+        queryKey: ['reports_list', currentSiteId],
         queryFn: async () => (await api.get('/reports/')).data,
     });
 

@@ -6,10 +6,11 @@ from app.db.session import Base
 
 class CompanyChecklist(Base):
     __tablename__ = "company_checklists"
-    __table_args__ = (UniqueConstraint('company_id', 'data_element_id', name='uq_company_data_element'),)
+    __table_args__ = (UniqueConstraint('company_id', 'site_id', 'data_element_id', name='uq_company_site_data_element'),)
 
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=True, index=True)
     data_element_id = Column(Integer, ForeignKey("data_elements.id", ondelete="CASCADE"), nullable=False)
     framework_id = Column(Integer, ForeignKey("frameworks.id", ondelete="CASCADE"), nullable=True)
     frequency = Column(String(20), nullable=False) # 'Monthly', 'Quarterly', 'Annually'
@@ -19,6 +20,7 @@ class CompanyChecklist(Base):
 
     # Relationships
     company = relationship("Company")
+    site = relationship("Site")
     data_element = relationship("DataElement")
     framework = relationship("Framework")
     user = relationship("User", foreign_keys=[assigned_to])

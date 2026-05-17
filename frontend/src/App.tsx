@@ -12,6 +12,7 @@ import ChecklistView from './pages/Checklist/ChecklistView';
 import MeterManagementView from './pages/Meters/MeterManagementView';
 import DataEntryView from './pages/DataEntry/DataEntryView';
 import UserManagementView from './pages/Users/UserManagementView';
+import SiteManagementView from './pages/Sites/SiteManagementView';
 import DeveloperAdminView from './pages/DeveloperAdmin/DeveloperAdminView';
 import MagicLinkVerify from './pages/Authentication/MagicLinkVerify';
 import SetupAccount from './pages/Authentication/SetupAccount';
@@ -207,6 +208,16 @@ function App() {
               <RequireAuth>
                 <RequireRole>
                   <UserManagementView />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/sites"
+            element={
+              <RequireAuth>
+                <RequireRole>
+                  <SiteManagementView />
                 </RequireRole>
               </RequireAuth>
             }

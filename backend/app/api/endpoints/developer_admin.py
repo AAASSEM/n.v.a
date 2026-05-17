@@ -183,18 +183,30 @@ async def seed_system_defaults(
         res = await db.execute(select(Framework).where(Framework.framework_id == f["framework_id"]))
         if not res.scalars().first():
             db.add(Framework(**f))
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
 
     # 2. Seed Meter Types
     for m in SEED_DATA["mts"]:
         res = await db.execute(select(MeterType).where(MeterType.name == m["name"]))
         if not res.scalars().first():
             db.add(MeterType(**m))
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
 
     # 3. Seed Profiling Questions
     for p in SEED_DATA["pqs"]:
         res = await db.execute(select(ProfilingQuestion).where(ProfilingQuestion.question_text == p["question_text"]))
         if not res.scalars().first():
             db.add(ProfilingQuestion(**p))
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
             
     # 4. Seed Data Elements
     for de in SEED_DATA["des"]:
@@ -203,8 +215,11 @@ async def seed_system_defaults(
         res = await db.execute(select(DataElement).where(DataElement.element_code == de["element_code"]))
         if not res.scalars().first():
             db.add(DataElement(**de))
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
 
-    await db.commit()
     msg = f"System defaults seeded! Loaded {len(SEED_DATA['fws'])} Frameworks, {len(SEED_DATA['mts'])} Meter Types, {len(SEED_DATA['pqs'])} Questions, and {len(SEED_DATA['des'])} Elements."
     return {"msg": msg}
 

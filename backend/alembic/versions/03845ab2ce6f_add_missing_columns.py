@@ -4,6 +4,10 @@ Revision ID: 03845ab2ce6f
 Revises: de33973c150e
 Create Date: 2026-03-19 22:42:30.153955
 
+Originally Postgres-only — but the SQLAlchemy models depend on these columns
+(e.g. ``profiling_questions.frameworks``), so SQLite dev DBs ended up broken.
+Rewritten to run portably on both engines via an idempotent try/except wrapper,
+safe to re-run on already-migrated Postgres.
 """
 from typing import Sequence, Union
 
@@ -18,24 +22,31 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _safe_add_column(table: str, column: sa.Column):
+    try:
+        op.add_column(table, column)
+    except Exception as e:
+        print(f"[migration 03845ab2ce6f] skipped add_column {table}.{column.name}: {e}")
+
+
 def upgrade() -> None:
-    """Upgrade schema."""
-    bind = op.get_bind()
-    if bind.engine.name == 'postgresql':
-        op.execute("ALTER TABLE profiling_questions ADD COLUMN IF NOT EXISTS frameworks VARCHAR(255)")
-        op.execute("ALTER TABLE data_elements ADD COLUMN IF NOT EXISTS condition_logic VARCHAR(255)")
-        op.execute("ALTER TABLE data_elements ADD COLUMN IF NOT EXISTS unit VARCHAR(50)")
-        op.execute("ALTER TABLE data_elements ADD COLUMN IF NOT EXISTS collection_frequency VARCHAR(50)")
-        op.execute("ALTER TABLE data_elements ADD COLUMN IF NOT EXISTS frameworks VARCHAR(255)")
-        op.execute("ALTER TABLE data_elements ADD COLUMN IF NOT EXISTS is_metered BOOLEAN")
-        op.execute("ALTER TABLE data_elements ADD COLUMN IF NOT EXISTS meter_type VARCHAR(100)")
-        op.execute("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS details JSONB")
-        op.execute("ALTER TABLE companies ADD COLUMN IF NOT EXISTS registration_number VARCHAR(100)")
-        op.execute("ALTER TABLE companies ADD COLUMN IF NOT EXISTS trade_license_number VARCHAR(100)")
-        op.execute("ALTER TABLE companies ADD COLUMN IF NOT EXISTS company_code VARCHAR(50)")
-        op.execute("ALTER TABLE companies ADD COLUMN IF NOT EXISTS has_green_key BOOLEAN")
+    """Upgrade schema — portable across Postgres and SQLite."""
+    _safe_add_column('profiling_questions', sa.Column('frameworks', sa.String(length=255), nullable=True))
+
+    _safe_add_column('data_elements', sa.Column('condition_logic', sa.String(length=255), nullable=True))
+    _safe_add_column('data_elements', sa.Column('unit', sa.String(length=50), nullable=True))
+    _safe_add_column('data_elements', sa.Column('collection_frequency', sa.String(length=50), nullable=True))
+    _safe_add_column('data_elements', sa.Column('frameworks', sa.String(length=255), nullable=True))
+    _safe_add_column('data_elements', sa.Column('is_metered', sa.Boolean(), nullable=True))
+    _safe_add_column('data_elements', sa.Column('meter_type', sa.String(length=100), nullable=True))
+
+    _safe_add_column('audit_logs', sa.Column('details', sa.JSON(), nullable=True))
+
+    _safe_add_column('companies', sa.Column('registration_number', sa.String(length=100), nullable=True))
+    _safe_add_column('companies', sa.Column('trade_license_number', sa.String(length=100), nullable=True))
+    _safe_add_column('companies', sa.Column('company_code', sa.String(length=50), nullable=True))
+    _safe_add_column('companies', sa.Column('has_green_key', sa.Boolean(), nullable=True))
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
     pass

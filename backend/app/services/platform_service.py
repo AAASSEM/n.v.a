@@ -77,54 +77,113 @@ class PlatformService:
     @staticmethod
     async def seed_demo_property(db: AsyncSession, company_name: str, admin_email: str) -> Dict[str, Any]:
         """Seed a fully-populated demo company for sales/demo purposes."""
+        from sqlalchemy import delete
+        from app.models.company import Site
+        from app.core.security import get_password_hash
+        import secrets
+
+        # 0. Clean old demo data (Explicitly delete to avoid SQLite PRAGMA missing cascade issues)
+        from app.models.submission import DataSubmission
+        from app.models.meter import Meter
+        await db.execute(delete(DataSubmission))
+        await db.execute(delete(Meter))
+        await db.execute(delete(Site))
+        
+        # Delete UserProfiles for non-developer users
+        user_profiles_query = select(UserProfile.id).join(User).where(User.is_developer == False)
+        result = await db.execute(user_profiles_query)
+        profile_ids = [row for row in result.scalars()]
+        if profile_ids:
+            from sqlalchemy import delete as sa_delete
+            await db.execute(sa_delete(UserProfile).where(UserProfile.id.in_(profile_ids)))
+            
+        await db.execute(delete(User).where(User.is_developer == False))
+        await db.execute(delete(Company))
+        await db.flush()
+
         # 1. Create Company
+        comp_code = secrets.token_hex(4).upper()
         new_company = Company(
-            name=company_name, 
+            name="Apex Hotels Group (Demo)", 
+            company_code=comp_code,
             emirate="Dubai", 
             sector="Hospitality",
-            active_frameworks={"mandatory": ["DST_BASIC"], "voluntary": ["GREEN_KEY"]}
+            active_frameworks=["ESG", "DST", "GREEN KEY"],
+            has_green_key=True
         )
         db.add(new_company)
         await db.flush() # Get ID
         
-        # 2. Create Admin User
-        from app.core.security import get_password_hash
-        new_user = User(
-            email=admin_email,
-            hashed_password=get_password_hash("demo123"), # Hardcoded for demo/seed
-            first_name="Demo",
-            last_name="Manager",
-            is_active=True,
-            email_verified=True
-        )
-        db.add(new_user)
+        # 2. Create Sites
+        site_dubai = Site(company_id=new_company.id, name="Apex Downtown Dubai", location="Dubai", sector="Hospitality", is_active=True)
+        site_auh = Site(company_id=new_company.id, name="Apex Resort Abu Dhabi", location="AbuDhabi", sector="Hospitality", is_active=True)
+        db.add_all([site_dubai, site_auh])
         await db.flush()
         
-        new_profile = UserProfile(user_id=new_user.id, company_id=new_company.id, role="admin")
-        db.add(new_profile)
-        
-        # 3. Seed some random data for the last 6 months
+        # 3. Create Users
+        # Company Admin (no site_id)
+        u_admin = User(email="admin@apex-demo.com", password_hash=get_password_hash("demo123"), first_name="Company", last_name="Admin", is_active=True, email_verified=True)
+        db.add(u_admin)
+        await db.flush()
+        db.add(UserProfile(user_id=u_admin.id, company_id=new_company.id, role="admin"))
+
+        # Site Manager (Dubai)
+        u_mgr = User(email="manager.dxb@apex-demo.com", password_hash=get_password_hash("demo123"), first_name="Dubai", last_name="Manager", is_active=True, email_verified=True)
+        db.add(u_mgr)
+        await db.flush()
+        db.add(UserProfile(user_id=u_mgr.id, company_id=new_company.id, site_id=site_dubai.id, role="site_manager"))
+
+        # Data Entry (Abu Dhabi)
+        u_entry = User(email="entry.auh@apex-demo.com", password_hash=get_password_hash("demo123"), first_name="AbuDhabi", last_name="DataEntry", is_active=True, email_verified=True)
+        db.add(u_entry)
+        await db.flush()
+        db.add(UserProfile(user_id=u_entry.id, company_id=new_company.id, site_id=site_auh.id, role="uploader"))
+
+        # 4. Seed basic Meters for the sites
+        from app.models.meter import Meter
         elements = (await db.execute(select(DataElement))).scalars().all()
-        if not elements:
-            return {"msg": "No data elements in library. Seeding failed."}
+        
+        el_elec = next((e for e in elements if e.meter_type == "Electricity"), None)
+        el_water = next((e for e in elements if e.meter_type == "Water"), None)
+        
+        meters = []
+        if el_elec:
+            meters.append(Meter(company_id=new_company.id, site_id=site_dubai.id, data_element_id=el_elec.id, meter_type="Electricity", name="DXB Main Grid", is_active=True))
+            meters.append(Meter(company_id=new_company.id, site_id=site_auh.id, data_element_id=el_elec.id, meter_type="Electricity", name="AUH Main Grid", is_active=True))
+        if el_water:
+            meters.append(Meter(company_id=new_company.id, site_id=site_dubai.id, data_element_id=el_water.id, meter_type="Water", name="DXB Mains Water", is_active=True))
+            meters.append(Meter(company_id=new_company.id, site_id=site_auh.id, data_element_id=el_water.id, meter_type="Water", name="AUH Mains Water", is_active=True))
             
+        db.add_all(meters)
+        await db.flush()
+        
+        # 5. Seed Submissions
         current_year = datetime.datetime.utcnow().year
-        for month in range(1, 7):
-            for el in elements:
-                # Randomly populate ~70% as filled
-                if random.random() > 0.3:
-                    sub = DataSubmission(
-                        company_id=new_company.id,
-                        data_element_id=el.id,
-                        year=current_year,
-                        month=month,
-                        value=float(random.uniform(500, 5000)),
-                        unit=el.unit or "Units",
-                        submitted_by=new_user.id
-                    )
-                    db.add(sub)
+        
+        for site in [site_dubai, site_auh]:
+            for month in range(1, 7):
+                for el in elements:
+                    if random.random() > 0.3:
+                        meter_id = None
+                        if el.is_metered:
+                            m_match = [m for m in meters if m.site_id == site.id and m.meter_type == el.meter_type]
+                            if m_match:
+                                meter_id = m_match[0].id
+
+                        sub = DataSubmission(
+                            company_id=new_company.id,
+                            site_id=site.id,
+                            data_element_id=el.id,
+                            meter_id=meter_id,
+                            year=current_year,
+                            month=month,
+                            value=float(random.uniform(50, 500)),
+                            unit=el.unit or "Units",
+                            submitted_by=u_admin.id
+                        )
+                        db.add(sub)
         
         await db.commit()
-        return {"msg": f"Demo property '{company_name}' seeded successfully - Credentials: {admin_email} / demo123"}
+        return {"msg": f"Demo completely wiped and recreated! Demo Users: admin@apex-demo.com, manager.dxb@apex-demo.com, entry.auh@apex-demo.com. (Password: demo123)"}
 
 platform_service = PlatformService()

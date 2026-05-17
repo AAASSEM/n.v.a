@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_db, get_current_active_user
+from app.api.deps import get_db, get_current_active_user, resolve_site_id
+from fastapi import Query
 from app.core.permissions import has_permission, Permission, Role
 from app.models.submission import DataSubmission
 from app.models.checklist import CompanyChecklist
@@ -36,11 +37,11 @@ async def get_submission_grid(
     month: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
 ) -> Any:
     """
-    Returns the ready-to-render grid of entry rows for a specific month/year.
-    This merges actual Data Elements from the checklist + custom Meters, 
-    and attaches any previously saved Submissions for that period.
+    Returns the ready-to-render grid of entry rows for a specific month/year,
+    scoped to the caller's current site.
     """
     company_id = current_user.profile.company_id
     if not company_id:
@@ -49,20 +50,26 @@ async def get_submission_grid(
     if not has_permission(current_user.profile.role, "data_submissions", Permission.READ):
         raise HTTPException(status_code=403, detail="Not enough permissions to view data submissions")
 
-    # 1. Fetch assigned checklist elements
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
+
+    # 1. Fetch assigned checklist elements (site-scoped)
     stmt_checklist = (
         select(CompanyChecklist)
         .options(
             selectinload(CompanyChecklist.data_element),
             selectinload(CompanyChecklist.user)
         )
-        .where(CompanyChecklist.company_id == company_id)
+        .where(
+            CompanyChecklist.company_id == company_id,
+            CompanyChecklist.site_id == effective_site_id,
+        )
     )
     checklist_records = (await db.execute(stmt_checklist)).scalars().all()
 
-    # 2. Fetch active meters for the company
+    # 2. Fetch active meters for the site
     stmt_meters = select(Meter).where(
         Meter.company_id == company_id,
+        Meter.site_id == effective_site_id,
         Meter.is_active == True
     )
     meters_records = (await db.execute(stmt_meters)).scalars().all()
@@ -77,6 +84,7 @@ async def get_submission_grid(
     # 3. Fetch existing submissions for the year (to handle annual persistence)
     stmt_subs = select(DataSubmission).where(
         DataSubmission.company_id == company_id,
+        DataSubmission.site_id == effective_site_id,
         DataSubmission.year == year,
         DataSubmission.month.in_([month, 12]) # Fetch current month OR the annual master month (12)
     )
@@ -161,9 +169,10 @@ async def bulk_upsert_submissions(
     db: AsyncSession = Depends(get_db),
     request_data: BulkSubmissionRequest,
     current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
 ) -> Any:
     """
-    Bulk upsert (insert or update) submissions for a specific month/year grid.
+    Bulk upsert (insert or update) submissions scoped to the caller's current site.
     """
     company_id = current_user.profile.company_id
     if not company_id:
@@ -172,6 +181,8 @@ async def bulk_upsert_submissions(
     if not has_permission(current_user.profile.role, "data_submissions", Permission.CREATE) and \
        not has_permission(current_user.profile.role, "data_submissions", Permission.UPDATE):
         raise HTTPException(status_code=403, detail="Not enough permissions to save submissions")
+
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
 
     # 1. Map element IDs to their frequencies/names to detect persistent items
     element_ids = list(set(entry.data_element_id for entry in request_data.entries))
@@ -182,6 +193,7 @@ async def bulk_upsert_submissions(
     # 2. Fetch existing submissions for THIS month AND month 12 (annual fallback)
     stmt_subs = select(DataSubmission).where(
         DataSubmission.company_id == company_id,
+        DataSubmission.site_id == effective_site_id,
         DataSubmission.year == request_data.year,
         DataSubmission.month.in_([request_data.month, 12])
     )
@@ -241,6 +253,7 @@ async def bulk_upsert_submissions(
             # Insert
             new_sub = DataSubmission(
                 company_id=company_id,
+                site_id=effective_site_id,
                 data_element_id=entry.data_element_id,
                 meter_id=entry.meter_id,
                 year=request_data.year,

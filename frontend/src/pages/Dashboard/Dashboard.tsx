@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useSiteStore } from '../../stores/siteStore';
 import {
     AreaChart,
     Area,
@@ -121,11 +122,12 @@ function getStatConfig(name: string) {
 
 export default function Dashboard() {
     const { user } = useAuthStore();
+    const currentSiteId = useSiteStore(s => s.currentSiteId);
     const navigate = useNavigate();
     const [selectedStat, setSelectedStat] = useState<StatMetric | null>(null);
 
     const { data: dashboardData, isLoading } = useQuery({
-        queryKey: ['dashboard', 'metrics'],
+        queryKey: ['dashboard', 'metrics', currentSiteId],
         queryFn: async () => {
             const res = await api.get('/dashboard/metrics');
             return res.data;
@@ -247,8 +249,9 @@ export default function Dashboard() {
                                     <defs>
                                         {categories.map((cat: string) => {
                                             const config = getStatConfig(cat);
+                                            const safeId = `grad${cat.replace(/\s+/g, '')}`;
                                             return (
-                                                <linearGradient key={`grad${cat}`} id={`grad${cat}`} x1="0" y1="0" x2="0" y2="1">
+                                                <linearGradient key={safeId} id={safeId} x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor={config.color} stopOpacity={0.2} />
                                                     <stop offset="95%" stopColor={config.color} stopOpacity={0} />
                                                 </linearGradient>
@@ -264,18 +267,21 @@ export default function Dashboard() {
                                         wrapperStyle={{ paddingTop: 24, color: '#8b90b8', fontSize: 12, fontWeight: 600 }} 
                                         formatter={(value) => <span style={{ color: '#f0f2ff' }}>{value}</span>}
                                     />
-                                    {categories.map((cat: string) => (
-                                        <Area
-                                            key={cat}
-                                            type="monotone"
-                                            dataKey={cat}
-                                            stroke={getStatConfig(cat).color}
-                                            strokeWidth={3}
-                                            fillOpacity={1}
-                                            fill={`url(#grad${cat})`}
-                                            activeDot={{ r: 6, strokeWidth: 0 }}
-                                        />
-                                    ))}
+                                    {categories.map((cat: string) => {
+                                        const safeId = `grad${cat.replace(/\s+/g, '')}`;
+                                        return (
+                                            <Area
+                                                key={cat}
+                                                type="monotone"
+                                                dataKey={cat}
+                                                stroke={getStatConfig(cat).color}
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill={`url(#${safeId})`}
+                                                activeDot={{ r: 6, strokeWidth: 0 }}
+                                            />
+                                        );
+                                    })}
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

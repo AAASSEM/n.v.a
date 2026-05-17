@@ -68,6 +68,49 @@ async def get_developer_user(
         raise HTTPException(status_code=403, detail="Developer access only")
     return current_user
 
+async def resolve_site_id(
+    current_user: User,
+    requested_site_id: Optional[int],
+    db: AsyncSession,
+    required: bool = True,
+) -> Optional[int]:
+    """
+    Resolve the effective site_id for a request based on the caller's scope:
+    - Site-pinned user (profile.site_id set): always their own site_id, the request's
+      site_id is ignored/forced to match. If they request a different site, 403.
+    - Company-wide user (admin / super_user, profile.site_id IS NULL): must pass a
+      site_id via query; we verify it belongs to their company.
+    - If required=False and caller is company-wide and no site_id given, returns None
+      (used e.g. by endpoints that aggregate across sites for admins).
+    """
+    from app.models.company import Site
+
+    if not current_user.profile or not current_user.profile.company_id:
+        raise HTTPException(status_code=403, detail="Not associated with a company")
+
+    pinned = current_user.profile.site_id
+    if pinned is not None:
+        if requested_site_id is not None and int(requested_site_id) != int(pinned):
+            raise HTTPException(status_code=403, detail="You cannot access another site's data")
+        return pinned
+
+    # Company-wide caller
+    if requested_site_id is None:
+        if required:
+            raise HTTPException(
+                status_code=400,
+                detail="site_id query parameter is required for company-wide users",
+            )
+        return None
+
+    site = await db.get(Site, int(requested_site_id))
+    if not site or site.company_id != current_user.profile.company_id:
+        raise HTTPException(status_code=404, detail="Site not found")
+    if not site.is_active:
+        raise HTTPException(status_code=400, detail="Site is not active")
+    return site.id
+
+
 async def verify_developer_secret(
     x_developer_secret: str = Header(..., description="Static Developer Secret Key")
 ):

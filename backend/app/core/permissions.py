@@ -45,7 +45,7 @@ ROLE_PERMISSIONS = {
     },
     Role.ADMIN: {
         "users": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
-        "companies": {Permission.READ},
+        "companies": {Permission.READ, Permission.UPDATE},
         "frameworks": {Permission.READ},
         "meters": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
         "data_submissions": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},

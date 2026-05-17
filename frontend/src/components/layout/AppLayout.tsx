@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { canAccessPage } from '../../config/rbac';
+import SiteSwitcher from './SiteSwitcher';
 
 interface NavItem {
     label: string;
@@ -16,6 +17,16 @@ const NAV_ITEMS: NavItem[] = [
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="7" height="9" /><rect x="14" y="3" width="7" height="5" /><rect x="14" y="12" width="7" height="9" /><rect x="3" y="16" width="7" height="5" />
+            </svg>
+        ),
+    },
+    {
+        label: 'Sites',
+        path: '/sites',
+        icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
             </svg>
         ),
     },
@@ -79,6 +90,18 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout } = useAuthStore();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const initials = user
         ? `${(user.first_name || '').charAt(0)}${(user.last_name || '').charAt(0)}`.toUpperCase() || user.email.charAt(0).toUpperCase()
@@ -128,7 +151,8 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                     </div>
 
                     {/* User Section */}
-                    <div className="nav-user-section">
+                    <div className="nav-user-section" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <SiteSwitcher />
                         <div className="nav-user-pill">
                             <div className="nav-avatar">
                                 {initials}
@@ -136,39 +160,51 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                             <div className="nav-user-info">
                                 <span className="nav-username">{displayName}</span>
                             </div>
-                            {canAccessPage(user?.profile?.role, '/settings') && (
+                            <div className="nav-user-menu-container" ref={menuRef} style={{ position: 'relative' }}>
                                 <button
                                     className="nav-settings-action"
-                                    onClick={() => navigate('/settings')}
-                                    title="Settings"
+                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                    title="Menu"
+                                    style={{ background: isMenuOpen ? 'rgba(99, 102, 241, 0.1)' : 'transparent', color: isMenuOpen ? 'var(--accent-green)' : 'currentColor' }}
                                 >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                         <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                                     </svg>
                                 </button>
-                            )}
-                            {canAccessPage(user?.profile?.role, '/help') && (
-                                <button
-                                    className="nav-help-action"
-                                    onClick={() => navigate('/help')}
-                                    title="Help Center"
-                                >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                                    </svg>
-                                </button>
-                            )}
-                            <button
-                                className="nav-logout-action"
-                                onClick={logout}
-                                title="Sign out"
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                                    <polyline points="16 17 21 12 16 7" />
-                                    <line x1="21" y1="12" x2="9" y2="12" />
-                                </svg>
-                            </button>
+
+                                {isMenuOpen && (
+                                    <div className="nav-dropdown-menu animate-fade-in" style={{
+                                        position: 'absolute',
+                                        top: 'calc(100% + 8px)',
+                                        right: 0,
+                                        width: 180,
+                                        background: 'var(--bg-elevated)',
+                                        border: '1px solid var(--border-subtle)',
+                                        borderRadius: 'var(--radius-md)',
+                                        boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                                        zIndex: 100,
+                                        padding: '6px'
+                                    }}>
+                                        {canAccessPage(user?.profile?.role, '/settings') && (
+                                            <button className="nav-dropdown-item" onClick={() => { setIsMenuOpen(false); navigate('/settings'); }}>
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                Settings
+                                            </button>
+                                        )}
+                                        {canAccessPage(user?.profile?.role, '/help') && (
+                                            <button className="nav-dropdown-item" onClick={() => { setIsMenuOpen(false); navigate('/help'); }}>
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                Help Center
+                                            </button>
+                                        )}
+                                        <div style={{ height: 1, background: 'var(--border-subtle)', margin: '6px 0' }} />
+                                        <button className="nav-dropdown-item logout" onClick={logout}>
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                            Sign out
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

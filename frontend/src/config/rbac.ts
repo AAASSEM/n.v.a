@@ -7,6 +7,7 @@ export const PAGE_ACCESS: Record<string, Role[]> = {
   '/data-entry':  ['super_user', 'admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],
   '/meters':      ['super_user', 'admin', 'site_manager', 'meter_manager'],
   '/users':       ['super_user', 'admin', 'site_manager'],
+  '/sites':       ['super_user', 'admin'],
   '/reports':     ['super_user', 'admin', 'site_manager', 'viewer', 'meter_manager'],
   '/settings':    ['super_user', 'admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],
   '/help':        ['super_user', 'admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],

@@ -23,10 +23,11 @@ class ProfilingQuestion(Base):
 
 class CompanyProfileAnswer(Base):
     __tablename__ = "company_profile_answers"
-    __table_args__ = (UniqueConstraint('company_id', 'question_id', name='uq_company_question'),)
+    __table_args__ = (UniqueConstraint('company_id', 'site_id', 'question_id', name='uq_company_site_question'),)
 
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"), nullable=True, index=True)
     question_id = Column(Integer, ForeignKey("profiling_questions.id", ondelete="CASCADE"), nullable=False)
     answer = Column(Boolean(), nullable=False) # Yes/No mapped to True/False
     answered_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -34,5 +35,6 @@ class CompanyProfileAnswer(Base):
 
     # Relationships
     company = relationship("Company")
+    site = relationship("Site")
     question = relationship("ProfilingQuestion", back_populates="answers")
     user = relationship("User")

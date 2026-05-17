@@ -6,7 +6,10 @@ from app.core.config import settings
 is_dev = settings.ENVIRONMENT == "development"
 
 # Create async engine for SQLAlchemy
-engine_kwargs = {"pool_size": 5, "max_overflow": 10, "pool_pre_ping": True}
+engine_kwargs = {}
+
+if "sqlite" not in settings.SQLALCHEMY_DATABASE_URI:
+    engine_kwargs.update({"pool_size": 5, "max_overflow": 10, "pool_pre_ping": True})
 
 if "postgresql" in settings.SQLALCHEMY_DATABASE_URI:
     # Disable prepared statement caching for PgBouncer / Connection Poolers (transaction mode)

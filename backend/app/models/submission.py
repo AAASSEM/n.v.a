@@ -7,7 +7,7 @@ from app.models.company import JSONEncodedDict # Reusing the custom JSON type fo
 
 class DataSubmission(Base):
     __tablename__ = "data_submissions"
-    __table_args__ = (UniqueConstraint('company_id', 'data_element_id', 'meter_id', 'year', 'month', name='uq_submission'),)
+    __table_args__ = (UniqueConstraint('company_id', 'site_id', 'data_element_id', 'meter_id', 'year', 'month', name='uq_submission'),)
 
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)

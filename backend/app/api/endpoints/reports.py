@@ -5,7 +5,8 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 import datetime
 
-from app.api.deps import get_db, get_current_active_user
+from fastapi import Query
+from app.api.deps import get_db, get_current_active_user, resolve_site_id
 from app.models.submission import DataSubmission
 from app.models.checklist import CompanyChecklist
 from app.models.data_element import DataElement
@@ -50,23 +51,30 @@ async def check_report_completion(
     year: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
 ) -> Any:
-    # ... (same logic as before)
     company_id = current_user.profile.company_id
     if not company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
 
-    # 1. Fetch all required checklist items
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
+
+    # 1. Fetch all required checklist items (site-scoped)
     stmt_checklist = (
         select(CompanyChecklist)
         .options(selectinload(CompanyChecklist.data_element))
-        .where(CompanyChecklist.company_id == company_id, CompanyChecklist.is_required == True)
+        .where(
+            CompanyChecklist.company_id == company_id,
+            CompanyChecklist.site_id == effective_site_id,
+            CompanyChecklist.is_required == True,
+        )
     )
     checklist_records = (await db.execute(stmt_checklist)).scalars().all()
 
-    # 2. Fetch all active meters
+    # 2. Fetch all active meters (site-scoped)
     stmt_meters = select(Meter).where(
         Meter.company_id == company_id,
+        Meter.site_id == effective_site_id,
         Meter.is_active == True
     )
     meters_records = (await db.execute(stmt_meters)).scalars().all()
@@ -76,9 +84,10 @@ async def check_report_completion(
             meters_by_element[m.data_element_id] = []
         meters_by_element[m.data_element_id].append(m)
 
-    # 3. Fetch all submissions for the year
+    # 3. Fetch all submissions for the year (site-scoped)
     stmt_subs = select(DataSubmission).where(
         DataSubmission.company_id == company_id,
+        DataSubmission.site_id == effective_site_id,
         DataSubmission.year == year
     )
     subs_records = (await db.execute(stmt_subs)).scalars().all()
@@ -130,8 +139,9 @@ async def generate_report(
     format: str = 'PDF',
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
 ) -> Any:
-    status = await check_report_completion(year, db, current_user)
+    status = await check_report_completion(year, db, current_user, site_id)
     if not status["is_complete"] and not allow_incomplete:
         raise HTTPException(
             status_code=400, 

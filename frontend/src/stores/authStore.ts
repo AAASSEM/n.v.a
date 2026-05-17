@@ -2,6 +2,45 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { API_URL } from '../config';
 import type { User, LoginCredentials } from '../types/user.ts';
+import { useSiteStore } from './siteStore.ts';
+import type { Site } from '../types/site';
+
+async function hydrateSitesFor(user: User, token: string): Promise<void> {
+    const siteStore = useSiteStore.getState();
+    try {
+        if (!user.profile?.company_id) {
+            siteStore.setSites([]);
+            siteStore.setCurrentSiteId(null);
+            siteStore.setHydrated(true);
+            return;
+        }
+        const res = await fetch(`${API_URL}/sites/`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+            siteStore.setSites([]);
+            siteStore.setHydrated(true);
+            return;
+        }
+        const sites: Site[] = await res.json();
+        siteStore.setSites(sites);
+
+        // Pin to user's site if any
+        if (user.profile?.site_id != null) {
+            siteStore.setCurrentSiteId(user.profile.site_id);
+        } else {
+            // Admin: keep persisted value if still valid, else first site
+            const persisted = siteStore.currentSiteId;
+            const stillValid = persisted != null && sites.some((s) => s.id === persisted);
+            if (!stillValid) {
+                siteStore.setCurrentSiteId(sites[0]?.id ?? null);
+            }
+        }
+        siteStore.setHydrated(true);
+    } catch {
+        siteStore.setHydrated(true);
+    }
+}
 
 interface AuthState {
     user: User | null;
@@ -79,7 +118,7 @@ export const useAuthStore = create<AuthState>()(
 
             logout: () => {
                 set({ user: null, accessToken: null, isAuthenticated: false });
-                // Optional: Call backend logout endpoint to blacklist token
+                useSiteStore.getState().reset();
             },
 
             fetchUser: async () => {
@@ -94,8 +133,11 @@ export const useAuthStore = create<AuthState>()(
                     if (!response.ok) throw new Error("Failed to fetch user");
                     const data = await response.json();
                     set({ user: data as User });
+                    // Load the sites this user can see and pick a current site
+                    await hydrateSitesFor(data as User, token);
                 } catch {
                     set({ user: null, accessToken: null, isAuthenticated: false });
+                    useSiteStore.getState().reset();
                 }
             },
         }),

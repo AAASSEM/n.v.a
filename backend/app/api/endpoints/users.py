@@ -19,6 +19,7 @@ class UserInvite(BaseModel):
     first_name: str
     last_name: str
     role: str
+    site_id: int | None = None
 
 class RoleUpdate(BaseModel):
     role: str
@@ -82,21 +83,37 @@ async def read_users(
 async def read_company_users(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    site_id: int | None = None,
 ) -> Any:
     """
-    Retrieve all users that belong to the current user's company.
-    Used for checklists and assignments.
+    Retrieve users belonging to the current user's company.
+
+    Scoping:
+    - Site-pinned callers: only their site's users + company-wide admins.
+    - Company-wide caller (admin) with ?site_id=: only that site + admins.
+    - Company-wide caller without ?site_id=: all users in the company.
     """
     if not current_user.profile or not current_user.profile.company_id:
-        # Return just the current user if no company yet
         return [current_user]
-        
-    result = await db.execute(
+
+    pinned = current_user.profile.site_id
+    effective_site = pinned if pinned is not None else site_id
+
+    stmt = (
         select(User)
         .join(UserProfile, User.id == UserProfile.user_id)
         .where(UserProfile.company_id == current_user.profile.company_id)
         .options(selectinload(User.profile))
     )
+
+    if effective_site is not None:
+        # Users pinned to this site, plus company-wide admins (site_id IS NULL)
+        from sqlalchemy import or_
+        stmt = stmt.where(
+            or_(UserProfile.site_id == effective_site, UserProfile.site_id.is_(None))
+        )
+
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 @router.post("/invite", response_model=UserSchema)
@@ -135,11 +152,39 @@ async def invite_user(
     await db.commit()
     await db.refresh(user)
     
+    # Determine target site_id for the invitee.
+    # - Company-wide admins (ADMIN/SUPER_USER) can pass site_id (or None for company-wide role).
+    # - Site-pinned inviters (e.g. SITE_MANAGER) force their own site_id onto invitees.
+    from app.core.permissions import Role
+    admin_roles = {Role.ADMIN.value, Role.SUPER_USER.value}
+    target_site_id: int | None
+    if current_user.profile.site_id is not None:
+        # Site-pinned inviter — ignore request and use their site
+        target_site_id = current_user.profile.site_id
+    else:
+        # Company-wide inviter
+        if user_in.role in admin_roles:
+            # Creating another company-wide admin — no site
+            target_site_id = None
+        else:
+            if user_in.site_id is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="site_id is required when inviting a non-admin user",
+                )
+            # Verify site belongs to inviter's company
+            from app.models.company import Site
+            target_site = await db.get(Site, user_in.site_id)
+            if not target_site or target_site.company_id != current_user.profile.company_id:
+                raise HTTPException(status_code=404, detail="Site not found")
+            target_site_id = target_site.id
+
     # Needs to reset password on first login via magic link
     profile = UserProfile(
         user_id=user.id,
         role=user_in.role,
         company_id=current_user.profile.company_id,
+        site_id=target_site_id,
         must_reset_password=True
     )
     db.add(profile)

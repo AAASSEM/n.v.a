@@ -5,6 +5,7 @@ import { api } from '../../services/api';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
 import { useAuthStore } from '../../stores/authStore';
+import { useSiteStore } from '../../stores/siteStore';
 import { canPerformAction } from '../../config/rbac';
 
 interface ChecklistItem {
@@ -58,6 +59,7 @@ const FRAMEWORK_CONFIG: Record<string, { color: string; bg: string }> = {
 export default function ChecklistView() {
     const queryClient = useQueryClient();
     const userRole = useAuthStore(state => state.user?.profile?.role);
+    const currentSiteId = useSiteStore(s => s.currentSiteId);
     const canManage = canPerformAction(userRole, 'checklist', 'update');
 
     const [selectedCategory, setSelectedCategory] = useState<'E' | 'S' | 'G' | 'ALL'>('ALL');
@@ -70,7 +72,7 @@ export default function ChecklistView() {
     const [selectedUserId, setSelectedUserId] = useState<number | ''>('');
 
     const { data: checklist, isLoading, error } = useQuery<ChecklistItem[]>({
-        queryKey: ['checklist'],
+        queryKey: ['checklist', currentSiteId],
         queryFn: async () => {
             const res = await api.get('/profiling/checklist/me');
             return res.data;
@@ -80,7 +82,7 @@ export default function ChecklistView() {
     const isForbidden = (error as any)?.response?.status === 403;
 
     const { data: users = [] } = useQuery<User[]>({
-        queryKey: ['companyUsers'],
+        queryKey: ['companyUsers', currentSiteId],
         queryFn: async () => {
             const res = await api.get('/users/company/me');
             return res.data;
@@ -92,7 +94,7 @@ export default function ChecklistView() {
             await api.post('/profiling/checklist/assign', { checklist_id: checklistId, user_id: userId });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['checklist'] });
+            queryClient.invalidateQueries({ queryKey: ['checklist', currentSiteId] });
             setModalConfig({ ...modalConfig, isOpen: false });
         }
     });
@@ -102,7 +104,7 @@ export default function ChecklistView() {
             await api.post('/profiling/checklist/assign/bulk', { category, user_id: userId });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['checklist'] });
+            queryClient.invalidateQueries({ queryKey: ['checklist', currentSiteId] });
             setModalConfig({ ...modalConfig, isOpen: false });
         }
     });

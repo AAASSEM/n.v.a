@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
+import { useSiteStore } from '../../stores/siteStore';
 import AppLayout from '../../components/layout/AppLayout';
 
 interface CompanyData {
@@ -46,6 +47,9 @@ export default function OnboardingWizard() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { fetchUser, user } = useAuthStore();
+    const currentSiteId = useSiteStore((s) => s.currentSiteId);
+    const sites = useSiteStore((s) => s.sites);
+    const currentSite = sites.find((s) => s.id === currentSiteId);
     const [step, setStep] = useState(1);
     const [companyId, setCompanyId] = useState<number | null>(null);
     const [answers, setAnswers] = useState<Record<number, boolean>>({});
@@ -70,19 +74,19 @@ export default function OnboardingWizard() {
     });
 
     const { data: myAnswers } = useQuery({
-        queryKey: ['myAnswers'],
+        queryKey: ['myAnswers', currentSiteId],
         queryFn: async () => {
-            if (!user?.profile?.company_id) return null;
+            if (!user?.profile?.company_id || currentSiteId == null) return null;
             const res = await api.get('/profiling/answers/me');
             return res.data;
         },
-        enabled: !!user?.profile?.company_id,
+        enabled: !!user?.profile?.company_id && currentSiteId != null,
     });
 
     const { data: questions, isLoading: loadingQuestions } = useQuery<Question[]>({
-        queryKey: ['profilingQuestions'],
+        queryKey: ['profilingQuestions', currentSiteId],
         queryFn: async () => { const res = await api.get('/profiling/questions'); return res.data; },
-        enabled: step === 3 || !!user?.profile?.company_id,
+        enabled: (step === 3 || !!user?.profile?.company_id) && currentSiteId != null,
     });
 
     const { data: dbFrameworks, isLoading: loadingFrameworks } = useQuery({
@@ -98,14 +102,25 @@ export default function OnboardingWizard() {
                 name: myCompany.name || '',
                 registration_number: myCompany.registration_number || '',
                 trade_license_number: myCompany.trade_license_number || '',
-                emirate: myCompany.emirate || 'Dubai',
-                sector: myCompany.sector || 'Hospitality',
+                emirate: (currentSite?.location as any) || myCompany.emirate || 'Dubai',
+                sector: (currentSite?.sector as any) || myCompany.sector || 'Hospitality',
                 has_green_key: myCompany.has_green_key || false,
                 active_frameworks: myCompany.active_frameworks || []
             });
+            // Skip to step 3 by default if company exists
             setStep(3);
         }
-    }, [myCompany]);
+    }, [myCompany, currentSite]);
+
+    useEffect(() => {
+        if (currentSite && !myCompany) {
+            setCompanyData(prev => ({
+                ...prev,
+                emirate: (currentSite.location as any) || 'Dubai',
+                sector: (currentSite.sector as any) || 'Hospitality'
+            }));
+        }
+    }, [currentSite, myCompany]);
 
     useEffect(() => {
         if (myAnswers && Array.isArray(myAnswers)) {
@@ -118,6 +133,19 @@ export default function OnboardingWizard() {
     const createCompanyMutation = useMutation({
         mutationFn: async (data: CompanyData) => { const res = await api.post('/companies/', data); return res.data; },
         onSuccess: async (data) => { setCompanyId(data.id); await fetchUser(); setStep(3); },
+    });
+
+    const updateSiteMutation = useMutation({
+        mutationFn: async ({ id, data }: { id: number; data: { location: string; sector: string } }) => {
+            const res = await api.put(`/sites/${id}`, data);
+            return res.data;
+        },
+        onSuccess: async () => {
+            const res = await api.get('/sites');
+            useSiteStore.getState().setSites(res.data);
+            await queryClient.invalidateQueries({ queryKey: ['profilingQuestions', currentSiteId] });
+            setStep(2);
+        }
     });
 
     const updateCompanyMutation = useMutation({
@@ -147,7 +175,18 @@ export default function OnboardingWizard() {
             fws = fws.filter(f => f !== 'DST');
         }
         setCompanyData(prev => ({ ...prev, active_frameworks: fws }));
-        setStep(2);
+        
+        if (currentSiteId) {
+            updateSiteMutation.mutate({
+                id: currentSiteId,
+                data: {
+                    location: companyData.emirate,
+                    sector: companyData.sector
+                }
+            });
+        } else {
+            setStep(2);
+        }
     };
 
     const handleStep2Submit = (e: React.FormEvent) => {
@@ -181,6 +220,29 @@ export default function OnboardingWizard() {
                 {/* Sidebar */}
                 <div className="onboarding-sidebar">
                     <div className="onboarding-sidebar-title">Onboarding Setup</div>
+
+                    {currentSite && user?.profile?.company_id && (
+                        <div style={{ 
+                            padding: '12px', 
+                            background: 'rgba(99,102,241,0.08)', 
+                            border: '1px solid rgba(99,102,241,0.2)', 
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: 12,
+                            marginBottom: '20px',
+                            color: 'var(--text-secondary)',
+                            lineHeight: 1.5
+                        }}>
+                            <div style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
+                                Onboarding for site:<br/>
+                                <strong style={{ color: '#818cf8', fontSize: 13 }}>{currentSite.name}</strong>
+                            </div>
+                            {sites.length > 1 && user?.profile?.site_id == null && (
+                                <div style={{ opacity: 0.8, marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(99,102,241,0.15)' }}>
+                                    Switch sites from the top bar to onboard another location.
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {STEPS.map(s => (
                         <div key={s.num} className={`onboarding-step-item ${step === s.num ? 'active' : ''}`}>
@@ -234,152 +296,158 @@ export default function OnboardingWizard() {
                     {/* STEP 1: Company Info */}
                     {step === 1 && (
                         <form onSubmit={handleStep1Submit} className="animate-fade-in">
-                            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>Business Information</h2>
-                            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 28 }}>Tell us about your company</p>
+                             <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>Business Information</h2>
+                             <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 28 }}>Tell us about your company and site</p>
 
-                            {/* Company Info Section */}
-                            <div style={{
-                                background: 'var(--bg-elevated)',
-                                border: '1px solid var(--border-subtle)',
-                                borderRadius: 'var(--radius-lg)',
-                                overflow: 'hidden',
-                                marginBottom: 20,
-                            }}>
-                                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /><path d="M3 9h6" /><path d="M3 15h6" /></svg>
-                                    Company Information
-                                </div>
-                                <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                    <div>
-                                        <label className="form-label">Company Name</label>
-                                        <input required type="text" className="form-input" placeholder="e.g. Acme Corp"
-                                            value={companyData.name} onChange={e => setCompanyData({ ...companyData, name: e.target.value })} />
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                        <div>
-                                            <label className="form-label">Emirate</label>
-                                            <div
-                                                className="dropdown-trigger"
-                                                style={{ width: '100%', cursor: 'pointer' }}
-                                                onClick={() => setActiveModal('emirate')}
-                                            >
-                                                <span style={{ color: 'var(--text-muted)', marginRight: 10, display: 'flex', alignItems: 'center' }}>
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                                </span>
-                                                <span style={{ flex: 1 }}>{companyData.emirate}</span>
-                                                <svg className="dropdown-chevron" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="form-label">Primary Sector</label>
-                                            <div
-                                                className="dropdown-trigger"
-                                                style={{ width: '100%', cursor: 'pointer' }}
-                                                onClick={() => setActiveModal('sector')}
-                                            >
-                                                <span style={{ color: 'var(--text-muted)', marginRight: 10, display: 'flex', alignItems: 'center' }}>
-                                                    {companyData.sector.toLowerCase() === 'hospitality' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" /><path d="M9 11h2" /><path d="M9 15h2" /><path d="M13 11h2" /><path d="M13 15h2" /></svg> :
-                                                        companyData.sector.toLowerCase() === 'realestate' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M8 10h.01" /><path d="M16 10h.01" /><path d="M8 14h.01" /><path d="M16 14h.01" /></svg> :
-                                                            companyData.sector.toLowerCase() === 'manufacturing' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20V4l8 4V4l8 4V4l4 4v12H2z" /><path d="M7 20v-4" /><path d="M12 20v-4" /><path d="M17 20v-4" /></svg> :
-                                                                companyData.sector.toLowerCase() === 'technology' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg> :
-                                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>}
-                                                </span>
-                                                <span style={{ flex: 1 }}>{companyData.sector}</span>
-                                                <svg className="dropdown-chevron" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                        <div>
-                                            <label className="form-label">Registration Number</label>
-                                            <input type="text" className="form-input"
-                                                value={companyData.registration_number} onChange={e => setCompanyData({ ...companyData, registration_number: e.target.value })} />
-                                        </div>
-                                        <div>
-                                            <label className="form-label">Trade License Number</label>
-                                            <input type="text" className="form-input"
-                                                value={companyData.trade_license_number} onChange={e => setCompanyData({ ...companyData, trade_license_number: e.target.value })} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+ 
+                             {/* Company & Site Info Section */}
+                             <div style={{
+                                 background: 'var(--bg-elevated)',
+                                 border: '1px solid var(--border-subtle)',
+                                 borderRadius: 'var(--radius-lg)',
+                                 overflow: 'hidden',
+                                 marginBottom: 20,
+                             }}>
+                                 <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /><path d="M3 9h6" /><path d="M3 15h6" /></svg>
+                                     Company & Site Information
+                                 </div>
+                                 <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                     <div>
+                                         <label className="form-label">Company Name</label>
+                                         <input required type="text" className="form-input" placeholder="e.g. Acme Corp" disabled={!!companyId} style={{ opacity: companyId ? 0.7 : 1 }}
+                                             value={companyData.name} onChange={e => setCompanyData({ ...companyData, name: e.target.value })} />
+                                     </div>
+                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                         <div>
+                                             <label className="form-label">Site Location (Emirate)</label>
+                                             <div
+                                                 className="dropdown-trigger"
+                                                 style={{ width: '100%', cursor: 'pointer' }}
+                                                 onClick={() => setActiveModal('emirate')}
+                                             >
+                                                 <span style={{ color: 'var(--text-muted)', marginRight: 10, display: 'flex', alignItems: 'center' }}>
+                                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                                 </span>
+                                                 <span style={{ flex: 1 }}>{companyData.emirate}</span>
+                                                 <svg className="dropdown-chevron" viewBox="0 0 20 20" fill="currentColor">
+                                                     <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                 </svg>
+                                             </div>
+                                         </div>
+                                         <div>
+                                             <label className="form-label">Site Sector</label>
+                                             <div
+                                                 className="dropdown-trigger"
+                                                 style={{ width: '100%', cursor: 'pointer' }}
+                                                 onClick={() => setActiveModal('sector')}
+                                             >
+                                                 <span style={{ color: 'var(--text-muted)', marginRight: 10, display: 'flex', alignItems: 'center' }}>
+                                                     {companyData.sector.toLowerCase() === 'hospitality' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" /><path d="M9 11h2" /><path d="M9 15h2" /><path d="M13 11h2" /><path d="M13 15h2" /></svg> :
+                                                         companyData.sector.toLowerCase() === 'realestate' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M8 10h.01" /><path d="M16 10h.01" /><path d="M8 14h.01" /><path d="M16 14h.01" /></svg> :
+                                                             companyData.sector.toLowerCase() === 'manufacturing' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20V4l8 4V4l8 4V4l4 4v12H2z" /><path d="M7 20v-4" /><path d="M12 20v-4" /><path d="M17 20v-4" /></svg> :
+                                                                 companyData.sector.toLowerCase() === 'technology' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg> :
+                                                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>}
+                                                 </span>
+                                                 <span style={{ flex: 1 }}>{companyData.sector}</span>
+                                                 <svg className="dropdown-chevron" viewBox="0 0 20 20" fill="currentColor">
+                                                     <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                 </svg>
+                                             </div>
+                                         </div>
+                                     </div>
+                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                         <div>
+                                             <label className="form-label">Registration Number</label>
+                                             <input type="text" className="form-input" disabled={!!companyId} style={{ opacity: companyId ? 0.7 : 1 }}
+                                                 value={companyData.registration_number} onChange={e => setCompanyData({ ...companyData, registration_number: e.target.value })} />
+                                         </div>
+                                         <div>
+                                             <label className="form-label">Trade License Number</label>
+                                             <input type="text" className="form-input" disabled={!!companyId} style={{ opacity: companyId ? 0.7 : 1 }}
+                                                 value={companyData.trade_license_number} onChange={e => setCompanyData({ ...companyData, trade_license_number: e.target.value })} />
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
 
-                            {/* Activities Section */}
-                            <div style={{
-                                background: 'var(--bg-elevated)',
-                                border: '1px solid var(--border-subtle)',
-                                borderRadius: 'var(--radius-lg)',
-                                overflow: 'hidden',
-                                marginBottom: 24,
-                            }}>
-                                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-                                    Business Activities
-                                </div>
-                                <div style={{ padding: 20 }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                        {ACTIVITIES.map(act => (
-                                            <div
-                                                key={act.label}
-                                                onClick={() => setSelectedActivities(prev =>
-                                                    prev.includes(act.label) ? prev.filter(a => a !== act.label) : [...prev, act.label]
-                                                )}
-                                                style={{
-                                                    padding: '10px 14px',
-                                                    borderRadius: 'var(--radius-md)',
-                                                    border: `1px solid ${selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
-                                                    background: selectedActivities.includes(act.label) ? 'var(--accent-green-dim)' : 'var(--bg-card)',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 10,
-                                                    transition: 'all var(--transition-fast)',
-                                                }}
-                                            >
-                                                <div style={{
-                                                    width: 16, height: 16,
-                                                    borderRadius: 4,
-                                                    border: `2px solid ${selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--border-default)'}`,
-                                                    background: selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'transparent',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    flexShrink: 0,
-                                                    transition: 'all var(--transition-fast)',
-                                                }}>
-                                                    {selectedActivities.includes(act.label) && (
-                                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0a1a12" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                                                            <polyline points="20 6 9 17 4 12" />
-                                                        </svg>
-                                                    )}
-                                                </div>
-                                                <div style={{ color: selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-                                                    {act.icon}
-                                                </div>
-                                                <span style={{ fontSize: 13, color: selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
-                                                    {act.label}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div style={{ marginTop: 12, display: 'flex', gap: 12 }}>
-                                        <button type="button" onClick={() => setSelectedActivities(ACTIVITIES.map(a => a.label))}
-                                            style={{ fontSize: 12, color: 'var(--accent-green)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                                            + Select All
-                                        </button>
-                                        <button type="button" onClick={() => setSelectedActivities([])}
-                                            style={{ fontSize: 12, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                                            Deselect All
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                             {/* Activities Section */}
+                             {/*
+                             <div style={{
+                                 background: 'var(--bg-elevated)',
+                                 border: '1px solid var(--border-subtle)',
+                                 borderRadius: 'var(--radius-lg)',
+                                 overflow: 'hidden',
+                                 marginBottom: 24,
+                             }}>
+                                 <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                                     Business Activities
+                                 </div>
+                                 <div style={{ padding: 20 }}>
+                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                         {ACTIVITIES.map(act => (
+                                             <div
+                                                 key={act.label}
+                                                 onClick={() => !companyId && setSelectedActivities(prev =>
+                                                     prev.includes(act.label) ? prev.filter(a => a !== act.label) : [...prev, act.label]
+                                                 )}
+                                                 style={{
+                                                     padding: '10px 14px',
+                                                     borderRadius: 'var(--radius-md)',
+                                                     border: `1px solid ${selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
+                                                     background: selectedActivities.includes(act.label) ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                                                     cursor: companyId ? 'default' : 'pointer',
+                                                     display: 'flex',
+                                                     alignItems: 'center',
+                                                     gap: 10,
+                                                     transition: 'all var(--transition-fast)',
+                                                     opacity: companyId ? 0.8 : 1
+                                                 }}
+                                             >
+                                                 <div style={{
+                                                     width: 16, height: 16,
+                                                     borderRadius: 4,
+                                                     border: `2px solid ${selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--border-default)'}`,
+                                                     background: selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'transparent',
+                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                     flexShrink: 0,
+                                                     transition: 'all var(--transition-fast)',
+                                                 }}>
+                                                     {selectedActivities.includes(act.label) && (
+                                                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0a1a12" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                             <polyline points="20 6 9 17 4 12" />
+                                                         </svg>
+                                                     )}
+                                                 </div>
+                                                 <div style={{ color: selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                                                     {act.icon}
+                                                 </div>
+                                                 <span style={{ fontSize: 13, color: selectedActivities.includes(act.label) ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                                                     {act.label}
+                                                 </span>
+                                             </div>
+                                         ))}
+                                     </div>
+                                     {!companyId && (
+                                         <div style={{ marginTop: 12, display: 'flex', gap: 12 }}>
+                                             <button type="button" onClick={() => setSelectedActivities(ACTIVITIES.map(a => a.label))}
+                                                 style={{ fontSize: 12, color: 'var(--accent-green)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                                 + Select All
+                                             </button>
+                                             <button type="button" onClick={() => setSelectedActivities([])}
+                                                 style={{ fontSize: 12, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                                                 Deselect All
+                                             </button>
+                                         </div>
+                                     )}
+                                 </div>
+                             </div>
+                             */}
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                 <button type="submit" className="btn btn-primary btn-lg">
-                                    Save & Continue →
+                                    Continue to Frameworks →
                                 </button>
                             </div>
                         </form>
@@ -401,10 +469,11 @@ export default function OnboardingWizard() {
                                     {loadingFrameworks ? (
                                         <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><div className="spinner" /></div>
                                     ) : (
-                                        dbFrameworks?.filter((fw: any) =>
-                                            fw.type.toLowerCase() === 'mandatory' ||
-                                            (fw.framework_id === 'DST' && companyData.active_frameworks.includes('DST'))
-                                        ).map((fw: any) => (
+                                        dbFrameworks?.filter((fw: any) => {
+                                            const isDubaiSiteContext = currentSite ? currentSite.location?.toLowerCase() === 'dubai' : companyData.emirate.toLowerCase() === 'dubai';
+                                            return fw.type.toLowerCase() === 'mandatory' ||
+                                                (fw.framework_id === 'DST' && companyData.active_frameworks.includes('DST') && isDubaiSiteContext);
+                                        }).map((fw: any) => (
                                             <div key={fw.id} style={{
                                                 padding: '14px 16px',
                                                 borderRadius: 'var(--radius-md)',
@@ -485,7 +554,11 @@ export default function OnboardingWizard() {
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(1)}>← Back</button>
+                                {user?.profile?.role === 'admin' ? (
+                                    <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(1)}>← Back</button>
+                                ) : (
+                                    <div />
+                                )}
                                 <button type="submit" className="btn btn-primary btn-lg"
                                     disabled={createCompanyMutation.isPending || updateCompanyMutation.isPending}>
                                     {createCompanyMutation.isPending || updateCompanyMutation.isPending ? 'Saving...' : 'Save & Continue →'}
@@ -588,7 +661,11 @@ export default function OnboardingWizard() {
                             )}
 
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(2)}>← Back</button>
+                                {user?.profile?.role === 'admin' ? (
+                                    <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(2)}>← Back</button>
+                                ) : (
+                                    <div />
+                                )}
                                 <button type="submit" className="btn btn-primary btn-lg"
                                     disabled={submitAnswersMutation.isPending || answeredCount < totalQuestions}>
                                     {submitAnswersMutation.isPending

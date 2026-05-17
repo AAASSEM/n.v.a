@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.endpoints import auth, users, companies, profiling, data_elements, submissions, meters, dashboard, developer_admin, frameworks, reports
+from app.api.endpoints import auth, users, companies, profiling, data_elements, submissions, meters, dashboard, developer_admin, frameworks, reports, sites
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -13,3 +13,4 @@ api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboar
 api_router.include_router(developer_admin.router, prefix="/developer-admin", tags=["developer-admin"])
 api_router.include_router(frameworks.router, prefix="/frameworks", tags=["frameworks"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(sites.router, prefix="/sites", tags=["sites"])

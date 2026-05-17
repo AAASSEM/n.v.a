@@ -6,7 +6,9 @@ from sqlalchemy import func, case
 import datetime
 from dateutil.relativedelta import relativedelta
 
-from app.api.deps import get_db, get_current_active_user
+from fastapi import Query
+from typing import Optional
+from app.api.deps import get_db, get_current_active_user, resolve_site_id
 from app.models.user import User
 from app.models.submission import DataSubmission
 from app.models.data_element import DataElement
@@ -30,13 +32,25 @@ def get_synthetic_category(name: str, db_cat: str) -> str:
 async def get_dashboard_metrics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
 ) -> Any:
     """
-    Get aggregated dashboard metrics for the current user's company dynamically covering all active metric categories.
+    Dashboard metrics scoped to a single site. If caller is a company-wide admin
+    and no site_id is passed, metrics aggregate across all sites of their company.
     """
     company_id = current_user.profile.company_id if current_user.profile else None
     if not company_id:
         raise HTTPException(status_code=400, detail="User not assigned to a company.")
+
+    # Not strictly required: admins without a site see all-company metrics.
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=False)
+
+    filters = [
+        DataSubmission.company_id == company_id,
+        DataSubmission.value != None,
+    ]
+    if effective_site_id is not None:
+        filters.append(DataSubmission.site_id == effective_site_id)
 
     # 1. Base query for all submissions joining data elements
     query = (
@@ -48,10 +62,7 @@ async def get_dashboard_metrics(
             func.sum(DataSubmission.value).label("total_value")
         )
         .join(DataElement, DataSubmission.data_element_id == DataElement.id)
-        .where(
-            DataSubmission.company_id == company_id,
-            DataSubmission.value != None
-        )
+        .where(*filters)
         .group_by(DataSubmission.year, DataSubmission.month, DataElement.category, DataElement.name)
     )
 

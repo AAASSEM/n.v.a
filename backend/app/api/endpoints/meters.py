@@ -1,11 +1,11 @@
-from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_current_active_user
+from app.api.deps import get_db, get_current_active_user, resolve_site_id
 from app.core.permissions import has_permission, Permission, Role
 from app.models.user import User
 from app.models.meter import Meter
@@ -16,7 +16,7 @@ router = APIRouter()
 
 class MeterCreateRequest(BaseModel):
     data_element_id: int
-    name: str # e.g. 'Sub-meter Tower A'
+    name: str
     account_number: str | None = None
     location: str | None = None
 
@@ -29,24 +29,28 @@ class MeterUpdateRequest(BaseModel):
 async def get_my_meters(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
 ) -> Any:
-    """
-    Retrieve all meters assigned to the user's company along with their data element definitions.
-    """
+    """Retrieve all meters for the current site."""
     if not current_user.profile or not current_user.profile.company_id:
         return []
 
     if not has_permission(current_user.profile.role, "meters", Permission.READ):
         raise HTTPException(status_code=403, detail="Not enough permissions to view meters")
-        
+
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
+
     result = await db.execute(
         select(Meter)
         .options(selectinload(Meter.data_element))
-        .where(Meter.company_id == current_user.profile.company_id)
+        .where(
+            Meter.company_id == current_user.profile.company_id,
+            Meter.site_id == effective_site_id,
+        )
         .order_by(Meter.id.desc())
     )
     meters = result.scalars().all()
-    
+
     return [
         {
             "id": m.id,
@@ -59,7 +63,8 @@ async def get_my_meters(
             "account_number": m.account_number,
             "location": m.location,
             "is_active": m.is_active,
-            "created_at": m.created_at
+            "site_id": m.site_id,
+            "created_at": m.created_at,
         }
         for m in meters
     ]
@@ -70,39 +75,47 @@ async def create_meter(
     db: AsyncSession = Depends(get_db),
     request_data: MeterCreateRequest,
     current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
 ) -> Any:
-    """
-    Create a new custom sub-meter for a specific data element.
-    """
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
 
     if not has_permission(current_user.profile.role, "meters", Permission.CREATE):
         raise HTTPException(status_code=403, detail="Not enough permissions to create meters")
-        
-    # Verify the Data Element exists and allows meters
+
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
+
     element = await db.get(DataElement, request_data.data_element_id)
     if not element:
         raise HTTPException(status_code=404, detail="Data Element not found")
-        
     if not element.is_metered:
         raise HTTPException(status_code=400, detail="This data element does not support meters")
-        
+
     new_meter = Meter(
         company_id=current_user.profile.company_id,
+        site_id=effective_site_id,
         data_element_id=element.id,
         name=request_data.name,
-        meter_type=element.meter_type or element.category, # Specific type e.g. 'Electricity' or fallback to cat
+        meter_type=element.meter_type or element.category,
         account_number=request_data.account_number,
         location=request_data.location,
-        is_active=True
+        is_active=True,
     )
-    
+
     db.add(new_meter)
     await db.commit()
     await db.refresh(new_meter)
-    
+
     return {"id": new_meter.id, "msg": "Meter created successfully"}
+
+
+def _assert_meter_accessible(meter: Meter, current_user: User):
+    if not meter or meter.company_id != current_user.profile.company_id:
+        raise HTTPException(status_code=404, detail="Meter not found")
+    pinned = current_user.profile.site_id
+    if pinned is not None and meter.site_id != pinned:
+        raise HTTPException(status_code=403, detail="Cannot access another site's meter")
+
 
 @router.put("/{meter_id}", response_model=dict)
 async def update_meter(
@@ -112,23 +125,18 @@ async def update_meter(
     request_data: MeterUpdateRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    """
-    Update meter details (Name, Account, Location).
-    """
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
-
     if not has_permission(current_user.profile.role, "meters", Permission.UPDATE):
         raise HTTPException(status_code=403, detail="Not enough permissions to update meters")
 
     meter = await db.get(Meter, meter_id)
-    if not meter or meter.company_id != current_user.profile.company_id:
-        raise HTTPException(status_code=404, detail="Meter not found")
-        
+    _assert_meter_accessible(meter, current_user)
+
     meter.name = request_data.name
     meter.account_number = request_data.account_number
     meter.location = request_data.location
-    
+
     await db.commit()
     return {"msg": "Meter updated successfully"}
 
@@ -139,19 +147,14 @@ async def toggle_meter_status(
     meter_id: int,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    """
-    Toggle a meter's active status (Archive / Unarchive).
-    """
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
-
     if not has_permission(current_user.profile.role, "meters", Permission.UPDATE):
         raise HTTPException(status_code=403, detail="Not enough permissions to update meters")
 
     meter = await db.get(Meter, meter_id)
-    if not meter or meter.company_id != current_user.profile.company_id:
-        raise HTTPException(status_code=404, detail="Meter not found")
-        
+    _assert_meter_accessible(meter, current_user)
+
     meter.is_active = not meter.is_active
     await db.commit()
     return {"msg": f"Meter {'activated' if meter.is_active else 'archived'}", "is_active": meter.is_active}
@@ -163,29 +166,22 @@ async def delete_meter(
     meter_id: int,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    """
-    Delete a meter ONLY IF it has no historical data submissions.
-    """
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
-
     if not has_permission(current_user.profile.role, "meters", Permission.DELETE):
         raise HTTPException(status_code=403, detail="Not enough permissions to delete meters")
 
     meter = await db.get(Meter, meter_id)
-    if not meter or meter.company_id != current_user.profile.company_id:
-        raise HTTPException(status_code=404, detail="Meter not found")
-        
-    # Validation: Check for historical Data Submissions tied to this exact meter
+    _assert_meter_accessible(meter, current_user)
+
     stmt = select(DataSubmission).where(DataSubmission.meter_id == meter.id).limit(1)
     historical_data = (await db.execute(stmt)).scalars().first()
-    
     if historical_data:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Cannot delete meter because it has historical reading data. Please archive (deactivate) it instead."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete meter because it has historical reading data. Please archive (deactivate) it instead.",
         )
-        
+
     await db.delete(meter)
     await db.commit()
     return {"msg": "Meter deleted successfully"}

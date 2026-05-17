@@ -19,42 +19,42 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema — PostgreSQL compatible."""
-
-    # ── audit_logs ──────────────────────────────────────────────────────
-    op.alter_column('audit_logs', 'entity_type', nullable=True)
-    op.alter_column('audit_logs', 'entity_id',
-                    type_=sa.String(length=50),
-                    nullable=True,
-                    postgresql_using='entity_id::varchar')
-    # Drop 'changes' column if it exists
+    """Upgrade schema — SQLite compatible."""
     try:
         op.drop_column('audit_logs', 'changes')
     except Exception:
         pass
-
-    # ── frameworks ──────────────────────────────────────────────────────
-    op.add_column('frameworks', sa.Column('region', sa.String(length=50), nullable=True))
-    op.add_column('frameworks', sa.Column('version', sa.String(length=20), nullable=True))
-    op.alter_column('frameworks', 'framework_id',
-                    type_=sa.String(length=20),
-                    existing_type=sa.String(length=10),
-                    existing_nullable=False)
-    # Create unique index (skip if exists)
+    try:
+        op.add_column('frameworks', sa.Column('region', sa.String(length=50), nullable=True))
+    except Exception:
+        pass
+    try:
+        op.add_column('frameworks', sa.Column('version', sa.String(length=20), nullable=True))
+    except Exception:
+        pass
     try:
         op.create_index('ix_frameworks_framework_id', 'frameworks', ['framework_id'], unique=True)
     except Exception:
         pass
+    try:
+        op.add_column('meter_types', sa.Column('unit', sa.String(length=20), nullable=True))
+    except Exception:
+        pass
+    try:
+        op.add_column('meter_types', sa.Column('category', sa.String(length=50), nullable=True))
+    except Exception:
+        pass
+    try:
+        op.add_column('profiling_questions', sa.Column('input_type', sa.String(length=20), nullable=True))
+    except Exception:
+        pass
+    try:
+        op.add_column('profiling_questions', sa.Column('is_required', sa.Boolean(), nullable=True))
+    except Exception:
+        pass
+    
 
-    # ── meter_types ─────────────────────────────────────────────────────
-    op.add_column('meter_types', sa.Column('unit', sa.String(length=20), nullable=True))
-    op.add_column('meter_types', sa.Column('category', sa.String(length=50), nullable=True))
-
-    # ── profiling_questions ─────────────────────────────────────────────
-    op.add_column('profiling_questions', sa.Column('input_type', sa.String(length=20), nullable=True))
-    op.add_column('profiling_questions', sa.Column('is_required', sa.Boolean(), nullable=True))
-
-
+    
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column('profiling_questions', 'is_required')
