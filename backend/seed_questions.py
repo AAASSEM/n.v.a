@@ -13,11 +13,11 @@ async def seed_questions():
         result = await db.execute(select(ProfilingQuestion))
         if len(result.scalars().all()) == 0:
             print('Seeding questions...')
-            q1 = ProfilingQuestion(question_text='Do you have on-site laundry facilities?', question_order=1, requires_meter=True)
-            q2 = ProfilingQuestion(question_text='Do you have swimming pools or spas?', question_order=2, requires_meter=True)
-            q3 = ProfilingQuestion(question_text='Do you operate an in-house restaurant or commercial kitchen?', question_order=3, requires_meter=True)
-            q4 = ProfilingQuestion(question_text='Do you maintain a fleet of company-owned vehicles?', question_order=4, requires_meter=True)
-            q5 = ProfilingQuestion(question_text='Do you manage extensive landscaped gardens or golf courses?', question_order=5, requires_meter=True)
+            q1 = ProfilingQuestion(question_text='Do you have on-site laundry facilities?', question_order=1)
+            q2 = ProfilingQuestion(question_text='Do you have swimming pools or spas?', question_order=2)
+            q3 = ProfilingQuestion(question_text='Do you operate an in-house restaurant or commercial kitchen?', question_order=3)
+            q4 = ProfilingQuestion(question_text='Do you maintain a fleet of company-owned vehicles?', question_order=4)
+            q5 = ProfilingQuestion(question_text='Do you manage extensive landscaped gardens or golf courses?', question_order=5)
             
             db.add_all([q1, q2, q3, q4, q5])
             await db.commit()

@@ -52,6 +52,7 @@ interface AuthState {
     logout: () => void;
     fetchUser: () => Promise<void>;
     magicLinkLogin: (token: string) => Promise<void>;
+    resetPassword: (token: string, password: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -109,6 +110,34 @@ export const useAuthStore = create<AuthState>()(
                     set({ accessToken: data.access_token, isAuthenticated: true });
                 } catch (error: unknown) {
                     const errMessage = error instanceof Error ? error.message : 'Login failed';
+                    set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
+                    throw error;
+                } finally {
+                    set({ isLoading: false });
+                }
+            },
+
+            resetPassword: async (token, password) => {
+                set({ isLoading: true, error: null });
+                try {
+                    const response = await fetch(`${API_URL}/auth/reset-password`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ token, password }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.detail || 'Password reset failed');
+                    }
+
+                    const data = await response.json();
+                    set({ accessToken: data.access_token, isAuthenticated: true });
+                    await get().fetchUser();
+                } catch (error: unknown) {
+                    const errMessage = error instanceof Error ? error.message : 'Password reset failed';
                     set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
                     throw error;
                 } finally {

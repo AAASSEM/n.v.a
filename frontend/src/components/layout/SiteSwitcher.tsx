@@ -42,7 +42,7 @@ export default function SiteSwitcher() {
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />
                 </svg>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {current?.name || 'No site'}
                 </span>
             </div>
@@ -79,7 +79,7 @@ export default function SiteSwitcher() {
                     <circle cx="12" cy="10" r="3" />
                 </svg>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'inherit' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'inherit', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {current?.name || 'Select site'}
                     </span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>

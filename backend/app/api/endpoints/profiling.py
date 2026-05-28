@@ -12,6 +12,20 @@ from app.services.profiling_service import ProfilingService
 from pydantic import BaseModel
 from sqlalchemy.orm import selectinload
 
+# Mapping from shorthand Excel codes (E, D, G) to normalized active frameworks (esg, dst, green key)
+FW_MAPPING = {
+    "e": "esg",
+    "d": "dst",
+    "g": "green key"
+}
+
+# Display names mapping for short codes
+FW_DISPLAY_NAMES = {
+    "e": "ESG",
+    "d": "DST",
+    "g": "Green Key"
+}
+
 class ProfilingQuestionSchema(BaseModel):
     id: int
     question_text: str
@@ -67,7 +81,8 @@ async def read_profiling_questions(
             continue
 
         req_frameworks = [f.strip().lower() for f in q.frameworks.split(",") if f.strip()]
-        if any(fk in active_frameworks for fk in req_frameworks):
+        mapped_req = [FW_MAPPING.get(fk, fk) for fk in req_frameworks]
+        if any(fk in active_frameworks for fk in mapped_req):
             filtered_questions.append(q)
 
     return filtered_questions
@@ -171,8 +186,9 @@ async def get_my_checklist(
         if c.data_element and c.data_element.frameworks:
             for f in c.data_element.frameworks.split(','):
                 f_clean = f.strip().lower()
-                if f_clean in active_frameworks:
-                    display_fws.append(f.strip())
+                mapped_fw = FW_MAPPING.get(f_clean, f_clean)
+                if mapped_fw in active_frameworks:
+                    display_fws.append(FW_DISPLAY_NAMES.get(f_clean, f.strip()))
 
         response.append({
             "id": c.id,

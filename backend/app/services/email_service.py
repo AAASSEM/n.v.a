@@ -32,12 +32,17 @@ class EmailService:
         """Sends a magic-link / invitation email."""
         frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
         base_url = (frontend_url or "http://localhost:5173").rstrip("/")
-        magic_link_url = f"{base_url}/#/magic-link/{token.token}"
+        if token.token_type == "password_reset":
+            magic_link_url = f"{base_url}/#/reset-password/{token.token}"
+        else:
+            magic_link_url = f"{base_url}/#/magic-link/{token.token}"
 
         # Determine subject
         subject = "Your ESG Portal Magic Link"
         if token.token_type == "invitation":
             subject = f"You're invited to join {context.get('company_name', 'ESG Portal')}"
+        elif token.token_type == "password_reset":
+            subject = "Reset Your ESG Compass Password"
 
         # ALWAYS log the link — visible in Render logs as a backup
         logger.info("=" * 60)
@@ -199,6 +204,14 @@ class EmailService:
                 f"Collaborate with your team to track environmental, social, and governance disclosures."
             )
             cta_text = "Accept Invitation &amp; Join Team"
+        elif token.token_type == "password_reset":
+            heading = "Reset Your Password"
+            description = (
+                f"Hello {user_name},<br><br>"
+                f"We received a request to reset your password for your ESG Compass account. "
+                f"Click the button below to set a new password. This link is valid for 1 hour."
+            )
+            cta_text = "Reset Password"
         else:
             heading = "Verify Your Account"
             description = (

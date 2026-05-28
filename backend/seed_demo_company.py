@@ -44,19 +44,23 @@ from app.models.submission import DataSubmission
 from app.services.profiling_service import ProfilingService
 
 
-COMPANY_NAME = "Green Horizon Hospitality"
-COMPANY_CODE = "GRNHRZ01"
+COMPANY_NAME = "Apex"
+COMPANY_CODE = "APEX01"
 
 USERS = [
     # email, first, last, role, site_key (None = company-wide)
-    ("admin@greenhorizon.demo",      "Alex",  "Admin",    Role.ADMIN.value,         None),
-    ("manager.a@greenhorizon.demo",  "Mona",  "Marina",   Role.SITE_MANAGER.value,  "A"),
-    ("uploader.a1@greenhorizon.demo","Usama", "Upload",   Role.UPLOADER.value,      "A"),
-    ("uploader.a2@greenhorizon.demo","Ursula","Uploadie", Role.UPLOADER.value,      "A"),
-    ("viewer.a@greenhorizon.demo",   "Vera",  "Viewer",   Role.VIEWER.value,        "A"),
-    ("manager.b@greenhorizon.demo",  "Majid", "Downtown", Role.SITE_MANAGER.value,  "B"),
-    ("meter.b@greenhorizon.demo",    "Mira",  "Metric",   Role.METER_MANAGER.value, "B"),
-    ("viewer.b@greenhorizon.demo",   "Vikram","Vista",    Role.VIEWER.value,        "B"),
+    ("super@apex.demo",      "Sam",   "Super",    Role.SUPER_USER.value,    None),
+    ("admin@apex.demo",      "Alex",  "Admin",    Role.ADMIN.value,         None),
+    ("regional@apex.demo",   "Reggie","Region",   Role.SITE_MANAGER.value,  None),  # Site manager for BOTH sites
+    ("manager.a@apex.demo",  "Mona",  "Marina",   Role.SITE_MANAGER.value,  "A"),
+    ("manager.b@apex.demo",  "Majid", "Downtown", Role.SITE_MANAGER.value,  "B"),
+    ("uploader.a1@apex.demo","Usama", "Upload 1", Role.UPLOADER.value,      "A"),
+    ("uploader.a2@apex.demo","Ursula","Upload 2", Role.UPLOADER.value,      "A"),
+    ("uploader.b1@apex.demo","Umar",  "Upload B", Role.UPLOADER.value,      "B"),
+    ("meter.a@apex.demo",    "Mark",  "Metric A", Role.METER_MANAGER.value, "A"),
+    ("meter.b@apex.demo",    "Mira",  "Metric B", Role.METER_MANAGER.value, "B"),
+    ("viewer.a@apex.demo",   "Vera",  "Viewer A", Role.VIEWER.value,        "A"),
+    ("viewer.b@apex.demo",   "Vikram","Viewer B", Role.VIEWER.value,        "B"),
 ]
 
 # Site-specific profiling answers — keyed by lowercase question_text substring.
@@ -250,7 +254,7 @@ async def seed_demo():
                     answers=answer_list,
                     db=db,
                 )
-                print(f"  ✓ site {site.name}: onboarded, checklist generated")
+                print(f"  [OK] site {site.name}: onboarded, checklist generated")
 
         # 5. One custom sub-meter per site (for an electricity element if present)
         el = (await db.execute(

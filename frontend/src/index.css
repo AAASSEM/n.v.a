@@ -245,6 +245,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   width: 100%;
   max-width: 1400px;
   background: rgba(22, 23, 40, 0.85);
@@ -306,6 +307,8 @@ body {
   background: transparent;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-item-btn:hover {
@@ -625,9 +628,11 @@ body {
   background: rgba(244, 63, 94, 0.12);
   color: #fb7185;
 }
+
 .stat-card.rose .stat-card-value {
   color: #fb7185;
 }
+
 .stat-card.rose::before {
   background: #f43f5e;
 }
@@ -800,9 +805,23 @@ body {
   color: var(--text-disabled);
 }
 
+.form-input:hover {
+  border-color: var(--border-strong);
+}
+
 .form-input:focus {
-  border-color: var(--accent-green);
-  box-shadow: 0 0 0 3px var(--accent-green-dim);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Override browser autofill color scheme in dark mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* =============================================
@@ -1294,9 +1313,23 @@ body {
   font-weight: 400;
 }
 
+.data-entry-input:hover {
+  border-color: var(--border-strong);
+}
+
 .data-entry-input:focus {
-  border-color: var(--accent-green);
-  box-shadow: 0 0 0 3px var(--accent-green-dim);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Developer Console & Modals Custom Focus Accent (Rose Color Theme) */
+.modal-backdrop .form-input:focus,
+.modal-backdrop .data-entry-input:focus,
+.modal-backdrop textarea:focus,
+.modal-backdrop select:focus,
+.auth-card input[type="password"]:focus {
+  border-color: #f43f5e;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
 }
 
 /* Evidence Upload Zone */
@@ -1937,6 +1970,7 @@ body {
     padding: 28px 20px;
   }
 }
+
 .btn-icon-sm {
   width: 28px;
   height: 28px;
@@ -1963,9 +1997,11 @@ body {
   background: rgba(244, 63, 94, 0.12);
   color: #fb7185;
 }
+
 .stat-card.rose .stat-card-value {
   color: #fb7185;
 }
+
 .stat-card.rose::before {
   background: #f43f5e;
 }
@@ -1978,37 +2014,119 @@ body {
    - <=640px  : tighter pill, hide logo wordmark, drop help button
    ============================================= */
 @media (max-width: 1200px) {
-  .nav-container-floating { padding: 0 12px; }
-  .app-navbar-inner { padding: 8px 10px; gap: 8px; }
-  .nav-item-btn { padding: 7px 10px; font-size: 12px; }
-  .nav-user-pill { padding: 4px 6px 4px 10px; gap: 8px; }
-  .nav-username { max-width: 90px; font-size: 12px; }
+  .nav-container-floating {
+    padding: 0 12px;
+  }
+
+  .app-navbar-inner {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .nav-item-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .nav-user-pill {
+    padding: 4px 6px 4px 10px;
+    gap: 8px;
+  }
+
+  .nav-username {
+    max-width: 90px;
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 900px) {
-  .app-navbar-inner { padding: 6px 8px; gap: 6px; }
-  .nav-main-pill { padding: 3px; }
-  .nav-item-btn { padding: 8px; gap: 0; }
-  .nav-item-btn .nav-item-label { display: none; }
-  .nav-user-info { display: none; }
-  .nav-user-pill { padding: 3px 4px 3px 6px; gap: 4px; }
-  .nav-user-section > .nav-user-pill:first-child select { max-width: 110px; }
+  .app-navbar-inner {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .nav-main-pill {
+    padding: 3px;
+  }
+
+  .nav-item-btn {
+    padding: 8px;
+    gap: 0;
+  }
+
+  .nav-item-btn .nav-item-label {
+    display: none;
+  }
+
+  .nav-user-info {
+    display: none;
+  }
+
+  .nav-user-pill {
+    padding: 3px 4px 3px 6px;
+    gap: 4px;
+  }
+
+  .nav-user-section>.nav-user-pill:first-child select {
+    max-width: 110px;
+  }
 }
 
 @media (max-width: 640px) {
-  .nav-container-floating { top: 8px; padding: 0 8px; }
-  .app-navbar-inner { padding: 5px 6px; border-radius: 24px; }
-  .nav-logo { padding-left: 4px; gap: 0; }
-  .nav-logo-text { display: none; }
-  .nav-item-btn { padding: 7px; }
-  .nav-item-icon { width: 15px; height: 15px; }
-  .nav-help-action { display: none; }
-  .nav-avatar { width: 26px; height: 26px; font-size: 10px; }
+  .nav-container-floating {
+    top: 8px;
+    padding: 0 8px;
+  }
+
+  .app-navbar-inner {
+    padding: 5px 6px;
+    border-radius: 24px;
+  }
+
+  .nav-logo {
+    padding-left: 4px;
+    gap: 0;
+  }
+
+  .nav-logo-text {
+    display: none;
+  }
+
+  .nav-item-btn {
+    padding: 7px;
+  }
+
+  .nav-item-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .nav-help-action {
+    display: none;
+  }
+
+  .nav-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+  }
+
   .nav-logout-action,
-  .nav-settings-action { width: 26px; height: 26px; }
-  .nav-user-section > .nav-user-pill:first-child { padding: 3px 6px; }
-  .nav-user-section > .nav-user-pill:first-child select { max-width: 80px; font-size: 12px; }
-  .nav-user-section > .nav-user-pill:first-child span {
+  .nav-settings-action {
+    width: 26px;
+    height: 26px;
+  }
+
+  .nav-user-section>.nav-user-pill:first-child {
+    padding: 3px 6px;
+  }
+
+  .nav-user-section>.nav-user-pill:first-child select {
+    max-width: 80px;
+    font-size: 12px;
+  }
+
+  .nav-user-section>.nav-user-pill:first-child span {
     max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2017,8 +2135,13 @@ body {
 }
 
 @media (max-width: 420px) {
-  .nav-settings-action { display: none; }
-  .nav-user-section > .nav-user-pill:first-child svg { display: none; }
+  .nav-settings-action {
+    display: none;
+  }
+
+  .nav-user-section>.nav-user-pill:first-child svg {
+    display: none;
+  }
 }
 
 /* On very narrow screens, let the nav pill scroll horizontally
@@ -2029,8 +2152,14 @@ body {
     overflow-x: auto;
     scrollbar-width: none;
   }
-  .nav-main-pill::-webkit-scrollbar { display: none; }
-  .nav-links { flex-wrap: nowrap; }
+
+  .nav-main-pill::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-links {
+    flex-wrap: nowrap;
+  }
 }
 
 /* Nav Dropdown Items */

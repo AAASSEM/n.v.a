@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { BASE_URL } from '../../config';
 import { useAuthStore } from '../../stores/authStore';
@@ -30,7 +31,25 @@ interface User {
     first_name: string;
     last_name: string;
     email: string;
+    profile?: {
+        role: string;
+    } | null;
 }
+
+const ROLE_LABELS: Record<string, string> = {
+    'super_user': 'Super User',
+    'admin': 'Admin',
+    'site_manager': 'Site Manager',
+    'meter_manager': 'Meter Manager',
+    'uploader': 'Data Uploader',
+    'viewer': 'Viewer',
+};
+
+const ROLE_HIERARCHY: Record<string, string[]> = {
+    'super_user': ['admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],
+    'admin': ['site_manager', 'uploader', 'viewer', 'meter_manager'],
+    'site_manager': ['uploader', 'viewer', 'meter_manager'],
+};
 
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -73,6 +92,7 @@ function StatusBadge({ value, evidence }: { value: string | number, evidence: st
 export default function DataEntryView() {
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const currentDate = new Date();
     const [year, setYear] = useState(currentDate.getFullYear());
@@ -93,6 +113,42 @@ export default function DataEntryView() {
         assignedUserId: number | '';
         rowName: string;
     }>({ isOpen: false, checklistId: null, assignedUserId: '', rowName: '' });
+
+    const [modalMode, setModalMode] = useState<'ASSIGN' | 'INVITE'>('ASSIGN');
+    const [inviteForm, setInviteForm] = useState({
+        email: '',
+        first_name: '',
+        last_name: '',
+        role: '',
+    });
+    const [inviteError, setInviteError] = useState<string | null>(null);
+
+    const modalInviteMutation = useMutation({
+        mutationFn: async (data: typeof inviteForm) => {
+            const isAdminRole = data.role === 'admin' || data.role === 'super_user';
+            const payload = { ...data, site_id: isAdminRole ? null : currentSiteId };
+            const res = await api.post('/users/invite', payload);
+            return res.data;
+        },
+        onSuccess: (newUser) => {
+            queryClient.invalidateQueries({ queryKey: ['companyUsers', currentSiteId] });
+            setAssignmentModal(prev => ({ ...prev, assignedUserId: newUser.id }));
+            setModalMode('ASSIGN');
+            setInviteForm({ email: '', first_name: '', last_name: '', role: '' });
+            setInviteError(null);
+        },
+        onError: (err: any) => {
+            setInviteError(err.response?.data?.detail || 'Failed to invite user');
+        }
+    });
+
+    useEffect(() => {
+        if (!assignmentModal.isOpen) {
+            setModalMode('ASSIGN');
+            setInviteForm({ email: '', first_name: '', last_name: '', role: '' });
+            setInviteError(null);
+        }
+    }, [assignmentModal.isOpen]);
 
     const { data: gridData, isLoading, error } = useQuery<GridRow[]>({
         queryKey: ['submissions', year, month, currentSiteId],
@@ -846,58 +902,53 @@ export default function DataEntryView() {
                 <div className="modal-backdrop" onClick={() => setAssignmentModal({ ...assignmentModal, isOpen: false })}>
                     <div className="modal modal-sm animate-scale-in" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <span className="modal-title">Assign Task</span>
+                            <span className="modal-title">
+                                {modalMode === 'ASSIGN' ? 'Assign Task' : 'Invite Team Member'}
+                            </span>
                             <button className="modal-close" onClick={() => setAssignmentModal({ ...assignmentModal, isOpen: false })}>✕</button>
                         </div>
-                        <div className="modal-body">
-                            <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>TASK</div>
-                                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{assignmentModal.rowName}</div>
-                            </div>
-                            <label className="form-label">Select Team Member</label>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
-                                {/* Unassigned Option */}
-                                <div
-                                    className={`selection-item ${assignmentModal.assignedUserId === '' ? 'selected' : ''}`}
-                                    onClick={() => setAssignmentModal({ ...assignmentModal, assignedUserId: '' })}
-                                    style={{
-                                        padding: '12px 14px',
-                                        borderRadius: 'var(--radius-lg)',
-                                        border: `1px solid ${assignmentModal.assignedUserId === '' ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
-                                        background: assignmentModal.assignedUserId === '' ? 'var(--accent-green-dim)' : 'var(--bg-card)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 12,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                >
-                                    <div style={{
-                                        width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-elevated)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-disabled)',
-                                        border: '1px solid var(--border-subtle)'
-                                    }}>?</div>
-                                    <div style={{ flex: 1, fontWeight: 600, color: assignmentModal.assignedUserId === '' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
-                                        Unassigned
+                        {modalMode === 'ASSIGN' ? (
+                            <>
+                                <div className="modal-body">
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>TASK</div>
+                                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{assignmentModal.rowName}</div>
                                     </div>
-                                    {assignmentModal.assignedUserId === '' && (
-                                        <div style={{ color: 'var(--accent-green)' }}>✓</div>
+                                    
+                                    {users.length <= 1 && (
+                                        <div style={{
+                                            background: 'rgba(56, 189, 248, 0.08)',
+                                            border: '1px dashed rgba(56, 189, 248, 0.25)',
+                                            padding: '14px',
+                                            borderRadius: 'var(--radius-lg)',
+                                            marginBottom: 16,
+                                            fontSize: 12,
+                                            color: '#60a5fa',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 8,
+                                            alignItems: 'center',
+                                            textAlign: 'center'
+                                        }}>
+                                            <div style={{ fontSize: 20 }}>👥</div>
+                                            <div>
+                                                <strong>You are the only member in this site.</strong><br/>
+                                                Invite others to delegate data collection tasks!
+                                            </div>
+                                        </div>
                                     )}
-                                </div>
 
-                                {/* User Options */}
-                                {users.map(u => {
-                                    const isSelected = u.id === assignmentModal.assignedUserId;
-                                    return (
+                                    <label className="form-label">Select Team Member</label>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, maxHeight: '350px', overflowY: 'auto', paddingRight: '4px', marginBottom: 8 }}>
+                                        {/* Unassigned Option */}
                                         <div
-                                            key={u.id}
-                                            className={`selection-item ${isSelected ? 'selected' : ''}`}
-                                            onClick={() => setAssignmentModal({ ...assignmentModal, assignedUserId: u.id })}
+                                            className={`selection-item ${assignmentModal.assignedUserId === '' ? 'selected' : ''}`}
+                                            onClick={() => setAssignmentModal({ ...assignmentModal, assignedUserId: '' })}
                                             style={{
                                                 padding: '12px 14px',
                                                 borderRadius: 'var(--radius-lg)',
-                                                border: `1px solid ${isSelected ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
-                                                background: isSelected ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                                                border: `1px solid ${assignmentModal.assignedUserId === '' ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
+                                                background: assignmentModal.assignedUserId === '' ? 'var(--accent-green-dim)' : 'var(--bg-card)',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: 12,
@@ -906,48 +957,237 @@ export default function DataEntryView() {
                                             }}
                                         >
                                             <div style={{
-                                                width: 32, height: 32, borderRadius: '50%',
-                                                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 12, fontWeight: 700, color: 'white',
+                                                width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-elevated)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-disabled)',
                                                 border: '1px solid var(--border-subtle)'
-                                            }}>
-                                                {u.first_name.charAt(0).toUpperCase()}
+                                            }}>?</div>
+                                            <div style={{ flex: 1, fontWeight: 600, color: assignmentModal.assignedUserId === '' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                                                Unassigned
                                             </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 600, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)' }}>
-                                                    {u.first_name} {u.last_name}
-                                                </div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.email}</div>
-                                            </div>
-                                            {isSelected && (
+                                            {assignmentModal.assignedUserId === '' && (
                                                 <div style={{ color: 'var(--accent-green)' }}>✓</div>
                                             )}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                            <p style={{ marginTop: 16, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, textAlign: 'center' }}>
-                                The selected member will be responsible for data entry and evidence for this element.
-                            </p>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn btn-ghost" onClick={() => setAssignmentModal({ ...assignmentModal, isOpen: false })}>Cancel</button>
-                            <button
-                                className="btn btn-primary"
-                                disabled={assignMutation.isPending}
-                                onClick={() => {
-                                    if (assignmentModal.checklistId) {
-                                        assignMutation.mutate({
-                                            checklistId: assignmentModal.checklistId,
-                                            userId: assignmentModal.assignedUserId === '' ? null : Number(assignmentModal.assignedUserId)
-                                        });
-                                    }
-                                }}
-                            >
-                                {assignMutation.isPending ? 'Saving...' : 'Confirm Assignment'}
-                            </button>
-                        </div>
+
+                                        {/* User Options */}
+                                        {users.map(u => {
+                                            const isSelected = u.id === assignmentModal.assignedUserId;
+                                            return (
+                                                <div
+                                                    key={u.id}
+                                                    className={`selection-item ${isSelected ? 'selected' : ''}`}
+                                                    onClick={() => setAssignmentModal({ ...assignmentModal, assignedUserId: u.id })}
+                                                    style={{
+                                                        padding: '12px 14px',
+                                                        borderRadius: 'var(--radius-lg)',
+                                                        border: `1px solid ${isSelected ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
+                                                        background: isSelected ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 12,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: 32, height: 32, borderRadius: '50%',
+                                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: 12, fontWeight: 700, color: 'white',
+                                                        border: '1px solid var(--border-subtle)'
+                                                    }}>
+                                                        {u.first_name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                            <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)' }}>
+                                                                {u.first_name} {u.last_name}
+                                                            </span>
+                                                            {u.profile?.role && (
+                                                                <span style={{
+                                                                    fontSize: 9,
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: 4,
+                                                                    fontWeight: 700,
+                                                                    background: 'rgba(255, 255, 255, 0.05)',
+                                                                    color: 'var(--text-secondary)',
+                                                                    border: '1px solid var(--border-subtle)',
+                                                                    textTransform: 'uppercase',
+                                                                    letterSpacing: '0.5px',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}>
+                                                                    {ROLE_LABELS[u.profile.role] || u.profile.role}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.email}</div>
+                                                    </div>
+                                                    {isSelected && (
+                                                        <div style={{ color: 'var(--accent-green)' }}>✓</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Invite Link for authorized users */}
+                                        {canPerformAction(user?.profile?.role, 'users', 'create') && (
+                                            <div
+                                                onClick={() => {
+                                                    setModalMode('INVITE');
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                                    e.currentTarget.style.borderColor = 'var(--accent-green)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.01)';
+                                                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                                                }}
+                                                style={{
+                                                    padding: '12px 14px',
+                                                    borderRadius: 'var(--radius-lg)',
+                                                    border: `1px dashed var(--border-subtle)`,
+                                                    background: 'rgba(255, 255, 255, 0.01)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 8,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    color: 'var(--accent-green)',
+                                                    fontWeight: 600,
+                                                    fontSize: 13,
+                                                }}
+                                            >
+                                                <span>+ Invite Team Member</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, textAlign: 'center' }}>
+                                        The selected member will be responsible for data entry and evidence for this element.
+                                    </p>
+                                </div>
+                                <div className="modal-footer">
+                                    <button className="btn btn-ghost" onClick={() => setAssignmentModal({ ...assignmentModal, isOpen: false })}>Cancel</button>
+                                    <button
+                                        className="btn btn-primary"
+                                        disabled={assignMutation.isPending}
+                                        onClick={() => {
+                                            if (assignmentModal.checklistId) {
+                                                assignMutation.mutate({
+                                                    checklistId: assignmentModal.checklistId,
+                                                    userId: assignmentModal.assignedUserId === '' ? null : Number(assignmentModal.assignedUserId)
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        {assignMutation.isPending ? 'Saving...' : 'Confirm Assignment'}
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <form onSubmit={e => {
+                                e.preventDefault();
+                                modalInviteMutation.mutate(inviteForm);
+                            }}>
+                                <div className="modal-body">
+                                    {inviteError && (
+                                        <div style={{
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                                            color: '#f87171',
+                                            padding: '10px 12px',
+                                            borderRadius: 'var(--radius-md)',
+                                            fontSize: 12,
+                                            marginBottom: 14
+                                        }}>
+                                            ⚠ {inviteError}
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                                        <div>
+                                            <label className="form-label" style={{ fontSize: 11 }}>First Name</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="John"
+                                                value={inviteForm.first_name}
+                                                onChange={e => setInviteForm(prev => ({ ...prev, first_name: e.target.value }))}
+                                                style={{ height: 36, fontSize: 13 }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="form-label" style={{ fontSize: 11 }}>Last Name</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="Doe"
+                                                value={inviteForm.last_name}
+                                                onChange={e => setInviteForm(prev => ({ ...prev, last_name: e.target.value }))}
+                                                style={{ height: 36, fontSize: 13 }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: 12 }}>
+                                        <label className="form-label" style={{ fontSize: 11 }}>Email Address</label>
+                                        <input
+                                            required
+                                            type="email"
+                                            className="form-input"
+                                            placeholder="john.doe@example.com"
+                                            value={inviteForm.email}
+                                            onChange={e => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                                            style={{ height: 36, fontSize: 13 }}
+                                        />
+                                    </div>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <label className="form-label" style={{ fontSize: 11 }}>Select Role</label>
+                                        <select
+                                            required
+                                            className="form-input"
+                                            value={inviteForm.role}
+                                            onChange={e => setInviteForm(prev => ({ ...prev, role: e.target.value }))}
+                                            style={{
+                                                height: 36,
+                                                fontSize: 13,
+                                                background: 'var(--bg-elevated)',
+                                                color: 'var(--text-primary)',
+                                                border: '1px solid var(--border-subtle)',
+                                                borderRadius: 'var(--radius-md)'
+                                            }}
+                                        >
+                                            <option value="" disabled>Select Role...</option>
+                                            {ROLE_HIERARCHY[user?.profile?.role || '']?.map(role => (
+                                                <option key={role} value={role}>
+                                                    {ROLE_LABELS[role] || role}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={() => {
+                                            setModalMode('ASSIGN');
+                                            setInviteError(null);
+                                        }}
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={modalInviteMutation.isPending}
+                                    >
+                                        {modalInviteMutation.isPending ? 'Inviting...' : 'Send Invite'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}

@@ -59,16 +59,16 @@ export default function MeterTypeModal({ isOpen, onClose, initialData, reqConfig
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" style={{ zIndex: 1000 }}>
-            <div className="modal-container" style={{ maxWidth: '450px', width: '90%' }}>
+        <div className="modal-backdrop" style={{ zIndex: 1000 }}>
+            <div className="modal modal-md" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <div className="modal-title-group">
-                        <div className="modal-icon-badge" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10h18M7 15h1M11 15h1M15 15h1M19 15h1M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" /></svg>
                         </div>
-                        <h2 className="modal-title">{initialData ? 'Edit Meter Type' : 'New Meter Type'}</h2>
+                        <span className="modal-title">{initialData ? 'Edit Meter Type' : 'New Meter Type'}</span>
                     </div>
-                    <button onClick={onClose} className="modal-close-btn">✕</button>
+                    <button onClick={onClose} className="modal-close">✕</button>
                 </div>
 
                 <div className="modal-body">

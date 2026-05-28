@@ -9,6 +9,25 @@ import math
 
 file_path = r'c:\Users\20100\thefinal\n.v.a\24sep-hospitality-ESG-DST-GK.xlsx'
 
+def get_meter_type(name: str, unit: str, is_metered: bool) -> str | None:
+    if not is_metered:
+        return None
+    n = name.lower()
+    u = unit.lower()
+    if 'electricity' in n or 'electric' in n or 'lighting' in n or 'ev charging' in n:
+        return 'Electricity'
+    if 'water' in n or 'flow' in n or 'pool' in n or 'irrigation' in n or 'm³' in u or 'liters' in u:
+        return 'Water'
+    if 'cooling' in n or 'chiller' in n or 'district cooling' in n:
+        return 'Cooling'
+    if 'fuel' in n or 'gas' in n or 'lpg' in n or 'diesel' in n or 'petrol' in n or 'vehicles' in n:
+        return 'Fuel'
+    if 'waste' in n or 'recycling' in n or 'compost' in n:
+        return 'Waste'
+    if 'solar' in n or 'renew' in n:
+        return 'Energy'
+    return 'Energy'
+
 async def seed_excel_data():
     print('Reading Excel file...')
     try:
@@ -33,10 +52,11 @@ async def seed_excel_data():
             name = str(row.get('Data Element Name', '')).strip()
             category = str(row.get('E/S/G', '')).strip()
             prompt = str(row.get('prompt', '')).replace('nan', '').strip()
-            unit = str(row.get('unit', '')).replace('nan', '').strip()
+            unit = str(row.get('unit', '')).replace('nan', '').strip().replace('Â³', '³')
             cadence = str(row.get('cadence', 'monthly')).strip()
             metered_raw = str(row.get('Metered (M/NM)', '')).strip()
             is_metered = True if metered_raw == 'M' else False
+            meter_type = get_meter_type(name, unit, is_metered)
             
             # Extract conditionals and frameworks first
             condition_type = str(row.get('must-have/conditional', '')).strip().lower()
@@ -44,7 +64,7 @@ async def seed_excel_data():
             frameworks_raw = str(row.get('Frameworks (E/D/G)', '')).replace('nan', '').strip()
             
             condition_logic = wizard_question if condition_type == 'conditional' and wizard_question else ""
-
+ 
             stmt = select(DataElement).where(DataElement.element_code == master_id)
             existing_element = (await db.execute(stmt)).scalars().first()
             
@@ -58,6 +78,7 @@ async def seed_excel_data():
                 existing_element.is_metered = is_metered
                 existing_element.condition_logic = condition_logic
                 existing_element.frameworks = frameworks_raw
+                existing_element.meter_type = meter_type
             else:
                 print(f"Create DataElement: {master_id}")
                 existing_element = DataElement(
@@ -69,7 +90,8 @@ async def seed_excel_data():
                     collection_frequency=cadence,
                     is_metered=is_metered,
                     condition_logic=condition_logic,
-                    frameworks=frameworks_raw
+                    frameworks=frameworks_raw,
+                    meter_type=meter_type
                 )
                 db.add(existing_element)
             
@@ -85,8 +107,7 @@ async def seed_excel_data():
                     new_q = ProfilingQuestion(
                         question_text=wizard_question,
                         question_order=q_order,
-                        frameworks=frameworks_raw,
-                        requires_meter=is_metered
+                        frameworks=frameworks_raw
                     )
                     db.add(new_q)
                     q_order += 1
@@ -98,4 +119,5 @@ async def seed_excel_data():
         print('Seeding completed successfully!')
 
 if __name__ == '__main__':
+    asyncio.run(seed_excel_data())
     asyncio.run(seed_excel_data())

@@ -50,3 +50,10 @@ class Token(BaseModel):
 class TokenPayload(BaseModel):
     sub: Optional[int] = None
     role: Optional[str] = None
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str

@@ -83,16 +83,16 @@ export default function ProfilingModal({ isOpen, onClose, initialData, reqConfig
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" style={{ zIndex: 1000 }}>
-            <div className="modal-container" style={{ maxWidth: '600px', width: '90%' }}>
+        <div className="modal-backdrop" style={{ zIndex: 1000 }}>
+            <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <div className="modal-title-group">
-                        <div className="modal-icon-badge" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M22 12v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h9" /></svg>
                         </div>
-                        <h2 className="modal-title">{initialData ? 'Edit Profiling Logic' : 'New Profiling Logic'}</h2>
+                        <span className="modal-title">{initialData ? 'Edit Profiling Logic' : 'New Profiling Logic'}</span>
                     </div>
-                    <button onClick={onClose} className="modal-close-btn">✕</button>
+                    <button onClick={onClose} className="modal-close">✕</button>
                 </div>
 
                 <div className="modal-body overflow-y-auto">

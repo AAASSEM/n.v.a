@@ -16,6 +16,8 @@ import SiteManagementView from './pages/Sites/SiteManagementView';
 import DeveloperAdminView from './pages/DeveloperAdmin/DeveloperAdminView';
 import MagicLinkVerify from './pages/Authentication/MagicLinkVerify';
 import SetupAccount from './pages/Authentication/SetupAccount';
+import ForgotPassword from './pages/Authentication/ForgotPassword';
+import ResetPassword from './pages/Authentication/ResetPassword';
 import SettingsView from './pages/Settings/SettingsView';
 import ReportsView from './pages/Reports/ReportsView';
 import HelpCenterView from './pages/Help/HelpCenterView';
@@ -143,6 +145,22 @@ function App() {
           <Route
             path="/magic-link/:token"
             element={<MagicLinkVerify />}
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/reset-password/:token"
+            element={
+              <PublicRoute>
+                <ResetPassword />
+              </PublicRoute>
+            }
           />
           <Route
             path="/setup-account"

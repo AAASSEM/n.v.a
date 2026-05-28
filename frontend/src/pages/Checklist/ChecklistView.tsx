@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
@@ -26,7 +27,25 @@ interface User {
     first_name: string;
     last_name: string;
     email: string;
+    profile?: {
+        role: string;
+    } | null;
 }
+
+const ROLE_LABELS: Record<string, string> = {
+    'super_user': 'Super User',
+    'admin': 'Admin',
+    'site_manager': 'Site Manager',
+    'meter_manager': 'Meter Manager',
+    'uploader': 'Data Uploader',
+    'viewer': 'Viewer',
+};
+
+const ROLE_HIERARCHY: Record<string, string[]> = {
+    'super_user': ['admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],
+    'admin': ['site_manager', 'uploader', 'viewer', 'meter_manager'],
+    'site_manager': ['uploader', 'viewer', 'meter_manager'],
+};
 
 const CATEGORY_CONFIG = {
     E: {
@@ -58,7 +77,9 @@ const FRAMEWORK_CONFIG: Record<string, { color: string; bg: string }> = {
 
 export default function ChecklistView() {
     const queryClient = useQueryClient();
-    const userRole = useAuthStore(state => state.user?.profile?.role);
+    const navigate = useNavigate();
+    const { user } = useAuthStore();
+    const userRole = user?.profile?.role;
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const canManage = canPerformAction(userRole, 'checklist', 'update');
 
@@ -70,6 +91,42 @@ export default function ChecklistView() {
         checklistId?: number;
     }>({ isOpen: false, type: 'SINGLE' });
     const [selectedUserId, setSelectedUserId] = useState<number | ''>('');
+
+    const [modalMode, setModalMode] = useState<'ASSIGN' | 'INVITE'>('ASSIGN');
+    const [inviteForm, setInviteForm] = useState({
+        email: '',
+        first_name: '',
+        last_name: '',
+        role: '',
+    });
+    const [inviteError, setInviteError] = useState<string | null>(null);
+
+    const modalInviteMutation = useMutation({
+        mutationFn: async (data: typeof inviteForm) => {
+            const isAdminRole = data.role === 'admin' || data.role === 'super_user';
+            const payload = { ...data, site_id: isAdminRole ? null : currentSiteId };
+            const res = await api.post('/users/invite', payload);
+            return res.data;
+        },
+        onSuccess: (newUser) => {
+            queryClient.invalidateQueries({ queryKey: ['companyUsers', currentSiteId] });
+            setSelectedUserId(newUser.id);
+            setModalMode('ASSIGN');
+            setInviteForm({ email: '', first_name: '', last_name: '', role: '' });
+            setInviteError(null);
+        },
+        onError: (err: any) => {
+            setInviteError(err.response?.data?.detail || 'Failed to invite user');
+        }
+    });
+
+    React.useEffect(() => {
+        if (!modalConfig.isOpen) {
+            setModalMode('ASSIGN');
+            setInviteForm({ email: '', first_name: '', last_name: '', role: '' });
+            setInviteError(null);
+        }
+    }, [modalConfig.isOpen]);
 
     const { data: checklist, isLoading, error } = useQuery<ChecklistItem[]>({
         queryKey: ['checklist', currentSiteId],
@@ -388,102 +445,283 @@ export default function ChecklistView() {
                     <div className="modal modal-sm animate-scale-in" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <span className="modal-title">
-                                {modalConfig.type === 'BULK' ? 'Assign Entire Category' : 'Assign Element'}
+                                {modalMode === 'ASSIGN'
+                                    ? (modalConfig.type === 'BULK' ? 'Assign Entire Category' : 'Assign Element')
+                                    : 'Invite Team Member'}
                             </span>
                             <button className="modal-close" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>✕</button>
                         </div>
-                        <form onSubmit={handleAssignSubmit}>
-                            <div className="modal-body">
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
-                                    {/* Unassigned Option */}
-                                    <div
-                                        className={`selection-item ${selectedUserId === '' ? 'selected' : ''}`}
-                                        onClick={() => setSelectedUserId('')}
-                                        style={{
-                                            padding: '12px 14px',
-                                            borderRadius: 'var(--radius-lg)',
-                                            border: `1px solid ${selectedUserId === '' ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
-                                            background: selectedUserId === '' ? 'var(--accent-green-dim)' : 'var(--bg-card)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 12,
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                        }}
-                                    >
+                        {modalMode === 'ASSIGN' ? (
+                            <form onSubmit={handleAssignSubmit}>
+                                <div className="modal-body">
+                                    {users.length <= 1 && (
                                         <div style={{
-                                            width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-elevated)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-disabled)',
-                                            border: '1px solid var(--border-subtle)'
-                                        }}>?</div>
-                                        <div style={{ flex: 1, fontWeight: 600, color: selectedUserId === '' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
-                                            Unassigned
+                                            background: 'rgba(56, 189, 248, 0.08)',
+                                            border: '1px dashed rgba(56, 189, 248, 0.25)',
+                                            padding: '14px',
+                                            borderRadius: 'var(--radius-lg)',
+                                            marginBottom: 16,
+                                            fontSize: 12,
+                                            color: '#60a5fa',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 8,
+                                            alignItems: 'center',
+                                            textAlign: 'center'
+                                        }}>
+                                            <div style={{ fontSize: 20 }}>👥</div>
+                                            <div>
+                                                <strong>You are the only member in this site.</strong><br/>
+                                                Invite others to delegate data collection tasks!
+                                            </div>
                                         </div>
-                                        {selectedUserId === '' && (
-                                            <div style={{ color: 'var(--accent-green)' }}>✓</div>
-                                        )}
-                                    </div>
+                                    )}
 
-                                    {/* User Options */}
-                                    {users.map(u => {
-                                        const isSelected = u.id === selectedUserId;
-                                        return (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, maxHeight: '350px', overflowY: 'auto', paddingRight: '4px', marginBottom: 8 }}>
+                                        {/* Unassigned Option */}
+                                        <div
+                                            className={`selection-item ${selectedUserId === '' ? 'selected' : ''}`}
+                                            onClick={() => setSelectedUserId('')}
+                                            style={{
+                                                padding: '12px 14px',
+                                                borderRadius: 'var(--radius-lg)',
+                                                border: `1px solid ${selectedUserId === '' ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
+                                                background: selectedUserId === '' ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 12,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-elevated)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-disabled)',
+                                                border: '1px solid var(--border-subtle)'
+                                            }}>?</div>
+                                            <div style={{ flex: 1, fontWeight: 600, color: selectedUserId === '' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                                                Unassigned
+                                            </div>
+                                            {selectedUserId === '' && (
+                                                <div style={{ color: 'var(--accent-green)' }}>✓</div>
+                                            )}
+                                        </div>
+
+                                        {/* User Options */}
+                                        {users.map(u => {
+                                            const isSelected = u.id === selectedUserId;
+                                            return (
+                                                <div
+                                                    key={u.id}
+                                                    className={`selection-item ${isSelected ? 'selected' : ''}`}
+                                                    onClick={() => setSelectedUserId(u.id)}
+                                                    style={{
+                                                        padding: '12px 14px',
+                                                        borderRadius: 'var(--radius-lg)',
+                                                        border: `1px solid ${isSelected ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
+                                                        background: isSelected ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 12,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        width: 32, height: 32, borderRadius: '50%',
+                                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: 12, fontWeight: 700, color: 'white',
+                                                        border: '1px solid var(--border-subtle)'
+                                                    }}>
+                                                        {u.first_name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                            <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)' }}>
+                                                                {u.first_name} {u.last_name}
+                                                            </span>
+                                                            {u.profile?.role && (
+                                                                <span style={{
+                                                                    fontSize: 9,
+                                                                    padding: '2px 6px',
+                                                                    borderRadius: 4,
+                                                                    fontWeight: 700,
+                                                                    background: 'rgba(255, 255, 255, 0.05)',
+                                                                    color: 'var(--text-secondary)',
+                                                                    border: '1px solid var(--border-subtle)',
+                                                                    textTransform: 'uppercase',
+                                                                    letterSpacing: '0.5px',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}>
+                                                                    {ROLE_LABELS[u.profile.role] || u.profile.role}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.email}</div>
+                                                    </div>
+                                                    {isSelected && (
+                                                        <div style={{ color: 'var(--accent-green)' }}>✓</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* Invite Link for authorized users */}
+                                        {canPerformAction(userRole, 'users', 'create') && (
                                             <div
-                                                key={u.id}
-                                                className={`selection-item ${isSelected ? 'selected' : ''}`}
-                                                onClick={() => setSelectedUserId(u.id)}
+                                                onClick={() => {
+                                                    setModalMode('INVITE');
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                                    e.currentTarget.style.borderColor = 'var(--accent-green)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.01)';
+                                                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                                                }}
                                                 style={{
                                                     padding: '12px 14px',
                                                     borderRadius: 'var(--radius-lg)',
-                                                    border: `1px solid ${isSelected ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
-                                                    background: isSelected ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                                                    border: `1px dashed var(--border-subtle)`,
+                                                    background: 'rgba(255, 255, 255, 0.01)',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: 12,
+                                                    justifyContent: 'center',
+                                                    gap: 8,
                                                     cursor: 'pointer',
                                                     transition: 'all 0.2s',
+                                                    color: 'var(--accent-green)',
+                                                    fontWeight: 600,
+                                                    fontSize: 13,
                                                 }}
                                             >
-                                                <div style={{
-                                                    width: 32, height: 32, borderRadius: '50%',
-                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: 12, fontWeight: 700, color: 'white',
-                                                    border: '1px solid var(--border-subtle)'
-                                                }}>
-                                                    {u.first_name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 600, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)' }}>
-                                                        {u.first_name} {u.last_name}
-                                                    </div>
-                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.email}</div>
-                                                </div>
-                                                {isSelected && (
-                                                    <div style={{ color: 'var(--accent-green)' }}>✓</div>
-                                                )}
+                                                <span>+ Invite Team Member</span>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                        )}
+                                    </div>
 
-                                <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, textAlign: 'center' }}>
-                                    {modalConfig.type === 'BULK'
-                                        ? `This will reassign all ${modalConfig.category === 'E' ? 'Environmental' : modalConfig.category === 'S' ? 'Social' : 'Governance'} elements to this user.`
-                                        : 'This user will be responsible for providing data for this element.'}
-                                </p>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-ghost" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>Cancel</button>
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary"
-                                    disabled={assignMutation.isPending || bulkAssignMutation.isPending}
-                                >
-                                    {assignMutation.isPending || bulkAssignMutation.isPending ? 'Saving...' : 'Confirm Assignment'}
-                                </button>
-                            </div>
-                        </form>
+                                    <p style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, textAlign: 'center' }}>
+                                        {modalConfig.type === 'BULK'
+                                            ? `This will reassign all ${modalConfig.category === 'E' ? 'Environmental' : modalConfig.category === 'S' ? 'Social' : 'Governance'} elements to this user.`
+                                            : 'This user will be responsible for providing data for this element.'}
+                                    </p>
+                                </div>
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-ghost" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>Cancel</button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={assignMutation.isPending || bulkAssignMutation.isPending}
+                                    >
+                                        {assignMutation.isPending || bulkAssignMutation.isPending ? 'Saving...' : 'Confirm Assignment'}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <form onSubmit={e => {
+                                e.preventDefault();
+                                modalInviteMutation.mutate(inviteForm);
+                            }}>
+                                <div className="modal-body">
+                                    {inviteError && (
+                                        <div style={{
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                                            color: '#f87171',
+                                            padding: '10px 12px',
+                                            borderRadius: 'var(--radius-md)',
+                                            fontSize: 12,
+                                            marginBottom: 14
+                                        }}>
+                                            ⚠ {inviteError}
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                                        <div>
+                                            <label className="form-label" style={{ fontSize: 11 }}>First Name</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="John"
+                                                value={inviteForm.first_name}
+                                                onChange={e => setInviteForm(prev => ({ ...prev, first_name: e.target.value }))}
+                                                style={{ height: 36, fontSize: 13 }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="form-label" style={{ fontSize: 11 }}>Last Name</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="Doe"
+                                                value={inviteForm.last_name}
+                                                onChange={e => setInviteForm(prev => ({ ...prev, last_name: e.target.value }))}
+                                                style={{ height: 36, fontSize: 13 }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: 12 }}>
+                                        <label className="form-label" style={{ fontSize: 11 }}>Email Address</label>
+                                        <input
+                                            required
+                                            type="email"
+                                            className="form-input"
+                                            placeholder="john.doe@example.com"
+                                            value={inviteForm.email}
+                                            onChange={e => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                                            style={{ height: 36, fontSize: 13 }}
+                                        />
+                                    </div>
+                                    <div style={{ marginBottom: 16 }}>
+                                        <label className="form-label" style={{ fontSize: 11 }}>Select Role</label>
+                                        <select
+                                            required
+                                            className="form-input"
+                                            value={inviteForm.role}
+                                            onChange={e => setInviteForm(prev => ({ ...prev, role: e.target.value }))}
+                                            style={{
+                                                height: 36,
+                                                fontSize: 13,
+                                                background: 'var(--bg-elevated)',
+                                                color: 'var(--text-primary)',
+                                                border: '1px solid var(--border-subtle)',
+                                                borderRadius: 'var(--radius-md)'
+                                            }}
+                                        >
+                                            <option value="" disabled>Select Role...</option>
+                                            {ROLE_HIERARCHY[user?.profile?.role || '']?.map(role => (
+                                                <option key={role} value={role}>
+                                                    {ROLE_LABELS[role] || role}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={() => {
+                                            setModalMode('ASSIGN');
+                                            setInviteError(null);
+                                        }}
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={modalInviteMutation.isPending}
+                                    >
+                                        {modalInviteMutation.isPending ? 'Inviting...' : 'Send Invite'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}

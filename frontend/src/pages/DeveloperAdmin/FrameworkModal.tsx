@@ -65,11 +65,11 @@ export default function FrameworkModal({ isOpen, onClose, initialData, reqConfig
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" style={{ zIndex: 1000 }}>
-            <div className="modal-container" style={{ maxWidth: '500px', width: '90%' }}>
+        <div className="modal-backdrop" style={{ zIndex: 1000 }}>
+            <div className="modal modal-md" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <div className="modal-title-group">
-                        <div className="modal-icon-badge" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="12" cy="12" r="10" opacity="0.4" />
                                 <path d="M12 12L12 3C12 3 14 4.5 14 6C14 7.5 12 9 12 9" fill="currentColor" stroke="currentColor" strokeWidth="1" />
@@ -77,9 +77,9 @@ export default function FrameworkModal({ isOpen, onClose, initialData, reqConfig
                                 <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
                             </svg>
                         </div>
-                        <h2 className="modal-title">{initialData ? 'Edit Framework' : 'New Framework'}</h2>
+                        <span className="modal-title">{initialData ? 'Edit Framework' : 'New Framework'}</span>
                     </div>
-                    <button onClick={onClose} className="modal-close-btn">✕</button>
+                    <button onClick={onClose} className="modal-close">✕</button>
                 </div>
 
                 <div className="modal-body overflow-y-auto">

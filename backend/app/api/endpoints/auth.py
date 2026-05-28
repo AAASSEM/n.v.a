@@ -176,3 +176,96 @@ async def register_user(
     user_with_profile = result.scalars().first()
     
     return user_with_profile
+
+from app.schemas.user import ForgotPasswordRequest, ResetPasswordRequest
+from datetime import datetime
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Send a password reset link to the email if the user exists.
+    """
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalars().first()
+    
+    if user and user.is_active:
+        # Create token
+        token_obj = EmailVerificationToken(
+            user_id=user.id,
+            token_type=TokenType.password_reset
+        )
+        db.add(token_obj)
+        await db.commit()
+        await db.refresh(token_obj)
+        
+        # Send reset email
+        background_tasks.add_task(
+            email_service.send_magic_link_email,
+            email=user.email,
+            token=token_obj,
+            context={
+                "name": user.first_name,
+                "company_name": "ESG Compass"
+            }
+        )
+    
+    # Always return 200/success to avoid email enumeration
+    return {"detail": "If the email is registered in our system, you will receive a link to reset your password."}
+
+@router.post("/reset-password", response_model=Token)
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Reset password using a token.
+    """
+    result = await db.execute(select(EmailVerificationToken).where(EmailVerificationToken.token == request.token))
+    db_token = result.scalars().first()
+    
+    if not db_token or db_token.token_type != TokenType.password_reset:
+        raise HTTPException(status_code=400, detail="Invalid token")
+        
+    if db_token.used_at is not None:
+        raise HTTPException(status_code=400, detail="Token already used")
+        
+    # Check expiry (1 hour for password reset)
+    expiry_date = db_token.created_at + timedelta(hours=1)
+    if datetime.utcnow() > expiry_date:
+        raise HTTPException(status_code=400, detail="Token has expired")
+        
+    # Get user
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(User)
+        .where(User.id == db_token.user_id)
+        .options(selectinload(User.profile))
+    )
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # Update password and clear token
+    user.password_hash = security.get_password_hash(request.password)
+    db_token.used_at = datetime.utcnow()
+    
+    # Also if the user profile must_reset_password is set, clear it
+    if user.profile and user.profile.must_reset_password:
+        user.profile.must_reset_password = False
+        
+    await db.commit()
+    await db.refresh(user)
+
+    # Issue login token for instant auto-login
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return {
+        "access_token": security.create_access_token(
+            user.id, expires_delta=access_token_expires
+        ),
+        "token_type": "bearer",
+    }

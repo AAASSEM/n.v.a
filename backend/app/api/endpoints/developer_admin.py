@@ -372,6 +372,7 @@ async def list_frameworks(
     return [{
         "id": f.id,
         "code": f.framework_id,
+        "framework_id": f.framework_id,
         "name": f.name,
         "type": f.type,
         "region": getattr(f, "region", "Global"),

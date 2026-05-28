@@ -11,6 +11,7 @@ from app.db.session import Base
 class TokenType(str, enum.Enum):
     invitation = "invitation"
     email_verification = "email_verification"
+    password_reset = "password_reset"
 
 def generate_verification_code(length=6):
     """Generate a 6-digit backup verification code"""

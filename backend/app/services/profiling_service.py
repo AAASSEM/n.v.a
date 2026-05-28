@@ -8,6 +8,13 @@ from app.models.data_element import DataElement
 from app.models.checklist import CompanyChecklist
 from app.models.meter import Meter
 
+# Mapping from shorthand Excel codes (E, D, G) to normalized active frameworks (esg, dst, green key)
+FW_MAPPING = {
+    "e": "esg",
+    "d": "dst",
+    "g": "green key"
+}
+
 class ProfilingService:
     @staticmethod
     async def generate_checklist(
@@ -83,7 +90,8 @@ class ProfilingService:
             framework_match = False
             if element.frameworks:
                 element_fws = [f.strip().lower() for f in element.frameworks.split(',') if f.strip()]
-                if any(fw in active_frameworks for fw in element_fws):
+                mapped_fws = [FW_MAPPING.get(fw, fw) for fw in element_fws]
+                if any(fw in active_frameworks for fw in mapped_fws):
                     framework_match = True
             else:
                 framework_match = True
