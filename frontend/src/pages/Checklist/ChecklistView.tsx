@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+
 import { api } from '../../services/api';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
@@ -77,7 +77,7 @@ const FRAMEWORK_CONFIG: Record<string, { color: string; bg: string }> = {
 
 export default function ChecklistView() {
     const queryClient = useQueryClient();
-    const navigate = useNavigate();
+
     const { user } = useAuthStore();
     const userRole = user?.profile?.role;
     const currentSiteId = useSiteStore(s => s.currentSiteId);

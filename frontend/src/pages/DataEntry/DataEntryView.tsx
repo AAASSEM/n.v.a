@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+
 import { api } from '../../services/api';
 import { BASE_URL } from '../../config';
 import { useAuthStore } from '../../stores/authStore';
@@ -92,7 +92,7 @@ function StatusBadge({ value, evidence }: { value: string | number, evidence: st
 export default function DataEntryView() {
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
-    const navigate = useNavigate();
+
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const currentDate = new Date();
     const [year, setYear] = useState(currentDate.getFullYear());
