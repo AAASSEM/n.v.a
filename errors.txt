@@ -1,302 +1,50 @@
-Access to XMLHttpRequest at 'http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
-DeveloperAdminView.tsx:315  GET http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0 net::ERR_FAILED 500 (Internal Server Error)
-dispatchXhrRequest @ axios.js?v=1bf14e52:1784
-xhr @ axios.js?v=1bf14e52:1649
-dispatchRequest @ axios.js?v=1bf14e52:2210
-Promise.then
-_request @ axios.js?v=1bf14e52:2428
-request @ axios.js?v=1bf14e52:2324
-Axios.<computed> @ axios.js?v=1bf14e52:2464
-wrap @ axios.js?v=1bf14e52:8
-(anonymous) @ DeveloperAdminView.tsx:315
-fetchFn @ @tanstack_react-query.js?v=1bf14e52:1088
-run @ @tanstack_react-query.js?v=1bf14e52:798
-start @ @tanstack_react-query.js?v=1bf14e52:840
-fetch @ @tanstack_react-query.js?v=1bf14e52:1135
-#executeFetch @ @tanstack_react-query.js?v=1bf14e52:1457
-setOptions @ @tanstack_react-query.js?v=1bf14e52:1387
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:3327
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18567
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-commitHookEffectListMount @ react-dom_client.js?v=1bf14e52:9411
-commitHookPassiveMountEffects @ react-dom_client.js?v=1bf14e52:9465
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11040
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11066
-flushPassiveEffects @ react-dom_client.js?v=1bf14e52:13150
-(anonymous) @ react-dom_client.js?v=1bf14e52:12776
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<DeveloperAdminView>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-App @ App.tsx:275
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18509
-renderWithHooksAgain @ react-dom_client.js?v=1bf14e52:5729
-renderWithHooks @ react-dom_client.js?v=1bf14e52:5665
-updateFunctionComponent @ react-dom_client.js?v=1bf14e52:7475
-beginWork @ react-dom_client.js?v=1bf14e52:8525
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-performUnitOfWork @ react-dom_client.js?v=1bf14e52:12561
-workLoopSync @ react-dom_client.js?v=1bf14e52:12424
-renderRootSync @ react-dom_client.js?v=1bf14e52:12408
-performWorkOnRoot @ react-dom_client.js?v=1bf14e52:11766
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=1bf14e52:13505
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<App>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-(anonymous) @ main.tsx:8Understand this error
-:5173/#/developer-admin:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
-DeveloperAdminView.tsx:315  GET http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0 net::ERR_FAILED 500 (Internal Server Error)
-dispatchXhrRequest @ axios.js?v=1bf14e52:1784
-xhr @ axios.js?v=1bf14e52:1649
-dispatchRequest @ axios.js?v=1bf14e52:2210
-Promise.then
-_request @ axios.js?v=1bf14e52:2428
-request @ axios.js?v=1bf14e52:2324
-Axios.<computed> @ axios.js?v=1bf14e52:2464
-wrap @ axios.js?v=1bf14e52:8
-(anonymous) @ DeveloperAdminView.tsx:315
-fetchFn @ @tanstack_react-query.js?v=1bf14e52:1088
-run @ @tanstack_react-query.js?v=1bf14e52:798
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:822
-Promise.then
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:818
-Promise.catch
-run @ @tanstack_react-query.js?v=1bf14e52:802
-start @ @tanstack_react-query.js?v=1bf14e52:840
-fetch @ @tanstack_react-query.js?v=1bf14e52:1135
-#executeFetch @ @tanstack_react-query.js?v=1bf14e52:1457
-setOptions @ @tanstack_react-query.js?v=1bf14e52:1387
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:3327
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18567
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-commitHookEffectListMount @ react-dom_client.js?v=1bf14e52:9411
-commitHookPassiveMountEffects @ react-dom_client.js?v=1bf14e52:9465
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11040
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11066
-flushPassiveEffects @ react-dom_client.js?v=1bf14e52:13150
-(anonymous) @ react-dom_client.js?v=1bf14e52:12776
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<DeveloperAdminView>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-App @ App.tsx:275
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18509
-renderWithHooksAgain @ react-dom_client.js?v=1bf14e52:5729
-renderWithHooks @ react-dom_client.js?v=1bf14e52:5665
-updateFunctionComponent @ react-dom_client.js?v=1bf14e52:7475
-beginWork @ react-dom_client.js?v=1bf14e52:8525
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-performUnitOfWork @ react-dom_client.js?v=1bf14e52:12561
-workLoopSync @ react-dom_client.js?v=1bf14e52:12424
-renderRootSync @ react-dom_client.js?v=1bf14e52:12408
-performWorkOnRoot @ react-dom_client.js?v=1bf14e52:11766
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=1bf14e52:13505
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<App>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-(anonymous) @ main.tsx:8Understand this error
-:5173/#/developer-admin:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
-DeveloperAdminView.tsx:315  GET http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0 net::ERR_FAILED 500 (Internal Server Error)
-dispatchXhrRequest @ axios.js?v=1bf14e52:1784
-xhr @ axios.js?v=1bf14e52:1649
-dispatchRequest @ axios.js?v=1bf14e52:2210
-Promise.then
-_request @ axios.js?v=1bf14e52:2428
-request @ axios.js?v=1bf14e52:2324
-Axios.<computed> @ axios.js?v=1bf14e52:2464
-wrap @ axios.js?v=1bf14e52:8
-(anonymous) @ DeveloperAdminView.tsx:315
-fetchFn @ @tanstack_react-query.js?v=1bf14e52:1088
-run @ @tanstack_react-query.js?v=1bf14e52:798
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:822
-Promise.then
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:818
-Promise.catch
-run @ @tanstack_react-query.js?v=1bf14e52:802
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:822
-Promise.then
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:818
-Promise.catch
-run @ @tanstack_react-query.js?v=1bf14e52:802
-start @ @tanstack_react-query.js?v=1bf14e52:840
-fetch @ @tanstack_react-query.js?v=1bf14e52:1135
-#executeFetch @ @tanstack_react-query.js?v=1bf14e52:1457
-setOptions @ @tanstack_react-query.js?v=1bf14e52:1387
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:3327
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18567
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-commitHookEffectListMount @ react-dom_client.js?v=1bf14e52:9411
-commitHookPassiveMountEffects @ react-dom_client.js?v=1bf14e52:9465
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11040
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11066
-flushPassiveEffects @ react-dom_client.js?v=1bf14e52:13150
-(anonymous) @ react-dom_client.js?v=1bf14e52:12776
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<DeveloperAdminView>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-App @ App.tsx:275
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18509
-renderWithHooksAgain @ react-dom_client.js?v=1bf14e52:5729
-renderWithHooks @ react-dom_client.js?v=1bf14e52:5665
-updateFunctionComponent @ react-dom_client.js?v=1bf14e52:7475
-beginWork @ react-dom_client.js?v=1bf14e52:8525
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-performUnitOfWork @ react-dom_client.js?v=1bf14e52:12561
-workLoopSync @ react-dom_client.js?v=1bf14e52:12424
-renderRootSync @ react-dom_client.js?v=1bf14e52:12408
-performWorkOnRoot @ react-dom_client.js?v=1bf14e52:11766
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=1bf14e52:13505
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<App>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-(anonymous) @ main.tsx:8Understand this error
-:5173/#/developer-admin:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error
-DeveloperAdminView.tsx:315  GET http://localhost:8000/api/v1/developer-admin/logs?limit=25&offset=0 net::ERR_FAILED 500 (Internal Server Error)
-dispatchXhrRequest @ axios.js?v=1bf14e52:1784
-xhr @ axios.js?v=1bf14e52:1649
-dispatchRequest @ axios.js?v=1bf14e52:2210
-Promise.then
-_request @ axios.js?v=1bf14e52:2428
-request @ axios.js?v=1bf14e52:2324
-Axios.<computed> @ axios.js?v=1bf14e52:2464
-wrap @ axios.js?v=1bf14e52:8
-(anonymous) @ DeveloperAdminView.tsx:315
-fetchFn @ @tanstack_react-query.js?v=1bf14e52:1088
-run @ @tanstack_react-query.js?v=1bf14e52:798
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:822
-Promise.then
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:818
-Promise.catch
-run @ @tanstack_react-query.js?v=1bf14e52:802
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:822
-Promise.then
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:818
-Promise.catch
-run @ @tanstack_react-query.js?v=1bf14e52:802
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:822
-Promise.then
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:818
-Promise.catch
-run @ @tanstack_react-query.js?v=1bf14e52:802
-start @ @tanstack_react-query.js?v=1bf14e52:840
-fetch @ @tanstack_react-query.js?v=1bf14e52:1135
-#executeFetch @ @tanstack_react-query.js?v=1bf14e52:1457
-setOptions @ @tanstack_react-query.js?v=1bf14e52:1387
-(anonymous) @ @tanstack_react-query.js?v=1bf14e52:3327
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18567
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-commitHookEffectListMount @ react-dom_client.js?v=1bf14e52:9411
-commitHookPassiveMountEffects @ react-dom_client.js?v=1bf14e52:9465
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11040
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11033
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11201
-recursivelyTraversePassiveMountEffects @ react-dom_client.js?v=1bf14e52:11010
-commitPassiveMountOnFiber @ react-dom_client.js?v=1bf14e52:11066
-flushPassiveEffects @ react-dom_client.js?v=1bf14e52:13150
-(anonymous) @ react-dom_client.js?v=1bf14e52:12776
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<DeveloperAdminView>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-App @ App.tsx:275
-react_stack_bottom_frame @ react-dom_client.js?v=1bf14e52:18509
-renderWithHooksAgain @ react-dom_client.js?v=1bf14e52:5729
-renderWithHooks @ react-dom_client.js?v=1bf14e52:5665
-updateFunctionComponent @ react-dom_client.js?v=1bf14e52:7475
-beginWork @ react-dom_client.js?v=1bf14e52:8525
-runWithFiberInDEV @ react-dom_client.js?v=1bf14e52:997
-performUnitOfWork @ react-dom_client.js?v=1bf14e52:12561
-workLoopSync @ react-dom_client.js?v=1bf14e52:12424
-renderRootSync @ react-dom_client.js?v=1bf14e52:12408
-performWorkOnRoot @ react-dom_client.js?v=1bf14e52:11766
-performWorkOnRootViaSchedulerTask @ react-dom_client.js?v=1bf14e52:13505
-performWorkUntilDeadline @ react-dom_client.js?v=1bf14e52:36
-<App>
-exports.jsxDEV @ react_jsx-dev-runtime.js?v=1bf14e52:247
-(anonymous) @ main.tsx:8Understand this error
+2026-05-29T16:10:10.788917212Z ==> Using Node.js version 22.22.0 (default)
+2026-05-29T16:10:10.788933943Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+2026-05-29T16:10:10.794554043Z ==> Installing Node.js version 22.22.0...
+2026-05-29T16:10:18.211906754Z 
+2026-05-29T16:10:18.211935575Z up to date, audited 266 packages in 1s
+2026-05-29T16:10:18.211976056Z 
+2026-05-29T16:10:18.211985326Z 62 packages are looking for funding
+2026-05-29T16:10:18.211992866Z   run `npm fund` for details
+2026-05-29T16:10:18.226012103Z 
+2026-05-29T16:10:18.226033633Z 7 vulnerabilities (3 moderate, 4 high)
+2026-05-29T16:10:18.226036203Z 
+2026-05-29T16:10:18.226039174Z To address all issues, run:
+2026-05-29T16:10:18.226041703Z   npm audit fix
+2026-05-29T16:10:18.226043703Z 
+2026-05-29T16:10:18.226045744Z Run `npm audit` for details.
+2026-05-29T16:10:19.124252472Z 
+2026-05-29T16:10:19.124281532Z up to date, audited 266 packages in 752ms
+2026-05-29T16:10:19.124284662Z 
+2026-05-29T16:10:19.124295083Z 62 packages are looking for funding
+2026-05-29T16:10:19.124298473Z   run `npm fund` for details
+2026-05-29T16:10:19.139270975Z 
+2026-05-29T16:10:19.139297655Z 7 vulnerabilities (3 moderate, 4 high)
+2026-05-29T16:10:19.139301645Z 
+2026-05-29T16:10:19.139306236Z To address all issues, run:
+2026-05-29T16:10:19.139309446Z   npm audit fix
+2026-05-29T16:10:19.139312116Z 
+2026-05-29T16:10:19.139315386Z Run `npm audit` for details.
+2026-05-29T16:10:19.288545109Z ==> Running build command 'npm install && npm run build'...
+2026-05-29T16:10:20.12163531Z 
+2026-05-29T16:10:20.121665021Z up to date, audited 266 packages in 787ms
+2026-05-29T16:10:20.121667721Z 
+2026-05-29T16:10:20.121679301Z 62 packages are looking for funding
+2026-05-29T16:10:20.121683982Z   run `npm fund` for details
+2026-05-29T16:10:20.143839766Z 
+2026-05-29T16:10:20.143875747Z 7 vulnerabilities (3 moderate, 4 high)
+2026-05-29T16:10:20.143879427Z 
+2026-05-29T16:10:20.143883567Z To address all issues, run:
+2026-05-29T16:10:20.143886517Z   npm audit fix
+2026-05-29T16:10:20.143889057Z 
+2026-05-29T16:10:20.143891688Z Run `npm audit` for details.
+2026-05-29T16:10:20.301683801Z 
+2026-05-29T16:10:20.301710422Z > frontend@0.0.0 build
+2026-05-29T16:10:20.301714232Z > tsc -b && vite build
+2026-05-29T16:10:20.301716832Z 
+2026-05-29T16:10:27.30525971Z src/pages/Authentication/Login.tsx(9,11): error TS6133: 'navigate' is declared but its value is never read.
+2026-05-29T16:10:27.305404164Z src/pages/Authentication/Login.tsx(10,11): error TS6133: 'location' is declared but its value is never read.
+2026-05-29T16:10:27.305413254Z src/pages/Authentication/ResetPassword.tsx(9,13): error TS2339: Property 'resetPassword' does not exist on type 'AuthState'.
+2026-05-29T16:10:27.305425894Z src/stores/authStore.ts(4,21): error TS6196: 'LoginCredentials' is declared but never used.
+2026-05-29T16:10:27.945143007Z ==> Build failed 😞
+2026-05-29T16:10:27.945161008Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys

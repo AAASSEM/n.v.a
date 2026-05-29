@@ -285,4 +285,83 @@ async def demo_login(
         "token_type": "bearer",
     }
 
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str
 
+@router.post("/reset-password", response_model=Token)
+async def reset_password(
+    request_data: ResetPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Reset a user's password using a verification/reset token.
+    """
+    result = await db.execute(select(EmailVerificationToken).where(EmailVerificationToken.token == request_data.token))
+    db_token = result.scalars().first()
+    
+    if not db_token:
+        raise HTTPException(status_code=400, detail="Invalid token")
+        
+    if db_token.used_at is not None:
+        raise HTTPException(status_code=400, detail="Token already used")
+        
+    # Check expiry (7 days for invitation/email_verification, 1 hour for login/password_reset)
+    if db_token.token_type in (TokenType.password_reset, TokenType.login):
+        expiry_date = db_token.created_at + timedelta(hours=1)
+    else:
+        expiry_date = db_token.created_at + timedelta(days=7)
+        
+    if datetime.utcnow() > expiry_date:
+        raise HTTPException(status_code=400, detail="Token has expired")
+        
+    # Get user
+    result = await db.execute(select(User).where(User.id == db_token.user_id))
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # Update password
+    user.password_hash = security.get_password_hash(request_data.password)
+    user.is_active = True
+    user.email_verified = True
+    
+    # Mark token as used
+    db_token.used_at = datetime.utcnow()
+    
+    # If the user profile has must_reset_password, clear it
+    from sqlalchemy.orm import selectinload
+    result_profile = await db.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = result_profile.scalars().first()
+    if profile:
+        profile.must_reset_password = False
+        db.add(profile)
+        
+    db.add(user)
+    db.add(db_token)
+    await db.commit()
+    await db.refresh(user)
+    
+    await audit_service.log_action(
+        db,
+        action="RESET_PASSWORD",
+        user_id=user.id,
+        entity_type="USER",
+        entity_id=str(user.id),
+        details={"email": user.email},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
+    # Issue login token on success
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return {
+        "access_token": security.create_access_token(
+            user.id, expires_delta=access_token_expires
+        ),
+        "token_type": "bearer",
+    }
