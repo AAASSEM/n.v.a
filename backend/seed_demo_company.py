@@ -41,6 +41,7 @@ from app.models.profiling import ProfilingQuestion, CompanyProfileAnswer
 from app.models.data_element import DataElement
 from app.models.meter import Meter
 from app.models.submission import DataSubmission
+from app.models.system import AuditLog
 from app.services.profiling_service import ProfilingService
 
 
@@ -324,6 +325,186 @@ async def seed_demo():
             await db.commit()
             if created:
                 print(f"  · site {site.name}: inserted {created} demo submissions")
+
+        # 7. Seed demo AuditLog records
+        print("[demo] seeding audit log records...")
+        
+        # Check if audit logs already exist to make it idempotent
+        existing_logs = (await db.execute(select(AuditLog).limit(1))).scalars().first()
+        if not existing_logs:
+            # Let's retrieve the users to use their real user IDs
+            users_res = await db.execute(select(User))
+            db_users = {u.email: u for u in users_res.scalars().all()}
+            
+            # Let's fetch sites to use their real site IDs
+            sites_res = await db.execute(select(Site))
+            db_sites = {s.name: s for s in sites_res.scalars().all()}
+            
+            # Seed logs
+            logs_to_add = [
+                # Super User / Admin actions
+                {
+                    "email": "super@apex.demo",
+                    "action": "LOGIN",
+                    "entity_type": "USER",
+                    "details": {"email": "super@apex.demo", "method": "password"},
+                    "ip_address": "192.168.1.10",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=10)
+                },
+                {
+                    "email": "super@apex.demo",
+                    "action": "CREATE_COMPANY",
+                    "entity_type": "COMPANY",
+                    "details": {"name": COMPANY_NAME, "sector": "hospitality", "emirate": "dubai"},
+                    "ip_address": "192.168.1.10",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=9, hours=23)
+                },
+                {
+                    "email": "super@apex.demo",
+                    "action": "CREATE_SITE",
+                    "entity_type": "SITE",
+                    "details": {"name": "Dubai Marina Resort", "location": "Dubai", "sector": "hospitality"},
+                    "ip_address": "192.168.1.10",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=9, hours=22)
+                },
+                {
+                    "email": "super@apex.demo",
+                    "action": "CREATE_SITE",
+                    "entity_type": "SITE",
+                    "details": {"name": "Abu Dhabi Downtown Hotel", "location": "Abu Dhabi", "sector": "hospitality"},
+                    "ip_address": "192.168.1.10",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=9, hours=21)
+                },
+                {
+                    "email": "super@apex.demo",
+                    "action": "INVITE_USER",
+                    "entity_type": "USER",
+                    "details": {"email": "admin@apex.demo", "role": "admin", "site_id": None},
+                    "ip_address": "192.168.1.10",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=9, hours=20)
+                },
+                {
+                    "email": "admin@apex.demo",
+                    "action": "INVITE_USER",
+                    "entity_type": "USER",
+                    "details": {"email": "manager.a@apex.demo", "role": "site_manager", "site_id": db_sites.get("Dubai Marina Resort").id if db_sites.get("Dubai Marina Resort") else None},
+                    "ip_address": "192.168.1.15",
+                    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=8)
+                },
+                {
+                    "email": "admin@apex.demo",
+                    "action": "INVITE_USER",
+                    "entity_type": "USER",
+                    "details": {"email": "uploader.a1@apex.demo", "role": "uploader", "site_id": db_sites.get("Dubai Marina Resort").id if db_sites.get("Dubai Marina Resort") else None},
+                    "ip_address": "192.168.1.15",
+                    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=7)
+                },
+                {
+                    "email": "manager.a@apex.demo",
+                    "action": "LOGIN",
+                    "entity_type": "USER",
+                    "details": {"email": "manager.a@apex.demo", "method": "magic_link"},
+                    "ip_address": "10.0.0.4",
+                    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=6)
+                },
+                {
+                    "email": "manager.a@apex.demo",
+                    "action": "CREATE_METER",
+                    "entity_type": "METER",
+                    "details": {"name": "Sub-Meter Wing A", "element_id": 1, "site_id": db_sites.get("Dubai Marina Resort").id if db_sites.get("Dubai Marina Resort") else None},
+                    "ip_address": "10.0.0.4",
+                    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=5)
+                },
+                {
+                    "email": "uploader.a1@apex.demo",
+                    "action": "LOGIN",
+                    "entity_type": "USER",
+                    "details": {"email": "uploader.a1@apex.demo", "method": "password"},
+                    "ip_address": "10.0.0.5",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=4)
+                },
+                {
+                    "email": "uploader.a1@apex.demo",
+                    "action": "SUBMIT_DATA",
+                    "entity_type": "SUBMISSION",
+                    "details": {"year": 2026, "month": 3, "site_id": db_sites.get("Dubai Marina Resort").id if db_sites.get("Dubai Marina Resort") else None, "created": 4, "updated": 0},
+                    "ip_address": "10.0.0.5",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=3)
+                },
+                {
+                    "email": "uploader.a1@apex.demo",
+                    "action": "SUBMIT_DATA",
+                    "entity_type": "SUBMISSION",
+                    "details": {"year": 2026, "month": 4, "site_id": db_sites.get("Dubai Marina Resort").id if db_sites.get("Dubai Marina Resort") else None, "created": 4, "updated": 0},
+                    "ip_address": "10.0.0.5",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=2)
+                },
+                {
+                    "email": "admin@apex.demo",
+                    "action": "UPDATE_ROLE",
+                    "entity_type": "USER",
+                    "details": {"email": "uploader.a2@apex.demo", "old_role": "uploader", "new_role": "site_manager"},
+                    "ip_address": "192.168.1.15",
+                    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(days=1)
+                },
+                {
+                    "email": "uploader.a1@apex.demo",
+                    "action": "LOGIN_FAILED",
+                    "details": {"email": "uploader.a1@apex.demo", "reason": "Incorrect email or password"},
+                    "ip_address": "10.0.0.5",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(hours=4)
+                },
+                {
+                    "email": "uploader.a1@apex.demo",
+                    "action": "LOGIN",
+                    "entity_type": "USER",
+                    "details": {"email": "uploader.a1@apex.demo", "method": "password"},
+                    "ip_address": "10.0.0.5",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(hours=3, minutes=58)
+                },
+                {
+                    "email": "uploader.a1@apex.demo",
+                    "action": "SUBMIT_DATA",
+                    "entity_type": "SUBMISSION",
+                    "details": {"year": 2026, "month": 5, "site_id": db_sites.get("Dubai Marina Resort").id if db_sites.get("Dubai Marina Resort") else None, "created": 4, "updated": 0},
+                    "ip_address": "10.0.0.5",
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0",
+                    "created_at": datetime.datetime.utcnow() - datetime.timedelta(hours=2)
+                }
+            ]
+            
+            for item in logs_to_add:
+                actor_user = db_users.get(item["email"])
+                new_log = AuditLog(
+                    user_id=actor_user.id if actor_user else None,
+                    company_id=company.id,
+                    action=item["action"],
+                    entity_type=item["entity_type"],
+                    entity_id=str(actor_user.id) if item["action"] == "LOGIN" and actor_user else item.get("entity_id", "1"),
+                    details=item["details"],
+                    ip_address=item["ip_address"],
+                    user_agent=item["user_agent"],
+                    created_at=item["created_at"]
+                )
+                db.add(new_log)
+                
+            await db.commit()
+            print("  [OK] seeded 16 audit logs")
 
         print("[demo] seeding complete")
 

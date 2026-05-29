@@ -43,6 +43,8 @@ class EmailService:
             subject = f"You're invited to join {context.get('company_name', 'ESG Portal')}"
         elif token.token_type == "password_reset":
             subject = "Reset Your ESG Compass Password"
+        elif token.token_type == "login":
+            subject = "Sign in to ESG Compass"
 
         # ALWAYS log the link — visible in Render logs as a backup
         logger.info("=" * 60)
@@ -212,6 +214,14 @@ class EmailService:
                 f"Click the button below to set a new password. This link is valid for 1 hour."
             )
             cta_text = "Reset Password"
+        elif token.token_type == "login":
+            heading = "Sign in to ESG Compass"
+            description = (
+                f"Hello {user_name},<br><br>"
+                f"Click the button below to sign in to your ESG Compass account. "
+                f"This link is valid for 1 hour."
+            )
+            cta_text = "Sign In"
         else:
             heading = "Verify Your Account"
             description = (

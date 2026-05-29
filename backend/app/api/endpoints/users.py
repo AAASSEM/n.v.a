@@ -1,15 +1,19 @@
 from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query, Request
+from app.services.audit_service import audit_service
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core import security
 from app.core.permissions import Role, Permission, has_permission, can_manage_role
-from app.api.deps import get_db, get_current_active_user
+from app.api.deps import get_db, get_current_active_user, resolve_site_id
 from app.models.user import User, UserProfile
 from app.schemas.user import User as UserSchema, UserCreate, UserUpdate
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
+from app.models.checklist import CompanyChecklist
+from app.models.submission import DataSubmission
+from app.models.meter import Meter
 
 from app.services.email_service import email_service
 from app.models.token import EmailVerificationToken, TokenType
@@ -119,6 +123,7 @@ async def read_company_users(
 @router.post("/invite", response_model=UserSchema)
 async def invite_user(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user_in: UserInvite,
     background_tasks: BackgroundTasks,
@@ -185,7 +190,7 @@ async def invite_user(
         role=user_in.role,
         company_id=current_user.profile.company_id,
         site_id=target_site_id,
-        must_reset_password=True
+        must_reset_password=False
     )
     db.add(profile)
     
@@ -215,6 +220,18 @@ async def invite_user(
         }
     )
     
+    await audit_service.log_action(
+        db,
+        action="INVITE_USER",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="USER",
+        entity_id=str(user.id),
+        details={"email": user.email, "role": user_in.role, "site_id": target_site_id},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
     result = await db.execute(select(User).where(User.id == user.id).options(selectinload(User.profile)))
     return result.scalars().first()
 
@@ -241,32 +258,13 @@ async def update_user_me(
     await db.refresh(current_user)
     return current_user
 
-@router.put("/me/password", response_model=UserSchema)
-async def update_user_password(
-    password_in: PasswordUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-) -> Any:
-    """
-    Update own password. Clears the must_reset_password flag.
-    """
-    current_user.password_hash = security.get_password_hash(password_in.password)
-    
-    # Needs to be explicitly fetched with profile to update relation correctly
-    result = await db.execute(select(User).where(User.id == current_user.id).options(selectinload(User.profile)))
-    user_with_profile = result.scalars().first()
-    
-    if user_with_profile.profile and user_with_profile.profile.must_reset_password:
-        user_with_profile.profile.must_reset_password = False
-        
-    await db.commit()
-    await db.refresh(user_with_profile)
-    return user_with_profile
+
 
 @router.put("/{user_id}/role", response_model=UserSchema)
 async def update_user_role(
     user_id: int,
     role_in: RoleUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -291,8 +289,21 @@ async def update_user_role(
     if not can_manage_role(current_user.profile.role, target_user.profile.role):
         raise HTTPException(status_code=403, detail="You cannot modify this user's role because they have equal or higher privileges")
 
+    old_role = target_user.profile.role
     target_user.profile.role = role_in.role
     await db.commit()
+    
+    await audit_service.log_action(
+        db,
+        action="UPDATE_ROLE",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="USER",
+        entity_id=str(target_user.id),
+        details={"email": target_user.email, "old_role": old_role, "new_role": role_in.role},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
     
     result = await db.execute(select(User).where(User.id == user_id).options(selectinload(User.profile)))
     return result.scalars().first()
@@ -300,6 +311,7 @@ async def update_user_role(
 @router.delete("/{user_id}", response_model=dict)
 async def delete_user(
     user_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -324,6 +336,248 @@ async def delete_user(
     if target_user.id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot delete yourself.")
         
+    email = target_user.email
     await db.delete(target_user)
     await db.commit()
+    
+    await audit_service.log_action(
+        db,
+        action="DELETE_USER",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="USER",
+        entity_id=str(user_id),
+        details={"email": email},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+    
     return {"msg": "User successfully removed"}
+
+
+@router.get("/{user_id}/activity", response_model=dict)
+async def get_user_activity(
+    user_id: int,
+    year: int = Query(...),
+    month: int = Query(...),
+    scope: str = Query("month"),  # "month" or "year"
+    site_id: int | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Retrieve user activity / task completion statistics and status.
+    Supports scoping by 'month' (specific month/year) or 'year' (entire year).
+    """
+    if not current_user.profile or not current_user.profile.company_id:
+        raise HTTPException(status_code=403, detail="Not assigned to a company")
+
+    if not has_permission(current_user.profile.role, "users", Permission.READ):
+        raise HTTPException(status_code=403, detail="Not enough permissions to view user activity")
+
+    # Verify target user is in the same company
+    result = await db.execute(
+        select(User)
+        .join(UserProfile, User.id == UserProfile.user_id)
+        .where(User.id == user_id, UserProfile.company_id == current_user.profile.company_id)
+        .options(selectinload(User.profile))
+    )
+    target_user = result.scalars().first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found in your company")
+
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
+
+    # Fetch checklist items assigned to the target user at this site
+    stmt_checklist = (
+        select(CompanyChecklist)
+        .options(selectinload(CompanyChecklist.data_element))
+        .where(
+            CompanyChecklist.company_id == current_user.profile.company_id,
+            CompanyChecklist.site_id == effective_site_id,
+            CompanyChecklist.assigned_to == user_id,
+        )
+    )
+    checklist_records = (await db.execute(stmt_checklist)).scalars().all()
+
+    # Fetch active meters for the site
+    stmt_meters = select(Meter).where(
+        Meter.company_id == current_user.profile.company_id,
+        Meter.site_id == effective_site_id,
+        Meter.is_active == True
+    )
+    meters_records = (await db.execute(stmt_meters)).scalars().all()
+
+    # Group meters by data_element_id
+    meters_by_element = {}
+    for m in meters_records:
+        if m.data_element_id not in meters_by_element:
+            meters_by_element[m.data_element_id] = []
+        meters_by_element[m.data_element_id].append(m)
+
+    # Fetch submissions for this site, company, and year
+    submission_filter = [
+        DataSubmission.company_id == current_user.profile.company_id,
+        DataSubmission.site_id == effective_site_id,
+        DataSubmission.year == year,
+    ]
+    if scope == "month":
+        submission_filter.append(DataSubmission.month.in_([month, 12]))
+
+    stmt_subs = (
+        select(DataSubmission)
+        .options(selectinload(DataSubmission.user))
+        .where(*submission_filter)
+    )
+    subs_records = (await db.execute(stmt_subs)).scalars().all()
+
+    # Build index of submissions: (data_element_id, meter_id, month) -> submission
+    subs_by_key = {}
+    for s in subs_records:
+        subs_by_key[(s.data_element_id, s.meter_id, s.month)] = s
+
+    # Construct response tasks
+    tasks = []
+    total_tasks = 0
+    completed_tasks = 0
+    pending_tasks = 0
+    partial_tasks = 0
+
+    for item in checklist_records:
+        element = item.data_element
+        if not element:
+            continue
+
+        freq = element.collection_frequency.lower()
+        is_persistent = freq not in ["monthly", "daily"]
+
+        element_meters = meters_by_element.get(element.id, [])
+
+        # If element is metered and has active meters, track completion for each meter separately.
+        # Otherwise, track for the element itself.
+        sub_items = []
+        if element_meters and element.is_metered:
+            for m in element_meters:
+                sub_items.append({"meter_id": m.id, "name": f"{element.name} - {m.name}", "is_meter": True})
+        else:
+            sub_items.append({"meter_id": None, "name": element.name, "is_meter": False})
+
+        for sub_item in sub_items:
+            total_tasks += 1
+            m_id = sub_item["meter_id"]
+            task_name = sub_item["name"]
+            is_m = sub_item["is_meter"]
+
+            if scope == "month":
+                target_month = 12 if is_persistent else month
+                sub = subs_by_key.get((element.id, m_id, target_month))
+
+                status = "pending"
+                latest_sub = None
+                if sub and sub.value is not None:
+                    status = "complete"
+                    latest_sub = {
+                        "year": sub.year,
+                        "month": sub.month,
+                        "value": float(sub.value),
+                        "submitted_at": sub.submitted_at.isoformat() if sub.submitted_at else None,
+                        "submitted_by": f"{sub.user.first_name} {sub.user.last_name}" if sub.user else None,
+                        "notes": sub.notes
+                    }
+
+                if status == "complete":
+                    completed_tasks += 1
+                else:
+                    pending_tasks += 1
+
+                tasks.append({
+                    "name": task_name,
+                    "category": element.category,
+                    "frequency": element.collection_frequency,
+                    "is_meter": is_m,
+                    "status": status,
+                    "details": f"Month {month}" if not is_persistent else "Annual",
+                    "latest_submission": latest_sub
+                })
+            else:
+                # scope == "year"
+                if is_persistent:
+                    sub = subs_by_key.get((element.id, m_id, 12))
+                    status = "complete" if (sub and sub.value is not None) else "pending"
+                    latest_sub = None
+                    if sub and sub.value is not None:
+                        latest_sub = {
+                            "year": sub.year,
+                            "month": sub.month,
+                            "value": float(sub.value),
+                            "submitted_at": sub.submitted_at.isoformat() if sub.submitted_at else None,
+                            "submitted_by": f"{sub.user.first_name} {sub.user.last_name}" if sub.user else None,
+                            "notes": sub.notes
+                        }
+
+                    if status == "complete":
+                        completed_tasks += 1
+                    else:
+                        pending_tasks += 1
+
+                    tasks.append({
+                        "name": task_name,
+                        "category": element.category,
+                        "frequency": element.collection_frequency,
+                        "is_meter": is_m,
+                        "status": status,
+                        "details": "Annual",
+                        "latest_submission": latest_sub
+                    })
+                else:
+                    completed_months = []
+                    latest_sub = None
+                    for m in range(1, 13):
+                        sub = subs_by_key.get((element.id, m_id, m))
+                        if sub and sub.value is not None:
+                            completed_months.append(m)
+                            if not latest_sub or (sub.year > latest_sub["year"] or (sub.year == latest_sub["year"] and sub.month > latest_sub["month"])):
+                                latest_sub = {
+                                    "year": sub.year,
+                                    "month": sub.month,
+                                    "value": float(sub.value),
+                                    "submitted_at": sub.submitted_at.isoformat() if sub.submitted_at else None,
+                                    "submitted_by": f"{sub.user.first_name} {sub.user.last_name}" if sub.user else None,
+                                    "notes": sub.notes
+                                }
+
+                    num_completed = len(completed_months)
+                    if num_completed == 12:
+                        status = "complete"
+                        completed_tasks += 1
+                    elif num_completed > 0:
+                        status = "partial"
+                        partial_tasks += 1
+                    else:
+                        status = "pending"
+                        pending_tasks += 1
+
+                    tasks.append({
+                        "name": task_name,
+                        "category": element.category,
+                        "frequency": element.collection_frequency,
+                        "is_meter": is_m,
+                        "status": status,
+                        "details": f"{num_completed}/12 months completed",
+                        "latest_submission": latest_sub
+                    })
+
+    completion_rate = int((completed_tasks + 0.5 * partial_tasks) / total_tasks * 100) if total_tasks > 0 else 100
+
+    return {
+        "user_id": user_id,
+        "user_name": f"{target_user.first_name} {target_user.last_name}",
+        "summary": {
+            "total_assigned": total_tasks,
+            "completed": completed_tasks,
+            "partial": partial_tasks,
+            "pending": pending_tasks,
+            "completion_rate": completion_rate
+        },
+        "tasks": tasks
+    }

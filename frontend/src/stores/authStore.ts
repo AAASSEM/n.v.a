@@ -48,11 +48,10 @@ interface AuthState {
     isAuthenticated: boolean;
     isLoading: boolean;
     error: string | null;
-    login: (credentials: LoginCredentials) => Promise<void>;
+    requestLoginLink: (email: string) => Promise<void>;
     logout: () => void;
     fetchUser: () => Promise<void>;
     magicLinkLogin: (token: string) => Promise<void>;
-    resetPassword: (token: string, password: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -64,30 +63,24 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
 
-            login: async (credentials) => {
+            requestLoginLink: async (email: string) => {
                 set({ isLoading: true, error: null });
                 try {
-                    const formData = new FormData();
-                    formData.append('username', credentials.email);
-                    formData.append('password', credentials.password);
-
-                    // We use the raw axios instance here to avoid the interceptor loop
-                    // since we are just obtaining the token
-                    const response = await fetch(`${API_URL}/auth/login`, {
+                    const response = await fetch(`${API_URL}/auth/request-login-link`, {
                         method: 'POST',
-                        body: formData,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email }),
                     });
 
                     if (!response.ok) {
-                        throw new Error('Invalid credentials');
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.detail || 'Failed to request login link');
                     }
-
-                    const data = await response.json();
-                    set({ accessToken: data.access_token, isAuthenticated: true });
-                    await get().fetchUser();
                 } catch (error: unknown) {
-                    const errMessage = error instanceof Error ? error.message : 'Login failed';
-                    set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
+                    const errMessage = error instanceof Error ? error.message : 'Failed to send magic link';
+                    set({ error: errMessage });
                     throw error;
                 } finally {
                     set({ isLoading: false });
@@ -110,34 +103,6 @@ export const useAuthStore = create<AuthState>()(
                     set({ accessToken: data.access_token, isAuthenticated: true });
                 } catch (error: unknown) {
                     const errMessage = error instanceof Error ? error.message : 'Login failed';
-                    set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
-                    throw error;
-                } finally {
-                    set({ isLoading: false });
-                }
-            },
-
-            resetPassword: async (token, password) => {
-                set({ isLoading: true, error: null });
-                try {
-                    const response = await fetch(`${API_URL}/auth/reset-password`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ token, password }),
-                    });
-
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.detail || 'Password reset failed');
-                    }
-
-                    const data = await response.json();
-                    set({ accessToken: data.access_token, isAuthenticated: true });
-                    await get().fetchUser();
-                } catch (error: unknown) {
-                    const errMessage = error instanceof Error ? error.message : 'Password reset failed';
                     set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
                     throw error;
                 } finally {

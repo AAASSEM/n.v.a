@@ -1,5 +1,7 @@
+import datetime
 from sqlalchemy import Column, Integer, String, DateTime, JSON, ForeignKey, Text
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 class SystemSetting(Base):
@@ -26,4 +28,8 @@ class AuditLog(Base):
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
     
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.datetime.utcnow)
+
+    user = relationship("User", lazy="selectin", foreign_keys=[user_id])
+    company = relationship("Company", lazy="selectin", foreign_keys=[company_id])
+

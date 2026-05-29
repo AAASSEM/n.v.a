@@ -335,8 +335,11 @@ export default function MeterManagementView() {
                     {(() => {
                         if (!filteredMeters?.length) return (
                             <div className="dark-table-wrap" style={{ border: 'none', background: 'transparent' }}>
-                                <div style={{ padding: '80px 40px', textAlign: 'center', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)' }}>
-                                    <div style={{ fontSize: 48, marginBottom: 20, opacity: 0.5 }}>📡</div>
+                                <div style={{ padding: '80px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)' }}>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-disabled)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 20, opacity: 0.6 }}>
+                                        <path d="m12 14 4-4" />
+                                        <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+                                    </svg>
                                     <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>{searchQuery ? 'No matching meters' : 'No Meters Configured'}</h3>
                                     <p style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 300, margin: '0 auto' }}>
                                         {searchQuery ? 'Try adjusting your search or filters to find what you are looking for.' : 'Add your first meter to start tracking and managing consumption data across your sites.'}

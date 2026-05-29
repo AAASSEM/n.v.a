@@ -4,21 +4,55 @@ import { useAuthStore } from '../../stores/authStore';
 
 export default function Login() {
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const { login, isLoading, error } = useAuthStore();
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const { requestLoginLink, isLoading, error } = useAuthStore();
     const navigate = useNavigate();
     const location = useLocation();
-    const from = location.state?.from?.pathname || '/dashboard';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await login({ email, password });
-            navigate(from, { replace: true });
+            await requestLoginLink(email);
+            setIsSubmitted(true);
         } catch {
             // Error handled by store
         }
     };
+
+    if (isSubmitted) {
+        return (
+            <div className="auth-page">
+                <div className="auth-card" style={{ textAlign: 'center', padding: '40px 32px' }}>
+                    <div style={{
+                        width: 64, height: 64,
+                        borderRadius: 32,
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 24px',
+                        color: 'var(--accent-green)',
+                        fontSize: 28,
+                    }}>
+                        ✓
+                    </div>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12, letterSpacing: '-0.3px' }}>
+                        Check your email
+                    </h2>
+                    <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 28 }}>
+                        We sent a secure magic link to <strong style={{ color: 'var(--text-primary)' }}>{email}</strong>. 
+                        Click the link in the email to log in instantly.
+                    </p>
+                    <button 
+                        onClick={() => setIsSubmitted(false)}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', justifyContent: 'center' }}
+                    >
+                        Back to sign in
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="auth-page">
@@ -79,25 +113,6 @@ export default function Login() {
                         />
                     </div>
 
-                    <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
-                            <Link to="/forgot-password" style={{ fontSize: 12, color: 'var(--accent-green)', textDecoration: 'none', fontWeight: 600 }}>
-                                Forgot password?
-                            </Link>
-                        </div>
-                        <input
-                            id="password"
-                            type="password"
-                            required
-                            autoComplete="current-password"
-                            className="form-input"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                        />
-                    </div>
-
                     <button
                         type="submit"
                         className="btn btn-primary btn-lg"
@@ -107,9 +122,9 @@ export default function Login() {
                         {isLoading ? (
                             <>
                                 <div className="spinner spinner-sm" />
-                                Signing in...
+                                Sending link...
                             </>
-                        ) : 'Sign in'}
+                        ) : 'Send Magic Link'}
                     </button>
                 </form>
 

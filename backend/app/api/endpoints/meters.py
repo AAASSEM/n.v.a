@@ -1,5 +1,6 @@
 from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from app.services.audit_service import audit_service
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -72,6 +73,7 @@ async def get_my_meters(
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def create_meter(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     request_data: MeterCreateRequest,
     current_user: User = Depends(get_current_active_user),
@@ -106,6 +108,18 @@ async def create_meter(
     await db.commit()
     await db.refresh(new_meter)
 
+    await audit_service.log_action(
+        db,
+        action="CREATE_METER",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="METER",
+        entity_id=str(new_meter.id),
+        details={"name": new_meter.name, "element_id": new_meter.data_element_id, "site_id": new_meter.site_id},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
     return {"id": new_meter.id, "msg": "Meter created successfully"}
 
 
@@ -120,6 +134,7 @@ def _assert_meter_accessible(meter: Meter, current_user: User):
 @router.put("/{meter_id}", response_model=dict)
 async def update_meter(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     meter_id: int,
     request_data: MeterUpdateRequest,
@@ -138,11 +153,25 @@ async def update_meter(
     meter.location = request_data.location
 
     await db.commit()
+
+    await audit_service.log_action(
+        db,
+        action="UPDATE_METER",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="METER",
+        entity_id=str(meter.id),
+        details={"name": request_data.name, "account_number": request_data.account_number, "location": request_data.location},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
     return {"msg": "Meter updated successfully"}
 
 @router.post("/{meter_id}/toggle-active", response_model=dict)
 async def toggle_meter_status(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     meter_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -157,11 +186,25 @@ async def toggle_meter_status(
 
     meter.is_active = not meter.is_active
     await db.commit()
+
+    await audit_service.log_action(
+        db,
+        action="TOGGLE_METER",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="METER",
+        entity_id=str(meter.id),
+        details={"name": meter.name, "is_active": meter.is_active},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
     return {"msg": f"Meter {'activated' if meter.is_active else 'archived'}", "is_active": meter.is_active}
 
 @router.delete("/{meter_id}", response_model=dict)
 async def delete_meter(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     meter_id: int,
     current_user: User = Depends(get_current_active_user),
@@ -182,6 +225,20 @@ async def delete_meter(
             detail="Cannot delete meter because it has historical reading data. Please archive (deactivate) it instead.",
         )
 
+    meter_name = meter.name
     await db.delete(meter)
     await db.commit()
+
+    await audit_service.log_action(
+        db,
+        action="DELETE_METER",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="METER",
+        entity_id=str(meter_id),
+        details={"name": meter_name},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
     return {"msg": "Meter deleted successfully"}

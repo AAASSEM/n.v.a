@@ -1,5 +1,6 @@
 from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.services.audit_service import audit_service
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -40,6 +41,7 @@ router = APIRouter()
 @router.post("/", response_model=CompanySchema, status_code=status.HTTP_201_CREATED)
 async def create_company(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     company_in: CompanyCreate,
     current_user: User = Depends(get_current_active_user),
@@ -88,6 +90,18 @@ async def create_company(
     db.add(default_site)
     await db.commit()
     await db.refresh(default_site)
+        
+    await audit_service.log_action(
+        db,
+        action="CREATE_COMPANY",
+        user_id=current_user.id,
+        company_id=company.id,
+        entity_type="COMPANY",
+        entity_id=str(company.id),
+        details={"name": company.name, "sector": company.sector, "emirate": company.emirate},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
         
     return company
 

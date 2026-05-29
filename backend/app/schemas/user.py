@@ -13,7 +13,7 @@ class UserBase(BaseModel):
 # Properties to receive via API on creation
 class UserCreate(UserBase):
     email: EmailStr
-    password: str
+    password: Optional[str] = None
 
 # Properties to receive via API on update
 class UserUpdate(UserBase):
@@ -51,9 +51,4 @@ class TokenPayload(BaseModel):
     sub: Optional[int] = None
     role: Optional[str] = None
 
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
 
-class ResetPasswordRequest(BaseModel):
-    token: str
-    password: str

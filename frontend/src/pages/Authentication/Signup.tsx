@@ -6,7 +6,6 @@ export default function Signup() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -19,7 +18,7 @@ export default function Signup() {
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, first_name: firstName, last_name: lastName }),
+                body: JSON.stringify({ email, first_name: firstName, last_name: lastName }),
             });
             if (!response.ok) {
                 const data = await response.json();
@@ -127,11 +126,7 @@ export default function Signup() {
                             placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} />
                     </div>
 
-                    <div>
-                        <label className="form-label">Password</label>
-                        <input required type="password" autoComplete="new-password" className="form-input"
-                            placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
-                    </div>
+
 
                     <button
                         type="submit"

@@ -1,5 +1,6 @@
 from typing import Any, List, Optional, Dict
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Request
+from app.services.audit_service import audit_service
 import os
 import shutil
 import uuid
@@ -166,6 +167,7 @@ async def get_submission_grid(
 @router.post("/bulk", response_model=dict)
 async def bulk_upsert_submissions(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     request_data: BulkSubmissionRequest,
     current_user: User = Depends(get_current_active_user),
@@ -267,6 +269,25 @@ async def bulk_upsert_submissions(
             created_count += 1
 
     await db.commit()
+
+    await audit_service.log_action(
+        db,
+        action="SUBMIT_DATA",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="SUBMISSION",
+        entity_id=f"{request_data.year}-{request_data.month}",
+        details={
+            "year": request_data.year,
+            "month": request_data.month,
+            "site_id": effective_site_id,
+            "created": created_count,
+            "updated": updated_count
+        },
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
     return {
         "msg": "Submissions saved successfully", 
         "created": created_count, 

@@ -46,7 +46,7 @@ const TABS: { id: TabId; label: string }[] = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = (d: string) => new Date(d).toLocaleDateString();
-const fmtTime = (d: string) => new Date(d).toLocaleString();
+const fmtTime = (d: string | null | undefined) => d ? new Date(d).toLocaleString() : '—';
 const hexId = (id: number) => `#${id.toString(16).toUpperCase().padStart(4, '0')}`;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -274,6 +274,11 @@ export default function DeveloperAdminView() {
     const [seedModal, setSeedModal] = useState({ isOpen: false, name: '', email: '' });
     const [impersonateToken, setImpersonateToken] = useState<string | null>(null);
 
+    // Logs Tab State
+    const [logPage, setLogPage] = useState(1);
+    const [selectedActionFilter, setSelectedActionFilter] = useState<string>('');
+    const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
+
     // ── Request Config (memoised so React Query doesn't re-fetch on every render) ──
     const reqConfig = useMemo(
         () => ({ headers: { 'X-Developer-Secret': secret } }),
@@ -296,9 +301,22 @@ export default function DeveloperAdminView() {
         enabled,
     });
 
+    const logLimit = 25;
     const { data: logsData, isLoading: loadingLogs } = useQuery({
-        queryKey: ['admin_logs', secret],
-        queryFn: async () => (await api.get('/developer-admin/logs', reqConfig)).data,
+        queryKey: ['admin_logs', secret, logPage, selectedActionFilter],
+        queryFn: async () => {
+            const params: any = {
+                limit: logLimit,
+                offset: (logPage - 1) * logLimit,
+            };
+            if (selectedActionFilter) {
+                params.action = selectedActionFilter;
+            }
+            return (await api.get('/developer-admin/logs', {
+                headers: { 'X-Developer-Secret': secret },
+                params,
+            })).data;
+        },
         enabled,
     });
 
@@ -705,62 +723,309 @@ export default function DeveloperAdminView() {
 
                     {/* LOGS */}
                     {activeTab === 'logs' && (
-                        <div className="dark-table-wrap">
-                            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
-                                <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>Audit Log</h2>
-                                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                                    {logsData?.logs?.length ?? 0} events recorded
-                                </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            {/* Stat Cards */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+                                <StatCard
+                                    label="Total Audited Events"
+                                    value={logsData?.total ?? 0}
+                                    sub="All logged interactions"
+                                    accent="#e11d48"
+                                />
+                                <StatCard
+                                    label="Filter Status"
+                                    value={selectedActionFilter ? selectedActionFilter : "All Activities"}
+                                    sub={selectedActionFilter ? "Filtering active action" : "Showing all logs"}
+                                    accent={selectedActionFilter ? "#fbbf24" : "#22c55e"}
+                                />
+                                <StatCard
+                                    label="Current Page Logs"
+                                    value={logsData?.logs?.length ?? 0}
+                                    sub={`Page ${logPage} of ${Math.ceil((logsData?.total ?? 0) / logLimit) || 1}`}
+                                    accent="#3b82f6"
+                                />
                             </div>
-                            <table className="dark-table">
-                                <thead>
-                                    <tr>
-                                        <th>Timestamp</th>
-                                        <th>Action</th>
-                                        <th>Subject</th>
-                                        <th>Entity</th>
-                                        <th>IP Origin</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loadingLogs ? (
-                                        <LoadingRows />
-                                    ) : !logsData?.logs?.length ? (
-                                        <TableEmpty message="No log entries found." />
-                                    ) : (
-                                        logsData.logs.map((log: any) => (
-                                            <tr key={log.id}>
-                                                <td style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                                    {fmtTime(log.created_at)}
-                                                </td>
-                                                <td>
-                                                    <span className="badge badge-gray" style={{ fontSize: 10 }}>
-                                                        {log.action}
-                                                    </span>
-                                                </td>
-                                                <td style={{ fontSize: 12, fontWeight: 600 }}>
-                                                    {log.user_id ? `User #${log.user_id}` : 'SYSTEM'}
-                                                </td>
-                                                <td style={{ fontSize: 12 }}>
-                                                    <span style={{ color: 'var(--text-muted)' }}>
-                                                        {log.entity_type}
-                                                    </span>{' '}
-                                                    {log.entity_id}
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        fontSize: 11,
-                                                        fontFamily: 'monospace',
-                                                        color: 'var(--text-muted)',
-                                                    }}
-                                                >
-                                                    {log.ip_address ?? '—'}
-                                                </td>
-                                            </tr>
-                                        ))
+
+                            {/* Filter bar */}
+                            <div
+                                style={{
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderRadius: 12,
+                                    padding: '16px 20px',
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 16,
+                                }}
+                            >
+                                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginRight: 8 }}>
+                                        Filter:
+                                    </span>
+                                    {[
+                                        { label: 'All Logs', value: '' },
+                                        { label: 'Logins', value: 'LOGIN' },
+                                        { label: 'Failures', value: 'LOGIN_FAILED' },
+                                        { label: 'Submissions', value: 'SUBMIT_DATA' },
+                                        { label: 'Invites', value: 'INVITE_USER' },
+                                        { label: 'Roles', value: 'UPDATE_ROLE' },
+                                        { label: 'Meters', value: 'CREATE_METER' },
+                                    ].map((chip) => {
+                                        const isSelected = selectedActionFilter === chip.value;
+                                        return (
+                                            <button
+                                                key={chip.label}
+                                                onClick={() => {
+                                                    setSelectedActionFilter(chip.value);
+                                                    setLogPage(1);
+                                                    setExpandedLogId(null);
+                                                }}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: 20,
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer',
+                                                    border: isSelected ? '1px solid rgba(244,63,94,0.4)' : '1px solid var(--border-subtle)',
+                                                    background: isSelected ? 'rgba(244,63,94,0.1)' : 'transparent',
+                                                    color: isSelected ? '#f43f5e' : 'var(--text-muted)',
+                                                    transition: 'all 0.2s',
+                                                }}
+                                            >
+                                                {chip.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {selectedActionFilter && (
+                                        <button
+                                            onClick={() => {
+                                                setSelectedActionFilter('');
+                                                setLogPage(1);
+                                                setExpandedLogId(null);
+                                            }}
+                                            className="btn btn-secondary btn-sm"
+                                            style={{ height: 32, padding: '0 12px', fontSize: 11 }}
+                                        >
+                                            Clear Filter
+                                        </button>
                                     )}
-                                </tbody>
-                            </table>
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <div className="dark-table-wrap">
+                                <table className="dark-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: 40 }}></th>
+                                            <th>Timestamp</th>
+                                            <th>Action</th>
+                                            <th>Actor</th>
+                                            <th>Target Node</th>
+                                            <th>Entity Target</th>
+                                            <th>IP Address</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loadingLogs ? (
+                                            <LoadingRows />
+                                        ) : !logsData?.logs?.length ? (
+                                            <TableEmpty message="No log entries matching criteria found." />
+                                        ) : (
+                                            logsData.logs.map((log: any) => {
+                                                const isExpanded = expandedLogId === log.id;
+                                                
+                                                // Color badge helpers
+                                                let badgeStyle = { background: 'rgba(156,163,175,0.1)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' };
+                                                if (['LOGIN', 'REGISTER', 'SUBMIT_DATA', 'CREATE_COMPANY', 'CREATE_SITE'].includes(log.action)) {
+                                                    badgeStyle = { background: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' };
+                                                } else if (['LOGIN_FAILED', 'DELETE_USER', 'DELETE_METER'].includes(log.action)) {
+                                                    badgeStyle = { background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' };
+                                                } else if (['UPDATE_ROLE', 'PASSWORD_RESET', 'INVITE_USER', 'CREATE_METER', 'UPDATE_METER', 'TOGGLE_METER'].includes(log.action)) {
+                                                    badgeStyle = { background: 'rgba(245,158,11,0.1)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.2)' };
+                                                }
+
+                                                return (
+                                                    <React.Fragment key={log.id}>
+                                                        <tr
+                                                            onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                                                            style={{ cursor: 'pointer', transition: 'background-color 0.15s' }}
+                                                            className={isExpanded ? 'active-row' : ''}
+                                                        >
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <span style={{
+                                                                    display: 'inline-block',
+                                                                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                                    transition: 'transform 0.2s',
+                                                                    fontSize: 10,
+                                                                    color: 'var(--text-muted)'
+                                                                }}>
+                                                                    ▶
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                                                {fmtTime(log.created_at)}
+                                                            </td>
+                                                            <td>
+                                                                <span
+                                                                    style={{
+                                                                        display: 'inline-block',
+                                                                        padding: '2px 8px',
+                                                                        borderRadius: 4,
+                                                                        fontSize: 10,
+                                                                        fontWeight: 700,
+                                                                        letterSpacing: '0.3px',
+                                                                        ...badgeStyle
+                                                                    }}
+                                                                >
+                                                                    {log.action}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {log.user ? (
+                                                                    <div>
+                                                                        <div style={{ fontWeight: 600, fontSize: 12 }}>{log.user.first_name} {log.user.last_name}</div>
+                                                                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{log.user.email}</div>
+                                                                    </div>
+                                                                ) : log.user_id ? (
+                                                                    <span style={{ fontSize: 12, fontWeight: 600 }}>User #{log.user_id}</span>
+                                                                ) : (
+                                                                    <span style={{ fontSize: 11, color: '#f43f5e', fontWeight: 700, letterSpacing: '0.5px' }}>SYSTEM</span>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                {log.company ? (
+                                                                    <span style={{ fontSize: 12, fontWeight: 600 }}>{log.company.name}</span>
+                                                                ) : log.company_id ? (
+                                                                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Node #{log.company_id}</span>
+                                                                ) : (
+                                                                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ fontSize: 12 }}>
+                                                                {log.entity_type ? (
+                                                                    <>
+                                                                        <span style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: 10, fontWeight: 700 }}>
+                                                                            {log.entity_type}:
+                                                                        </span>{' '}
+                                                                        <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{log.entity_id}</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                                                                {log.ip_address ?? '—'}
+                                                            </td>
+                                                        </tr>
+                                                        {isExpanded && (
+                                                            <tr>
+                                                                <td colSpan={7} style={{ background: 'rgba(0,0,0,0.2)', padding: '16px 24px', borderLeft: '3px solid #f43f5e' }}>
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                                                                        <div>
+                                                                            <h4 style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>
+                                                                                Details Payload
+                                                                            </h4>
+                                                                            <pre style={{
+                                                                                margin: 0,
+                                                                                padding: 12,
+                                                                                background: '#000',
+                                                                                borderRadius: 8,
+                                                                                color: '#86efac',
+                                                                                fontFamily: 'monospace',
+                                                                                fontSize: 11,
+                                                                                overflowX: 'auto',
+                                                                                maxHeight: 200,
+                                                                                overflowY: 'auto',
+                                                                                border: '1px solid var(--border-subtle)'
+                                                                            }}>
+                                                                                {JSON.stringify(log.details, null, 2)}
+                                                                            </pre>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                                            <div>
+                                                                                <h4 style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 4 }}>
+                                                                                    Client User Agent
+                                                                                </h4>
+                                                                                <p style={{ margin: 0, fontSize: 11, color: 'var(--text-primary)', wordBreak: 'break-all', fontFamily: 'monospace', lineHeight: 1.4 }}>
+                                                                                    {log.user_agent ?? 'No user agent recorded'}
+                                                                                </p>
+                                                                            </div>
+                                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 4 }}>
+                                                                                <div>
+                                                                                    <h4 style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 2 }}>
+                                                                                        Origin IP
+                                                                                    </h4>
+                                                                                    <p style={{ margin: 0, fontSize: 11, fontFamily: 'monospace' }}>
+                                                                                        {log.ip_address ?? 'Unknown'}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <h4 style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 2 }}>
+                                                                                        Log Entry ID
+                                                                                    </h4>
+                                                                                    <p style={{ margin: 0, fontSize: 11, fontFamily: 'monospace' }}>
+                                                                                        {hexId(log.id)} ({log.id})
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {logsData?.total > logLimit && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginTop: 10,
+                                    padding: '10px 4px'
+                                }}>
+                                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                        Showing {((logPage - 1) * logLimit) + 1} to {Math.min(logPage * logLimit, logsData.total)} of {logsData.total} entries
+                                    </span>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button
+                                            onClick={() => {
+                                                setLogPage(prev => Math.max(prev - 1, 1));
+                                                setExpandedLogId(null);
+                                            }}
+                                            disabled={logPage === 1}
+                                            className="btn btn-secondary btn-sm"
+                                            style={{ height: 32, padding: '0 12px' }}
+                                        >
+                                            Previous
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const maxPage = Math.ceil(logsData.total / logLimit);
+                                                setLogPage(prev => Math.min(prev + 1, maxPage));
+                                                setExpandedLogId(null);
+                                            }}
+                                            disabled={logPage >= Math.ceil(logsData.total / logLimit)}
+                                            className="btn btn-secondary btn-sm"
+                                            style={{ height: 32, padding: '0 12px' }}
+                                        >
+                                            Next
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -74,17 +74,35 @@ class SystemSettingUpdate(BaseModel):
     value: Any
     description: Optional[str] = None
 
+class UserAuditSchema(BaseModel):
+    id: int
+    email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class CompanyAuditSchema(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class AuditLogSchema(BaseModel):
     id: int
     user_id: Optional[int] = None
     company_id: Optional[int] = None
     action: str
     entity_type: Optional[str] = None
-    entity_id: Optional[str] = None
+    entity_id: Optional[Union[str, int]] = None
     details: Optional[Any] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    created_at: datetime.datetime
+    created_at: Optional[datetime.datetime] = None
+    user: Optional[UserAuditSchema] = None
+    company: Optional[CompanyAuditSchema] = None
 
     class Config:
         from_attributes = True
@@ -141,7 +159,7 @@ async def list_audit_logs(
     db: AsyncSession = Depends(get_db),
     _secret: bool = Depends(verify_developer_secret),
 ):
-    query = select(AuditLog).order_by(desc(AuditLog.created_at)).limit(limit).offset(offset)
+    query = select(AuditLog).order_by(desc(AuditLog.created_at), desc(AuditLog.id)).limit(limit).offset(offset)
     if action:
         query = query.where(AuditLog.action == action.upper())
     

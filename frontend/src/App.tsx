@@ -15,9 +15,7 @@ import UserManagementView from './pages/Users/UserManagementView';
 import SiteManagementView from './pages/Sites/SiteManagementView';
 import DeveloperAdminView from './pages/DeveloperAdmin/DeveloperAdminView';
 import MagicLinkVerify from './pages/Authentication/MagicLinkVerify';
-import SetupAccount from './pages/Authentication/SetupAccount';
-import ForgotPassword from './pages/Authentication/ForgotPassword';
-import ResetPassword from './pages/Authentication/ResetPassword';
+
 import SettingsView from './pages/Settings/SettingsView';
 import ReportsView from './pages/Reports/ReportsView';
 import HelpCenterView from './pages/Help/HelpCenterView';
@@ -69,14 +67,9 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 1. If they MUST reset their password, force them to /setup-account (unless already there)
-  if (user && user.profile?.must_reset_password && location.pathname !== '/setup-account') {
-    return <Navigate to="/setup-account" replace />;
-  }
-
-  // 2. If they don't have a company, force them to onboarding (unless they are resetting password or already onboarding)
-  const allowedWithoutCompany = ['/onboarding', '/setup-account'];
-  if (user && !user.profile?.company_id && !user.profile?.must_reset_password && !allowedWithoutCompany.includes(location.pathname)) {
+  // If they don't have a company, force them to onboarding (unless already onboarding)
+  const allowedWithoutCompany = ['/onboarding'];
+  if (user && !user.profile?.company_id && !allowedWithoutCompany.includes(location.pathname)) {
     return <Navigate to="/onboarding" replace />;
   }
 
@@ -146,30 +139,7 @@ function App() {
             path="/magic-link/:token"
             element={<MagicLinkVerify />}
           />
-          <Route
-            path="/forgot-password"
-            element={
-              <PublicRoute>
-                <ForgotPassword />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/reset-password/:token"
-            element={
-              <PublicRoute>
-                <ResetPassword />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/setup-account"
-            element={
-              <RequireAuth>
-                <SetupAccount />
-              </RequireAuth>
-            }
-          />
+
           <Route
             path="/dashboard"
             element={

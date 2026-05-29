@@ -34,6 +34,20 @@ const ROLE_LABELS: Record<string, string> = {
     'viewer': 'Viewer',
 };
 
+const MONTHS = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const YEARS = [2024, 2025, 2026, 2027, 2028];
+
+const CATEGORY_CONFIG = {
+    E: { label: 'Environmental', color: 'var(--color-env)', bg: 'var(--color-env-bg)' },
+    S: { label: 'Social', color: 'var(--color-soc)', bg: 'var(--color-soc-bg)' },
+    G: { label: 'Governance', color: 'var(--color-gov)', bg: 'var(--color-gov-bg)' },
+};
+
+
 
 function getInitials(user: User) {
     return `${(user.first_name || '').charAt(0)}${(user.last_name || '').charAt(0)}`.toUpperCase() || user.email.charAt(0).toUpperCase();
@@ -58,6 +72,29 @@ export default function UserManagementView() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+    const currentDate = new Date();
+    const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
+    const [activityScope, setActivityScope] = useState<'month' | 'year'>('month');
+
+    const { data: userActivity, isLoading: isActivityLoading } = useQuery({
+        queryKey: ['user-activity', selectedUser?.id, selectedYear, selectedMonth, activityScope, currentSiteId],
+        queryFn: async () => {
+            if (!selectedUser) return null;
+            const res = await api.get(`/users/${selectedUser.id}/activity`, {
+                params: {
+                    year: selectedYear,
+                    month: selectedMonth,
+                    scope: activityScope,
+                    site_id: currentSiteId
+                }
+            });
+            return res.data;
+        },
+        enabled: isActivityModalOpen && !!selectedUser,
+    });
 
     const getRoleConfig = (role: string): { icon: React.ReactNode, bg: string, color: string, desc: string } => {
         const r = role?.toLowerCase() || '';
@@ -419,38 +456,53 @@ export default function UserManagementView() {
                                             </span>
                                         </td>
                                         <td>
-                                            {cManage ? (
-                                                <div style={{ display: 'flex', gap: 6 }}>
-                                                    <button
-                                                        className="btn btn-secondary btn-sm"
-                                                        onClick={() => {
-                                                            setSelectedUser(user);
-                                                            setEditRole(userRole);
-                                                            setErrorMessage(null);
-                                                            setIsEditModalOpen(true);
-                                                        }}
-                                                    >
-                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                                                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                        </svg>
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-danger btn-sm"
-                                                        onClick={() => setConfirmDelete(user)}
-                                                    >
-                                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <polyline points="3 6 5 6 21 6" />
-                                                            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                                                            <path d="M10 11v6M14 11v6" />
-                                                        </svg>
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span style={{ fontSize: 12, color: 'var(--text-disabled)' }}>No access</span>
-                                            )}
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => {
+                                                        setSelectedUser(user);
+                                                        setErrorMessage(null);
+                                                        setIsActivityModalOpen(true);
+                                                    }}
+                                                >
+                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M12 20V10" />
+                                                        <path d="M18 20V4" />
+                                                        <path d="M6 20v-4" />
+                                                    </svg>
+                                                    Activity
+                                                </button>
+                                                {cManage && (
+                                                    <>
+                                                        <button
+                                                            className="btn btn-secondary btn-sm"
+                                                            onClick={() => {
+                                                                setSelectedUser(user);
+                                                                setEditRole(userRole);
+                                                                setErrorMessage(null);
+                                                                setIsEditModalOpen(true);
+                                                            }}
+                                                        >
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                                                                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                            </svg>
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-danger btn-sm"
+                                                            onClick={() => setConfirmDelete(user)}
+                                                        >
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="3 6 5 6 21 6" />
+                                                                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                                                                <path d="M10 11v6M14 11v6" />
+                                                            </svg>
+                                                            Remove
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -618,6 +670,220 @@ export default function UserManagementView() {
                 onConfirm={() => { if (confirmDelete) deleteMutation.mutate(confirmDelete.id); }}
                 onCancel={() => setConfirmDelete(null)}
             />
+
+            {/* ACTIVITY LOGS MODAL */}
+            {isActivityModalOpen && selectedUser && (
+                <div className="modal-backdrop" style={{ alignItems: 'flex-start', paddingTop: '100px', paddingBottom: '40px', overflowY: 'auto' }} onClick={() => { setIsActivityModalOpen(false); setSelectedUser(null); }}>
+                    <div className="modal modal-md animate-scale-in" onClick={e => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' }}>
+                        <div className="modal-header">
+                            <div>
+                                <span className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent-blue)' }}>
+                                        <path d="M12 20V10" />
+                                        <path d="M18 20V4" />
+                                        <path d="M6 20v-4" />
+                                    </svg>
+                                    User Activity Logs
+                                </span>
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span>Tracking tasks for</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{selectedUser.first_name} {selectedUser.last_name}</strong>
+                                    <span className="badge badge-gray" style={{ fontSize: 10 }}>{ROLE_LABELS[selectedUser.profile?.role || ''] || selectedUser.profile?.role}</span>
+                                </div>
+                            </div>
+                            <button className="modal-close" onClick={() => { setIsActivityModalOpen(false); setSelectedUser(null); }}>✕</button>
+                        </div>
+
+                        <div className="modal-body" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
+                            {/* Filter Bar */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between', paddingBottom: 16, borderBottom: '1px solid var(--border-subtle)' }}>
+                                <div className="status-chip-group" style={{ margin: 0 }}>
+                                    <button
+                                        type="button"
+                                        className={`status-chip ${activityScope === 'month' ? 'active' : ''}`}
+                                        onClick={() => setActivityScope('month')}
+                                        style={{ padding: '6px 14px', fontSize: 12.5 }}
+                                    >
+                                        Month View
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`status-chip ${activityScope === 'year' ? 'active' : ''}`}
+                                        onClick={() => setActivityScope('year')}
+                                        style={{ padding: '6px 14px', fontSize: 12.5 }}
+                                    >
+                                        Year View
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    {activityScope === 'month' && (
+                                        <select
+                                            className="form-input"
+                                            style={{ width: 120, height: 36, padding: '0 10px', borderRadius: 8, fontSize: 13 }}
+                                            value={selectedMonth}
+                                            onChange={e => setSelectedMonth(Number(e.target.value))}
+                                        >
+                                            {MONTHS.map((m, idx) => (
+                                                <option key={m} value={idx + 1}>{m}</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                    <select
+                                        className="form-input"
+                                        style={{ width: 90, height: 36, padding: '0 10px', borderRadius: 8, fontSize: 13 }}
+                                        value={selectedYear}
+                                        onChange={e => setSelectedYear(Number(e.target.value))}
+                                    >
+                                        {YEARS.map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {isActivityLoading ? (
+                                <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+                                    <div className="spinner" />
+                                </div>
+                            ) : !userActivity || userActivity.summary.total_assigned === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '60px 20px', background: 'rgba(255,255,255,0.01)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-subtle)' }}>
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-disabled)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
+                                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                                    </svg>
+                                    <h4 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>No Tasks Assigned</h4>
+                                    <p style={{ fontSize: 12.5, color: 'var(--text-muted)', maxWidth: 320, margin: '0 auto', lineHeight: 1.5 }}>
+                                        This user is not assigned to any active checklist items on this site for the selected period.
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Summary Stats cards */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
+                                        <div style={{ padding: '14px 16px', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: 12 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Assigned</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.total_assigned}</div>
+                                        </div>
+                                        <div style={{ padding: '14px 16px', background: 'rgba(34, 197, 94, 0.04)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: 12 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Completed</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.completed}</div>
+                                        </div>
+                                        {userActivity.summary.partial > 0 && (
+                                            <div style={{ padding: '14px 16px', background: 'rgba(245, 158, 11, 0.04)', border: '1px solid rgba(245, 158, 11, 0.15)', borderRadius: 12 }}>
+                                                <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Partial</div>
+                                                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.partial}</div>
+                                            </div>
+                                        )}
+                                        <div style={{ padding: '14px 16px', background: 'rgba(239, 68, 68, 0.04)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: 12 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Pending</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.pending}</div>
+                                        </div>
+                                        <div style={{ padding: '14px 16px', background: 'rgba(168, 85, 247, 0.04)', border: '1px solid rgba(168, 85, 247, 0.15)', borderRadius: 12 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Completion</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.completion_rate}%</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                            <span>Progress</span>
+                                            <span>{userActivity.summary.completed}/{userActivity.summary.total_assigned} tasks done</span>
+                                        </div>
+                                        <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                                            <div style={{ width: `${userActivity.summary.completion_rate}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #a855f7)', borderRadius: 3, transition: 'width 0.4s ease' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Task Checklist Items */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <h4 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.2px', textTransform: 'uppercase', marginBottom: 4 }}>Assigned Tasks</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {userActivity.tasks.map((task: any, idx: number) => {
+                                                const catInfo = CATEGORY_CONFIG[task.category as 'E'|'S'|'G'] || { label: task.category, color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' };
+                                                
+                                                return (
+                                                    <div
+                                                        key={idx}
+                                                        style={{
+                                                            background: 'rgba(255,255,255,0.015)',
+                                                            border: '1px solid var(--border-subtle)',
+                                                            borderRadius: 12,
+                                                            padding: 12,
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: 10
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <span
+                                                                    className="badge"
+                                                                    style={{
+                                                                        background: catInfo.bg,
+                                                                        color: catInfo.color,
+                                                                        border: `1px solid ${catInfo.color}30`,
+                                                                        fontSize: 10,
+                                                                        fontWeight: 800
+                                                                    }}
+                                                                >
+                                                                    {task.category}
+                                                                </span>
+                                                                <strong style={{ fontSize: 14, color: 'var(--text-primary)' }}>{task.name}</strong>
+                                                            </div>
+
+                                                            <div>
+                                                                {task.status === 'complete' && (
+                                                                    <span className="badge badge-green">✓ Complete</span>
+                                                                )}
+                                                                {task.status === 'partial' && (
+                                                                    <span className="badge badge-amber">◐ Partial</span>
+                                                                )}
+                                                                {task.status === 'pending' && (
+                                                                    <span className="badge badge-red">✕ Pending</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 11.5, color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: 8 }}>
+                                                            <div>Frequency: <strong style={{ color: 'var(--text-secondary)' }}>{task.frequency}</strong></div>
+                                                            <div>Scope: <strong style={{ color: 'var(--text-secondary)' }}>{task.details}</strong></div>
+                                                            {task.latest_submission && (
+                                                                <>
+                                                                    <div>Value: <strong style={{ color: 'var(--accent-blue)' }}>{task.latest_submission.value}</strong></div>
+                                                                    <div>
+                                                                        Submitted by: <strong style={{ color: 'var(--text-secondary)' }}>{task.latest_submission.submitted_by || 'Unknown'}</strong>
+                                                                    </div>
+                                                                    <div>
+                                                                        Date: <strong style={{ color: 'var(--text-secondary)' }}>{new Date(task.latest_submission.submitted_at).toLocaleDateString()}</strong>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {task.latest_submission?.notes && (
+                                                            <div style={{ fontSize: 11, background: 'rgba(255,255,255,0.01)', padding: '6px 10px', borderRadius: 6, borderLeft: '2px solid var(--border-subtle)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                                                "{task.latest_submission.notes}"
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="modal-footer" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
+                            <button type="button" className="btn btn-secondary" onClick={() => { setIsActivityModalOpen(false); setSelectedUser(null); }}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

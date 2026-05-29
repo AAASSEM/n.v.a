@@ -12,8 +12,8 @@ export default function SettingsView() {
     const canAccessOrg = canPerformAction(user?.profile?.role, 'settings_org', 'read');
     
     // Default to profile if access to organization is restricted
-    const [activeTab, setActiveTab] = useState<'profile' | 'organization' | 'security'>(
-        canAccessOrg ? 'profile' : 'profile' 
+    const [activeTab, setActiveTab] = useState<'profile' | 'organization'>(
+        'profile' 
     );
 
     const [profileData, setProfileData] = useState({
@@ -41,7 +41,6 @@ export default function SettingsView() {
         });
     }, [company]);
 
-    const [pwdData, setPwdData] = useState({ current: '', new: '', confirm: '' });
     const [message, setMessage] = useState({ text: '', type: '' });
 
     const updateProfile = useMutation({
@@ -59,24 +58,12 @@ export default function SettingsView() {
         onError: () => setMessage({ text: 'Failed to update company info.', type: 'error' })
     });
 
-    const changePassword = useMutation({
-        mutationFn: async (data: { password: string }) => await api.put('/users/me/password', data),
-        onSuccess: () => { setMessage({ text: 'Password changed successfully!', type: 'success' }); setPwdData({ current: '', new: '', confirm: '' }); },
-        onError: () => setMessage({ text: 'Password change failed.', type: 'error' })
-    });
-
     const handleProfileSubmit = (e: React.FormEvent) => { e.preventDefault(); setMessage({ text: '', type: '' }); updateProfile.mutate(profileData); };
     const handleOrgSubmit = (e: React.FormEvent) => { e.preventDefault(); setMessage({ text: '', type: '' }); updateOrg.mutate(orgData); };
-    const handlePwdSubmit = (e: React.FormEvent) => {
-        e.preventDefault(); setMessage({ text: '', type: '' });
-        if (pwdData.new !== pwdData.confirm) { setMessage({ text: "Passwords don't match.", type: 'error' }); return; }
-        changePassword.mutate({ password: pwdData.new });
-    };
 
     const tabs = [
         { id: 'profile', label: 'Personal Profile', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
         ...(canAccessOrg ? [{ id: 'organization', label: 'Organization', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17" /></svg> }] : []),
-        { id: 'security', label: 'Security', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg> },
     ];
 
     const initials = `${(user?.first_name || '').charAt(0)}${(user?.last_name || '').charAt(0)}`.toUpperCase();
@@ -139,11 +126,6 @@ export default function SettingsView() {
                 .sv-toggle-desc { font-size: 11px; color: #6b7280; font-weight: 300; }
                 .sv-toggle-btn { position: relative; width: 40px; height: 22px; border-radius: 11px; border: none; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
                 .sv-toggle-thumb { position: absolute; top: 3px; width: 16px; height: 16px; background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: left 0.2s; }
-
-                /* ── SECURITY TIP ── */
-                .sv-tip { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.18); border-radius: 12px; margin-top: 24px; }
-                .sv-tip-title { font-size: 12px; font-weight: 700; color: #f87171; margin-bottom: 4px; }
-                .sv-tip-body { font-size: 11.5px; color: #6b7280; line-height: 1.6; font-weight: 300; }
 
                 /* ── SIDEBAR ── */
                 .sv-sidebar { display: flex; flex-direction: column; gap: 16px; }
@@ -327,46 +309,6 @@ export default function SettingsView() {
                                             </div>
                                         </>
                                     )}
-                                </form>
-                            )}
-
-                            {/* SECURITY TAB */}
-                            {activeTab === 'security' && (
-                                <form onSubmit={handlePwdSubmit}>
-                                    <div className="sv-card-section-title">Change Password</div>
-                                    <div className="sv-card-section-sub">Keep your account secure with a strong password.</div>
-                                    <hr className="sv-divider" />
-
-                                    <div className="sv-field">
-                                        <label className="sv-label">New Password</label>
-                                        <input className="sv-input" type="password" placeholder="Min. 8 characters"
-                                            value={pwdData.new} onChange={e => setPwdData({ ...pwdData, new: e.target.value })} required />
-                                    </div>
-
-                                    <div className="sv-field">
-                                        <label className="sv-label">Confirm New Password</label>
-                                        <input className="sv-input" type="password" placeholder="Re-type your password"
-                                            value={pwdData.confirm} onChange={e => setPwdData({ ...pwdData, confirm: e.target.value })} required />
-                                    </div>
-
-                                    <div className="sv-btn-footer">
-                                        <button type="submit" className="sv-btn-primary" disabled={changePassword.isPending}>
-                                            {changePassword.isPending ? 'Updating...' : 'Reset Access Credentials'}
-                                        </button>
-                                    </div>
-
-                                    <div className="sv-tip">
-                                        <div style={{ color: '#f87171', flexShrink: 0, marginTop: 2 }}>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                                                <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <div className="sv-tip-title">Security Tip</div>
-                                            <div className="sv-tip-body">Use a unique password with uppercase letters, numbers, and special characters. Never share your ESG Compass credentials.</div>
-                                        </div>
-                                    </div>
                                 </form>
                             )}
 

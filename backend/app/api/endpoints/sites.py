@@ -1,5 +1,6 @@
 from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.services.audit_service import audit_service
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -40,6 +41,7 @@ async def list_sites(
 @router.post("/", response_model=SiteSchema, status_code=status.HTTP_201_CREATED)
 async def create_site(
     *,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     site_in: SiteCreate,
     current_user: User = Depends(get_current_active_user),
@@ -59,6 +61,18 @@ async def create_site(
     db.add(site)
     await db.commit()
     await db.refresh(site)
+    await audit_service.log_action(
+        db,
+        action="CREATE_SITE",
+        user_id=current_user.id,
+        company_id=current_user.profile.company_id,
+        entity_type="SITE",
+        entity_id=str(site.id),
+        details={"name": site.name, "location": site.location, "sector": site.sector},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
+    )
+
     return site
 
 
