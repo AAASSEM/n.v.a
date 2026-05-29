@@ -120,6 +120,63 @@ async def run_migrations():
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, _run_alembic)
         print("[MIGRATE] Database migrations complete!", flush=True)
+        
+        # Auto-seed if database is fresh
+        print("[SEED] Checking if database needs seeding...", flush=True)
+        try:
+            from app.db.session import async_session
+            from sqlalchemy.future import select
+            from app.models.framework import Framework
+            
+            async with async_session() as db_session:
+                res = await db_session.execute(select(Framework).limit(1))
+                if not res.scalars().first():
+                    print("[SEED] Fresh database detected. Running auto-seeding...", flush=True)
+                    # 1. Create dev admin user
+                    try:
+                        from init_db_data import init_dev_user
+                        await init_dev_user()
+                    except Exception as e:
+                        print(f"[SEED] WARNING: Failed to create dev admin user: {e}", flush=True)
+                    
+                    # 2. Seed frameworks & defaults
+                    try:
+                        from app.core.seed_data import SEED_DATA
+                        from app.models.meter import MeterType
+                        from app.models.profiling import ProfilingQuestion
+                        from app.models.data_element import DataElement
+                        
+                        # frameworks
+                        for f in SEED_DATA["fws"]:
+                            db_session.add(Framework(**f))
+                        # meters
+                        for m in SEED_DATA["mts"]:
+                            db_session.add(MeterType(**m))
+                        # questions
+                        for p in SEED_DATA["pqs"]:
+                            db_session.add(ProfilingQuestion(**p))
+                        # elements
+                        for de in SEED_DATA["des"]:
+                            de["is_metered"] = bool(de.get("is_metered", False))
+                            db_session.add(DataElement(**de))
+                            
+                        await db_session.commit()
+                        print("[SEED] Default system library seeded.", flush=True)
+                    except Exception as e:
+                        print(f"[SEED] WARNING: Failed to seed system defaults: {e}", flush=True)
+                        await db_session.rollback()
+                    
+                    # 3. Seed demo company
+                    try:
+                        from seed_demo_company import seed_demo
+                        await seed_demo()
+                        print("[SEED] Demo company seeded successfully.", flush=True)
+                    except Exception as e:
+                        print(f"[SEED] WARNING: Failed to seed demo company: {e}", flush=True)
+                else:
+                    print("[SEED] Database already has data. Skipping auto-seed.", flush=True)
+        except Exception as e:
+            print(f"[SEED] WARNING: Auto-seed error: {e}", flush=True)
     except Exception as e:
         print(f"[MIGRATE] WARNING: Migration error: {e}", flush=True)
         m_logger.error(f"Migration error: {e}")

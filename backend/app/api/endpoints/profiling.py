@@ -71,7 +71,7 @@ async def read_profiling_questions(
             site = await db.get(Site, effective_site_id)
             if site and site.location:
                 site_loc = site.location.strip().lower()
-                if site_loc != "dubai":
+                if "dubai" not in site_loc:
                     active_frameworks.discard("dst")
 
     filtered_questions = []

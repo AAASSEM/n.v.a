@@ -42,8 +42,21 @@ from app.models.data_element import DataElement
 from app.models.meter import Meter
 from app.models.submission import DataSubmission
 from app.models.system import AuditLog
+from app.models.checklist import CompanyChecklist
 from app.services.profiling_service import ProfilingService
 
+
+
+def get_synthetic_category(name: str, db_cat: str) -> str:
+    n = name.lower()
+    if 'water' in n: return 'Water'
+    if 'waste' in n or 'recycling' in n or 'compost' in n: return 'Waste'
+    if 'fuel' in n or 'diesel' in n or 'petrol' in n or 'vehicles' in n: return 'Fuel'
+    if 'energy' in n or 'electricity' in n or 'lighting' in n or 'carbon' in n: return 'Energy'
+    if db_cat == 'E': return 'Environment Other'
+    if db_cat == 'S': return 'Social'
+    if db_cat == 'G': return 'Governance'
+    return 'Other'
 
 COMPANY_NAME = "Apex"
 COMPANY_CODE = "APEX01"
@@ -67,39 +80,54 @@ USERS = [
 # Site-specific profiling answers — keyed by lowercase question_text substring.
 # Answers NOT listed default to False.
 SITE_ANSWERS = {
-    "A": {  # Marina Resort — beachfront, full service
-        "on-site laundry": True,
-        "swimming pools": True,
-        "in-house restaurant": True,
-        "fleet of company-owned vehicles": True,
-        "landscaped gardens": True,
-        "full-service spa": True,
-        "on-site gym": True,
-        "ev charging": True,
-        "solar panels": False,
-        "compost": True,
-        "single-use plastics": True,
-        "linen and towel reuse": True,
-        "refillable guest amenity": True,
-        "sustainability/green team": True,
+    "A": {
+        "district cooling service": True,
+        "cooking gas": True,
+        "segregate and recycle": True,
+        "petrol-fueled vehicles": True,
+        "diesel fuel": True,
+        "diesel backup generators": True,
+        "refrigerant": True,
+        "value chain emissions": True,
+        "carbon offsets": True,
+        "hazardous waste": True,
+        "renewable sources": True,
+        "donations to the community": True,
+        "selecting or evaluating": True,
+        "diesel-fueled vehicles or generators": True,
+        "reduce your carbon footprint": True,
+        "water meters for high": True,
+        "use or purchase renewable": True,
+        "automatic systems": True,
+        "track your recycling": True,
+        "compost your organic": True,
+        "collaborate with local": True,
+        "purchase eco-labeled": True,
     },
-    "B": {  # Downtown Hotel — leaner, urban
-        "on-site laundry": False,
-        "swimming pools": False,
-        "in-house restaurant": True,
-        "fleet of company-owned vehicles": False,
-        "landscaped gardens": False,
-        "full-service spa": False,
-        "on-site gym": True,
-        "meetings, conferences": True,
-        "bars or licensed": True,
-        "ev charging": False,
-        "solar panels": True,
-        "outsource laundry": True,
-        "single-use plastics": True,
-        "linen and towel reuse": True,
-        "sustainability/green team": True,
-    },
+    "B": {
+        "district cooling service": True,
+        "cooking gas": True,
+        "segregate and recycle": True,
+        "petrol-fueled vehicles": True,
+        "diesel fuel": True,
+        "diesel backup generators": True,
+        "refrigerant": True,
+        "value chain emissions": True,
+        "carbon offsets": True,
+        "hazardous waste": True,
+        "renewable sources": True,
+        "donations to the community": True,
+        "selecting or evaluating": True,
+        "diesel-fueled vehicles or generators": True,
+        "reduce your carbon footprint": True,
+        "water meters for high": True,
+        "use or purchase renewable": True,
+        "automatic systems": True,
+        "track your recycling": True,
+        "compost your organic": True,
+        "collaborate with local": True,
+        "purchase eco-labeled": True,
+    }
 }
 
 
@@ -187,7 +215,7 @@ async def seed_demo():
                 company_code=COMPANY_CODE,
                 emirate="Dubai",
                 sector="Hospitality",
-                active_frameworks=["ESG", "Green Key"],
+                active_frameworks=["ESG", "DST", "GREEN KEY"],
                 has_green_key=True,
             )
             db.add(company)
@@ -200,8 +228,8 @@ async def seed_demo():
         # 2. Sites
         sites: Dict[str, Site] = {}
         desired = [
-            ("A", "Dubai Marina Resort",      "Dubai Marina, Dubai, UAE"),
-            ("B", "Abu Dhabi Downtown Hotel", "Corniche Road, Abu Dhabi, UAE"),
+            ("A", "Dubai Marina Resort",      "DUBAI"),
+            ("B", "Abu Dhabi Downtown Hotel", "Abu DHABI"),
         ]
         for key, name, loc in desired:
             site = (await db.execute(
@@ -282,49 +310,144 @@ async def seed_demo():
                     ))
             await db.commit()
 
-        # 6. 3 months of DataSubmissions per site for metered main meters
-        today = datetime.date.today()
+        # 6. Simulate historical dashboard data matched to the site checklists
+        from sqlalchemy import text
+        print("[demo] seeding historical submissions...")
+        # Clear existing submissions first
+        await db.execute(text("DELETE FROM data_submissions WHERE company_id = :cid"), {"cid": company.id})
+        
+        target_monthly_vals = {
+            'Energy':            {1: 1300.0, 2: 1100.0},
+            'Water':             {1: 1100.0, 2: 900.0},
+            'Waste':             {1: 950.0,  2: 750.0},
+            'Fuel':              {1: 500.0,  2: 400.0},
+            'Environment Other': {1: 2100.0, 2: 1800.0},
+            'Social':            {1: 2600.0, 2: 2100.0},
+            'Governance':        {1: 1900.0, 2: 1500.0}
+        }
+        
+        months = [1, 2, 3, 4, 5]  # Jan to May 2026
+        year = 2026
+        seeded_count = 0
+        
         for key, site in sites.items():
-            meters = (await db.execute(
-                select(Meter).where(
-                    Meter.company_id == company.id,
-                    Meter.site_id == site.id,
-                    Meter.name.like("Main %"),
-                )
+            site_key = 1 if key == "A" else 2
+            
+            checklist_items_q = (await db.execute(
+                select(CompanyChecklist).where(CompanyChecklist.site_id == site.id)
             )).scalars().all()
-            if not meters:
-                continue
-            random.seed(hash(key))
-            created = 0
-            for i in range(3):
-                month_date = today - datetime.timedelta(days=30 * i)
-                for m in meters:
-                    existing = (await db.execute(
-                        select(DataSubmission).where(
-                            DataSubmission.company_id == company.id,
-                            DataSubmission.site_id == site.id,
-                            DataSubmission.meter_id == m.id,
-                            DataSubmission.year == month_date.year,
-                            DataSubmission.month == month_date.month,
-                        )
-                    )).scalars().first()
-                    if existing:
-                        continue
-                    base = 3000 if key == "A" else 1800
+            
+            active_elements = []
+            for item in checklist_items_q:
+                el = await db.get(DataElement, item.data_element_id)
+                if el:
+                    active_elements.append(el)
+                    
+            cat_to_active = {}
+            for el in active_elements:
+                cat = get_synthetic_category(el.name, el.category)
+                if cat not in cat_to_active:
+                    cat_to_active[cat] = []
+                cat_to_active[cat].append(el)
+                
+            for cat, site_targets in target_monthly_vals.items():
+                target_base = site_targets[site_key]
+                possible_elements = cat_to_active.get(cat, [])
+                if not possible_elements:
+                    continue
+                    
+                element = possible_elements[0]
+                meter = (await db.execute(
+                    select(Meter).where(
+                        Meter.site_id == site.id,
+                        Meter.data_element_id == element.id,
+                        Meter.is_active == True
+                    )
+                )).scalars().first()
+                meter_id = meter.id if meter else None
+                
+                for month in months:
+                    variance = random.uniform(-0.15, 0.15)
+                    value = round(target_base * (1 + variance), 2)
                     db.add(DataSubmission(
                         company_id=company.id,
                         site_id=site.id,
-                        data_element_id=m.data_element_id,
-                        meter_id=m.id,
-                        year=month_date.year,
-                        month=month_date.month,
-                        value=round(base + random.random() * base * 0.4, 2),
+                        data_element_id=element.id,
+                        meter_id=meter_id,
+                        year=year,
+                        month=month,
+                        value=value,
                         submitted_by=admin.id if admin else None,
+                        notes=f"Simulated historical {cat} data entry"
                     ))
-                    created += 1
-            await db.commit()
-            if created:
-                print(f"  · site {site.name}: inserted {created} demo submissions")
+                    seeded_count += 1
+        await db.commit()
+        print(f"  · site submissions: inserted {seeded_count} checklist-matched submissions")
+
+        # 6.5 Assign checklist items to demo users
+        print("[demo] assigning checklist items to users...")
+        from sqlalchemy.orm import selectinload
+        for key, site in sites.items():
+            checklist_items_res = await db.execute(
+                select(CompanyChecklist)
+                .options(selectinload(CompanyChecklist.data_element))
+                .where(
+                    CompanyChecklist.company_id == company.id,
+                    CompanyChecklist.site_id == site.id
+                )
+            )
+            checklist_items = checklist_items_res.scalars().all()
+            
+            site_users_res = await db.execute(
+                select(User)
+                .join(UserProfile)
+                .where(
+                    UserProfile.company_id == company.id,
+                    UserProfile.site_id == site.id
+                )
+            )
+            site_users = {u.email: u for u in site_users_res.scalars().all()}
+            
+            assigned_count = 0
+            if key == "A":
+                uploader_1 = site_users.get("uploader.a1@apex.demo")
+                uploader_2 = site_users.get("uploader.a2@apex.demo")
+                meter_user = site_users.get("meter.a@apex.demo")
+                
+                for item in checklist_items:
+                    if not item.data_element:
+                        continue
+                    cat = item.data_element.category.upper()
+                    if cat == "E" and uploader_1:
+                        item.assigned_to = uploader_1.id
+                        db.add(item)
+                        assigned_count += 1
+                    elif cat == "S" and uploader_2:
+                        item.assigned_to = uploader_2.id
+                        db.add(item)
+                        assigned_count += 1
+                    elif cat == "G" and meter_user:
+                        item.assigned_to = meter_user.id
+                        db.add(item)
+                        assigned_count += 1
+            elif key == "B":
+                uploader_b = site_users.get("uploader.b1@apex.demo")
+                meter_b = site_users.get("meter.b@apex.demo")
+                
+                for item in checklist_items:
+                    if not item.data_element:
+                        continue
+                    cat = item.data_element.category.upper()
+                    if cat == "E" and uploader_b:
+                        item.assigned_to = uploader_b.id
+                        db.add(item)
+                        assigned_count += 1
+                    elif (cat == "S" or cat == "G") and meter_b:
+                        item.assigned_to = meter_b.id
+                        db.add(item)
+                        assigned_count += 1
+            print(f"  · site {site.name}: assigned {assigned_count} checklist items to users")
+        await db.commit()
 
         # 7. Seed demo AuditLog records
         print("[demo] seeding audit log records...")

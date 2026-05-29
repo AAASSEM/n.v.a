@@ -38,6 +38,43 @@ class CompanySchema(CompanyBase):
 
 router = APIRouter()
 
+@router.get("/sectors", response_model=List[str])
+async def read_distinct_sectors(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    Get all unique company and site sectors.
+    """
+    company_sectors = (await db.execute(select(Company.sector).distinct())).scalars().all()
+    from app.models.company import Site
+    site_sectors = (await db.execute(select(Site.sector).distinct())).scalars().all()
+    
+    all_sectors = set()
+    for s in company_sectors + site_sectors:
+        if s:
+            clean = s.strip()
+            if clean:
+                title_mapped = {
+                    "hospitality": "Hospitality",
+                    "realestate": "RealEstate",
+                    "manufacturing": "Manufacturing",
+                    "technology": "Technology",
+                }
+                lower_clean = clean.lower()
+                if lower_clean in title_mapped:
+                    all_sectors.add(title_mapped[lower_clean])
+                else:
+                    # preserve camelCase or spaces
+                    all_sectors.add(clean)
+                    
+    defaults = ["Hospitality", "RealEstate", "Manufacturing", "Technology"]
+    for d in defaults:
+        all_sectors.add(d)
+        
+    return sorted(list(all_sectors))
+
+
 @router.post("/", response_model=CompanySchema, status_code=status.HTTP_201_CREATED)
 async def create_company(
     *,
@@ -67,7 +104,7 @@ async def create_company(
         company_code=generated_code,
         emirate=company_in.emirate.lower(),
         sector=company_in.sector.lower(),
-        has_green_key=company_in.has_green_key,
+        has_green_key=company_in.has_green_key if company_in.sector.lower() == "hospitality" else False,
         active_frameworks=company_in.active_frameworks
     )
     db.add(company)
@@ -85,7 +122,8 @@ async def create_company(
     default_site = Site(
         company_id=company.id,
         name="Main Site",
-        location=company_in.emirate.capitalize()
+        location=company_in.emirate.capitalize(),
+        sector=company_in.sector.lower()
     )
     db.add(default_site)
     await db.commit()
@@ -145,7 +183,7 @@ async def update_company(
     company.trade_license_number = company_in.trade_license_number
     company.emirate = company_in.emirate.lower()
     company.sector = company_in.sector.lower()
-    company.has_green_key = company_in.has_green_key
+    company.has_green_key = company_in.has_green_key if company.sector == "hospitality" else False
     company.active_frameworks = company_in.active_frameworks
 
     db.add(company)

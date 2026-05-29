@@ -52,6 +52,7 @@ interface AuthState {
     logout: () => void;
     fetchUser: () => Promise<void>;
     magicLinkLogin: (token: string) => Promise<void>;
+    demoLogin: (email: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -81,6 +82,34 @@ export const useAuthStore = create<AuthState>()(
                 } catch (error: unknown) {
                     const errMessage = error instanceof Error ? error.message : 'Failed to send magic link';
                     set({ error: errMessage });
+                    throw error;
+                } finally {
+                    set({ isLoading: false });
+                }
+            },
+
+            demoLogin: async (email: string) => {
+                set({ isLoading: true, error: null });
+                try {
+                    const response = await fetch(`${API_URL}/auth/demo-login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.detail || 'Demo login failed');
+                    }
+
+                    const data = await response.json();
+                    set({ accessToken: data.access_token, isAuthenticated: true });
+                    await get().fetchUser();
+                } catch (error: unknown) {
+                    const errMessage = error instanceof Error ? error.message : 'Demo login failed';
+                    set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
                     throw error;
                 } finally {
                     set({ isLoading: false });

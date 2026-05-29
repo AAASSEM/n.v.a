@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 
 /* ─────────────────────────── tiny hooks ─────────────────────────── */
@@ -79,11 +79,22 @@ const LOGOS = ['Unilever', 'BlackRock', 'Nestlé', 'Siemens', 'Schneider', 'BASF
 
 /* ─────────────────────────── component ─────────────────────────── */
 export default function LandingPage() {
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, demoLogin } = useAuthStore();
+    const [showDemoModal, setShowDemoModal] = useState(false);
+    const navigate = useNavigate();
     const statsRef = useInView();
     const eff = useCountUp(94, 1800, statsRef.inView);
     const metrics = useCountUp(12, 2200, statsRef.inView);
     const clients = useCountUp(340, 1600, statsRef.inView);
+
+    const handleDemoLogin = async (email: string) => {
+        try {
+            await demoLogin(email);
+            navigate('/dashboard');
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     return (
         <div style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", background: '#050610', color: '#f0f2ff', minHeight: '100vh', overflowX: 'hidden' }}>
@@ -251,6 +262,70 @@ export default function LandingPage() {
 
         /* ORBS */
         .lp-orb { position: fixed; border-radius: 50%; pointer-events: none; filter: blur(130px); z-index: 0; }
+
+        /* ── DEMO MODAL ── */
+        .dm-overlay {
+            position: fixed; inset: 0; z-index: 200;
+            background: rgba(5,6,16,0.85); backdrop-filter: blur(12px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px;
+            animation: fadeIn 0.25s ease-out;
+        }
+        .dm-modal {
+            background: #0c0d1e; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px; max-width: 620px; width: 100%;
+            padding: 32px; box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02);
+            animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        
+        .dm-close {
+            position: absolute; top: 20px; right: 20px;
+            background: none; border: none; color: var(--muted2);
+            font-size: 20px; cursor: pointer; transition: color 0.2s;
+        }
+        .dm-close:hover { color: #f0f2ff; }
+        
+        .dm-title { font-size: 22px; font-weight: 800; color: #f0f2ff; letter-spacing: -0.5px; margin-bottom: 8px; }
+        .dm-sub { font-size: 13.5px; color: var(--muted2); line-height: 1.5; margin-bottom: 24px; font-weight: 300; }
+        
+        .dm-grid { display: flex; flex-direction: column; gap: 12px; }
+        .dm-card {
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px; padding: 16px 20px; display: flex; align-items: center;
+            justify-content: space-between; cursor: pointer; transition: all 0.2s ease;
+            gap: 16px;
+        }
+        .dm-card:hover {
+            background: rgba(16,185,129,0.04); border-color: rgba(16,185,129,0.3);
+            transform: translateX(4px);
+        }
+        .dm-card-left { display: flex; align-items: flex-start; gap: 14px; flex: 1; }
+        .dm-card-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.2) 100%);
+            border: 1px solid rgba(16,185,129,0.3);
+            display: flex; align-items: center; justify-content: center;
+            color: #10b981; font-weight: 700; font-size: 14px; flex-shrink: 0;
+        }
+        .dm-card-info { display: flex; flex-direction: column; text-align: left; }
+        .dm-card-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .dm-card-name { font-size: 14.5px; font-weight: 700; color: #f0f2ff; }
+        .dm-card-badge {
+            font-family: ui-monospace, monospace; font-size: 9px;
+            letter-spacing: 0.05em; text-transform: uppercase;
+            padding: 2px 6px; border-radius: 4px;
+            font-weight: 500;
+        }
+        .badge-super { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+        .badge-manager { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
+        .badge-uploader { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+        
+        .dm-card-desc { font-size: 12px; color: var(--muted2); line-height: 1.5; font-weight: 300; }
+        .dm-card-arrow { color: var(--muted); font-size: 16px; transition: transform 0.2s, color 0.2s; }
+        .dm-card:hover .dm-card-arrow { color: #10b981; transform: translateX(2px); }
       `}</style>
 
             {/* Background orbs */}
@@ -325,7 +400,7 @@ export default function LandingPage() {
                                 Start Free Trial
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                             </Link>
-                            <button className="lp-btn-hero lp-btn-hero-o">
+                            <button className="lp-btn-hero lp-btn-hero-o" onClick={() => setShowDemoModal(true)}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none" /></svg>
                                 Watch Demo
                             </button>
@@ -523,6 +598,58 @@ export default function LandingPage() {
                     </div>
                 </div>
             </footer>
+            {showDemoModal && (
+                <div className="dm-overlay" onClick={() => setShowDemoModal(false)}>
+                    <div className="dm-modal" onClick={e => e.stopPropagation()}>
+                        <button className="dm-close" onClick={() => setShowDemoModal(false)}>✕</button>
+                        <h2 className="dm-title">Explore ESG Compass Demo</h2>
+                        <p className="dm-sub">Choose a seeded persona card to instantly sign in and explore the app with different access roles.</p>
+                        <div className="dm-grid">
+                            <div className="dm-card" onClick={() => handleDemoLogin('super@apex.demo')}>
+                                <div className="dm-card-left">
+                                    <div className="dm-card-avatar">SS</div>
+                                    <div className="dm-card-info">
+                                        <div className="dm-card-name-row">
+                                            <span className="dm-card-name">Sam Super (super@apex.demo)</span>
+                                            <span className="dm-card-badge badge-super">Super Admin</span>
+                                        </div>
+                                        <span className="dm-card-desc">Full access to company-wide analytics, settings, audit trails, and developer controls.</span>
+                                    </div>
+                                </div>
+                                <span className="dm-card-arrow">→</span>
+                            </div>
+
+                            <div className="dm-card" onClick={() => handleDemoLogin('manager.a@apex.demo')}>
+                                <div className="dm-card-left">
+                                    <div className="dm-card-avatar">MM</div>
+                                    <div className="dm-card-info">
+                                        <div className="dm-card-name-row">
+                                            <span className="dm-card-name">Mona Marina (manager.a@apex.demo)</span>
+                                            <span className="dm-card-badge badge-manager">Site Manager</span>
+                                        </div>
+                                        <span className="dm-card-desc">Manages Dubai Marina Resort. Review dashboards, update meters, and sign off data submissions.</span>
+                                    </div>
+                                </div>
+                                <span className="dm-card-arrow">→</span>
+                            </div>
+
+                            <div className="dm-card" onClick={() => handleDemoLogin('uploader.a1@apex.demo')}>
+                                <div className="dm-card-left">
+                                    <div className="dm-card-avatar">UU</div>
+                                    <div className="dm-card-info">
+                                        <div className="dm-card-name-row">
+                                            <span className="dm-card-name">Usama Upload (uploader.a1@apex.demo)</span>
+                                            <span className="dm-card-badge badge-uploader">Data Entry</span>
+                                        </div>
+                                        <span className="dm-card-desc">Assigned to Dubai Marina Resort. Restricted access to enter and upload monthly ESG telemetry metrics.</span>
+                                    </div>
+                                </div>
+                                <span className="dm-card-arrow">→</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

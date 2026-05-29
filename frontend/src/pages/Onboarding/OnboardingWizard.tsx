@@ -24,7 +24,6 @@ interface Question {
 
 
 const EMIRATE_OPTIONS = ['Dubai', 'AbuDhabi', 'Sharjah', 'Ajman', 'UmmAlQuwain', 'RasAlKhaimah', 'Fujairah'];
-const SECTOR_OPTIONS = ['Hospitality', 'RealEstate', 'Manufacturing', 'Technology', 'Other'];
 
 const STEPS = [
     { num: 1, label: 'Business Information', sub: 'Company details' },
@@ -50,6 +49,19 @@ export default function OnboardingWizard() {
 
     // Modal Selection State
     const [activeModal, setActiveModal] = useState<'emirate' | 'sector' | null>(null);
+    const [customSector, setCustomSector] = useState('');
+    const [showCustomInput, setShowCustomInput] = useState(false);
+
+    const { data: dbSectors } = useQuery<string[]>({
+        queryKey: ['availableSectors'],
+        queryFn: async () => {
+            const res = await api.get('/companies/sectors');
+            return res.data;
+        },
+    });
+
+    const sectorOptions = dbSectors || ['Hospitality', 'RealEstate', 'Manufacturing', 'Technology'];
+    const SECTOR_OPTIONS = [...sectorOptions.filter(s => s !== 'Other'), 'Other'];
 
     const { data: myCompany } = useQuery({
         queryKey: ['myCompany'],
@@ -179,8 +191,12 @@ export default function OnboardingWizard() {
 
     const handleStep2Submit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (companyId) { updateCompanyMutation.mutate({ id: companyId, data: companyData }); return; }
-        createCompanyMutation.mutate(companyData);
+        const finalData = {
+            ...companyData,
+            has_green_key: companyData.sector.toLowerCase() === 'hospitality' ? companyData.has_green_key : false
+        };
+        if (companyId) { updateCompanyMutation.mutate({ id: companyId, data: finalData }); return; }
+        createCompanyMutation.mutate(finalData);
     };
 
     const handleAnswersSubmit = (e: React.FormEvent) => {
@@ -328,7 +344,11 @@ export default function OnboardingWizard() {
                                              <div
                                                  className="dropdown-trigger"
                                                  style={{ width: '100%', cursor: 'pointer' }}
-                                                 onClick={() => setActiveModal('sector')}
+                                                 onClick={() => {
+                                                      setActiveModal('sector');
+                                                      setShowCustomInput(false);
+                                                      setCustomSector('');
+                                                  }}
                                              >
                                                  <span style={{ color: 'var(--text-muted)', marginRight: 10, display: 'flex', alignItems: 'center' }}>
                                                      {companyData.sector.toLowerCase() === 'hospitality' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" /><path d="M9 11h2" /><path d="M9 15h2" /><path d="M13 11h2" /><path d="M13 15h2" /></svg> :
@@ -495,7 +515,13 @@ export default function OnboardingWizard() {
                                     {loadingFrameworks ? (
                                         <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><div className="spinner" /></div>
                                     ) : (
-                                        dbFrameworks?.filter((fw: any) => fw.type.toLowerCase() === 'voluntary' && fw.framework_id !== 'DST').map((fw: any) => {
+                                        dbFrameworks?.filter((fw: any) => {
+                                            if (fw.type.toLowerCase() !== 'voluntary' || fw.framework_id === 'DST') return false;
+                                            if (fw.framework_id.toUpperCase() === 'GREEN KEY' && companyData.sector.toLowerCase() !== 'hospitality') {
+                                                return false;
+                                            }
+                                            return true;
+                                        }).map((fw: any) => {
                                             const isActive = companyData.active_frameworks.includes(fw.framework_id) || (fw.framework_id === 'GREEN KEY' && companyData.has_green_key);
                                             return (
                                                 <div key={fw.id} style={{
@@ -542,11 +568,7 @@ export default function OnboardingWizard() {
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                {user?.profile?.role === 'admin' ? (
-                                    <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(1)}>← Back</button>
-                                ) : (
-                                    <div />
-                                )}
+                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(1)}>← Back</button>
                                 <button type="submit" className="btn btn-primary btn-lg"
                                     disabled={createCompanyMutation.isPending || updateCompanyMutation.isPending}>
                                     {createCompanyMutation.isPending || updateCompanyMutation.isPending ? 'Saving...' : 'Save & Continue →'}
@@ -649,11 +671,7 @@ export default function OnboardingWizard() {
                             )}
 
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                {user?.profile?.role === 'admin' ? (
-                                    <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(2)}>← Back</button>
-                                ) : (
-                                    <div />
-                                )}
+                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(2)}>← Back</button>
                                 <button type="submit" className="btn btn-primary btn-lg"
                                     disabled={submitAnswersMutation.isPending || answeredCount < totalQuestions}>
                                     {submitAnswersMutation.isPending
@@ -679,63 +697,106 @@ export default function OnboardingWizard() {
                             <button className="modal-close" onClick={() => setActiveModal(null)}>✕</button>
                         </div>
                         <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-                                {(activeModal === 'emirate' ? EMIRATE_OPTIONS : SECTOR_OPTIONS).map(opt => {
-                                    const isSelected = activeModal === 'emirate'
-                                        ? companyData.emirate.toLowerCase() === opt.toLowerCase()
-                                        : companyData.sector.toLowerCase() === opt.toLowerCase();
-
-                                    // Icons for fun
-                                    const icon = activeModal === 'emirate' ?
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg> :
-                                        opt === 'Hospitality' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" /><path d="M9 11h2" /><path d="M9 15h2" /><path d="M13 11h2" /><path d="M13 15h2" /></svg> :
-                                            opt === 'RealEstate' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M8 10h.01" /><path d="M16 10h.01" /><path d="M8 14h.01" /><path d="M16 14h.01" /></svg> :
-                                                opt === 'Manufacturing' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20V4l8 4V4l8 4V4l4 4v12H2z" /><path d="M7 20v-4" /><path d="M12 20v-4" /><path d="M17 20v-4" /></svg> :
-                                                    opt === 'Technology' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg> :
-                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
-
-                                    return (
-                                        <div
-                                            key={opt}
-                                            className={`selection-item ${isSelected ? 'selected' : ''}`}
+                            {activeModal === 'sector' && showCustomInput ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <label className="form-label" style={{ marginBottom: 4 }}>Specify Sector / Industry</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="e.g. Healthcare, Education, Retail..."
+                                        value={customSector}
+                                        onChange={e => setCustomSector(e.target.value)}
+                                        autoFocus
+                                        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', padding: '10px 14px', borderRadius: 'var(--radius-md)' }}
+                                    />
+                                    <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-secondary" 
+                                            style={{ flex: 1 }}
+                                            onClick={() => setShowCustomInput(false)}
+                                        >
+                                            Back
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-primary" 
+                                            style={{ flex: 1 }}
+                                            disabled={!customSector.trim()}
                                             onClick={() => {
-                                                if (activeModal === 'emirate') {
-                                                    setCompanyData({ ...companyData, emirate: opt as any });
-                                                } else {
-                                                    setCompanyData({ ...companyData, sector: opt as any });
-                                                }
+                                                const val = customSector.trim();
+                                                setCompanyData({ ...companyData, sector: val as any });
+                                                setShowCustomInput(false);
                                                 setActiveModal(null);
                                             }}
-                                            style={{
-                                                padding: '16px 20px',
-                                                borderRadius: 'var(--radius-lg)',
-                                                border: `1px solid ${isSelected ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
-                                                background: isSelected ? 'var(--accent-green-dim)' : 'var(--bg-card)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 16,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                            }}
                                         >
-                                            <div style={{ color: isSelected ? 'var(--accent-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>{icon}</div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 700, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)', fontSize: 15 }}>{opt}</div>
-                                                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                                    {activeModal === 'emirate' ? `Region in UAE` : `Business Sector`}
+                                            Confirm
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                                    {(activeModal === 'emirate' ? EMIRATE_OPTIONS : SECTOR_OPTIONS).map(opt => {
+                                        const isSelected = activeModal === 'emirate'
+                                            ? companyData.emirate.toLowerCase() === opt.toLowerCase()
+                                            : companyData.sector.toLowerCase() === opt.toLowerCase();
+
+                                        const icon = activeModal === 'emirate' ?
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg> :
+                                            opt === 'Hospitality' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" /><path d="M9 11h2" /><path d="M9 15h2" /><path d="M13 11h2" /><path d="M13 15h2" /></svg> :
+                                                opt === 'RealEstate' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M8 10h.01" /><path d="M16 10h.01" /><path d="M8 14h.01" /><path d="M16 14h.01" /></svg> :
+                                                    opt === 'Manufacturing' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20V4l8 4V4l8 4V4l4 4v12H2z" /><path d="M7 20v-4" /><path d="M12 20v-4" /><path d="M17 20v-4" /></svg> :
+                                                        opt === 'Technology' ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg> :
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
+
+                                        return (
+                                            <div
+                                                key={opt}
+                                                className={`selection-item ${isSelected ? 'selected' : ''}`}
+                                                onClick={() => {
+                                                    if (activeModal === 'emirate') {
+                                                        setCompanyData({ ...companyData, emirate: opt as any });
+                                                        setActiveModal(null);
+                                                    } else {
+                                                        if (opt === 'Other') {
+                                                            setShowCustomInput(true);
+                                                        } else {
+                                                            setCompanyData({ ...companyData, sector: opt as any });
+                                                            setActiveModal(null);
+                                                        }
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '16px 20px',
+                                                    borderRadius: 'var(--radius-lg)',
+                                                    border: `1px solid ${isSelected ? 'var(--accent-green)' : 'var(--border-subtle)'}`,
+                                                    background: isSelected ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 16,
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                }}
+                                            >
+                                                <div style={{ color: isSelected ? 'var(--accent-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>{icon}</div>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 700, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)', fontSize: 15 }}>{opt}</div>
+                                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                        {activeModal === 'emirate' ? `Region in UAE` : `Business Sector`}
+                                                    </div>
                                                 </div>
+                                                {isSelected && (
+                                                    <div style={{ color: 'var(--accent-green)' }}>
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                            <polyline points="20 6 9 17 4 12" />
+                                                        </svg>
+                                                    </div>
+                                                )}
                                             </div>
-                                            {isSelected && (
-                                                <div style={{ color: 'var(--accent-green)' }}>
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="20 6 9 17 4 12" />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

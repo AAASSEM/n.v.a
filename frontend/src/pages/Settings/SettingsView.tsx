@@ -273,7 +273,14 @@ export default function SettingsView() {
                                                 </div>
                                                 <div className="sv-field" style={{ marginBottom: 0 }}>
                                                     <label className="sv-label">Industry Sector</label>
-                                                    <select className="sv-input" value={orgData.sector} onChange={e => setOrgData({ ...orgData, sector: e.target.value })}>
+                                                    <select className="sv-input" value={orgData.sector} onChange={e => {
+                                                         const sec = e.target.value;
+                                                         setOrgData({
+                                                             ...orgData,
+                                                             sector: sec,
+                                                             has_green_key: sec.toLowerCase() === 'hospitality' ? orgData.has_green_key : false
+                                                         });
+                                                     }}>
                                                         <option value="hospitality">Hospitality</option>
                                                         <option value="real-estate">Real Estate & Construction</option>
                                                         <option value="retail">Retail</option>
@@ -285,22 +292,24 @@ export default function SettingsView() {
                                             </div>
 
                                             {/* Green Key Toggle */}
-                                            <div className="sv-toggle-row" style={{ marginTop: 8 }}>
-                                                <div className="sv-toggle-icon" style={{ background: orgData.has_green_key ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)', color: orgData.has_green_key ? '#10b981' : '#6b7280' }}>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-                                                    </svg>
+                                            {orgData.sector.toLowerCase() === 'hospitality' && (
+                                                <div className="sv-toggle-row" style={{ marginTop: 8 }}>
+                                                    <div className="sv-toggle-icon" style={{ background: orgData.has_green_key ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)', color: orgData.has_green_key ? '#10b981' : '#6b7280' }}>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                                                        </svg>
+                                                    </div>
+                                                    <div className="sv-toggle-text">
+                                                        <div className="sv-toggle-label">Green Key Certification</div>
+                                                        <div className="sv-toggle-desc">Unlock specialized environmental data elements.</div>
+                                                    </div>
+                                                    <button type="button" className="sv-toggle-btn"
+                                                        style={{ background: orgData.has_green_key ? '#10b981' : 'rgba(255,255,255,0.1)' }}
+                                                        onClick={() => setOrgData({ ...orgData, has_green_key: !orgData.has_green_key })}>
+                                                        <span className="sv-toggle-thumb" style={{ left: orgData.has_green_key ? '21px' : '3px' }} />
+                                                    </button>
                                                 </div>
-                                                <div className="sv-toggle-text">
-                                                    <div className="sv-toggle-label">Green Key Certification</div>
-                                                    <div className="sv-toggle-desc">Unlock specialized environmental data elements.</div>
-                                                </div>
-                                                <button type="button" className="sv-toggle-btn"
-                                                    style={{ background: orgData.has_green_key ? '#10b981' : 'rgba(255,255,255,0.1)' }}
-                                                    onClick={() => setOrgData({ ...orgData, has_green_key: !orgData.has_green_key })}>
-                                                    <span className="sv-toggle-thumb" style={{ left: orgData.has_green_key ? '21px' : '3px' }} />
-                                                </button>
-                                            </div>
+                                            )}
 
                                             <div className="sv-btn-footer">
                                                 <button type="submit" className="sv-btn-primary" disabled={updateOrg.isPending}>

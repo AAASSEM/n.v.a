@@ -231,3 +231,58 @@ async def request_login_link(
     # Always return 200/success to avoid email enumeration
     return {"detail": "If the email is registered in our system, you will receive a login link shortly."}
 
+class DemoLoginRequest(BaseModel):
+    email: EmailStr
+
+@router.post("/demo-login", response_model=Token)
+async def demo_login(
+    request: DemoLoginRequest,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Direct login endpoint for pre-seeded demo personas.
+    Only allows emails ending in @apex.demo.
+    """
+    if not request.email.endswith("@apex.demo"):
+        raise HTTPException(
+            status_code=400,
+            detail="Demo login is only available for @apex.demo accounts."
+        )
+        
+    # Get user with profile loaded
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(User)
+        .where(User.email == request.email)
+        .options(selectinload(User.profile))
+    )
+    user = result.scalars().first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Demo user not found.")
+        
+    if not user.is_active:
+        user.is_active = True
+        await db.commit()
+        await db.refresh(user)
+
+    await audit_service.log_action(
+        db,
+        action="LOGIN",
+        user_id=user.id,
+        company_id=user.profile.company_id if user.profile else None,
+        entity_type="USER",
+        entity_id=str(user.id),
+        details={"email": user.email, "method": "demo_login"},
+    )
+
+    # Issue access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return {
+        "access_token": security.create_access_token(
+            user.id, expires_delta=access_token_expires
+        ),
+        "token_type": "bearer",
+    }
+
+
