@@ -260,7 +260,23 @@ async def seed_system_defaults(
             except Exception:
                 await db.rollback()
 
+    # 5. Seed Demo Company (Apex)
+    demo_seeded = False
+    demo_error = None
+    try:
+        from seed_demo_company import seed_demo
+        await seed_demo()
+        demo_seeded = True
+    except Exception as e:
+        demo_error = str(e)
+        print(f"Warning: Failed to seed demo company: {e}")
+
     msg = f"System defaults seeded! Loaded {len(SEED_DATA['fws'])} Frameworks, {len(SEED_DATA['mts'])} Meter Types, {len(SEED_DATA['pqs'])} Questions, and {len(SEED_DATA['des'])} Elements."
+    if demo_seeded:
+        msg += " Demo company (Apex) seeded successfully!"
+    else:
+        msg += f" (Note: Demo company seeding skipped/failed: {demo_error})"
+        
     return {"msg": msg}
 
 # --- User & Company Management ---
