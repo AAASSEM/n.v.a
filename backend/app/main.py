@@ -54,6 +54,7 @@ async def log_requests(request: Request, call_next):
 
 # CORS
 origins = list(set(settings.BACKEND_CORS_ORIGINS or []))
+print(f"[CORS] Configured origins: {origins}", flush=True)
 # Credentials (cookies/headers) cannot be allowed with * origin
 allow_creds = True
 m_logger = logging.getLogger("app.main")

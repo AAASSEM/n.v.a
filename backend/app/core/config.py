@@ -1,5 +1,5 @@
 from typing import List, Union, Optional
-from pydantic import validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -21,30 +21,6 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5174",
     ]
 
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]], values) -> Union[List[str], str]:
-        origins = []
-        if isinstance(v, str) and not v.startswith("["):
-            origins = [i.strip() for i in v.split(",") if i.strip()]
-        elif isinstance(v, (list,)):
-            origins = list(v)
-            
-        # Add Render frontend URL if ENVIRONMENT == production
-        env = values.get("ENVIRONMENT", "development")
-        if env == "production":
-            # Direct domain
-            render_domain = "https://esg-compass.onrender.com"
-            if render_domain not in origins:
-                origins.append(render_domain)
-            
-        # Also include the FRONTEND_URL if set
-        frontend = values.get("FRONTEND_URL")
-        if frontend and frontend not in origins:
-            origins.append(frontend)
-            
-        origins = [o.rstrip("/") for o in origins]
-        return origins
-
     # Database
     # Set DATABASE_URL env var in production (e.g. Cloud SQL)
     # Format: postgresql+asyncpg://user:pass@host:5432/dbname
@@ -57,16 +33,43 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "esg_portal"
     
     SQLALCHEMY_DATABASE_URI: str = "sqlite+aiosqlite:///./esg_portal.db"
-    
-    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
-    def assemble_db_connection(cls, v, values):
-        db_url = values.get("DATABASE_URL")
+
+    @model_validator(mode='after')
+    def assemble_settings(self) -> 'Settings':
+        # 1. Assemble CORS Origins
+        v = self.BACKEND_CORS_ORIGINS
+        origins = []
+        if isinstance(v, str):
+            if not v.startswith("["):
+                origins = [i.strip() for i in v.split(",") if i.strip()]
+            else:
+                import json
+                try:
+                    origins = json.loads(v)
+                except Exception:
+                    origins = []
+        elif isinstance(v, list):
+            origins = list(v)
+
+        if self.ENVIRONMENT == "production":
+            for domain in ["https://esg-compass.onrender.com", "https://esg-compass-3vkg.onrender.com"]:
+                if domain not in origins:
+                    origins.append(domain)
+
+        frontend = self.FRONTEND_URL
+        if frontend and frontend not in origins:
+            origins.append(frontend)
+
+        self.BACKEND_CORS_ORIGINS = [o.rstrip("/") for o in origins]
+
+        # 2. Assemble DB Connection
+        db_url = self.DATABASE_URL
         if db_url:
-            # Clean up pgbouncer param which asyncpg doesn't like
             db_url = db_url.replace("?pgbouncer=true", "")
             db_url = db_url.replace("&pgbouncer=true", "")
-            return db_url
-        return v  # Keep default (SQLite for local dev)
+            self.SQLALCHEMY_DATABASE_URI = db_url
+            
+        return self
 
     # JWT Authentication
     SECRET_KEY: str = "development_secret_key_change_in_production"
