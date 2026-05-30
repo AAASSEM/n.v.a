@@ -52,7 +52,7 @@ class Settings(BaseSettings):
             origins = list(v)
 
         if self.ENVIRONMENT == "production":
-            for domain in ["https://esg-compass.onrender.com", "https://esg-compass-3vkg.onrender.com"]:
+            for domain in ["https://esg-compass.onrender.com", "https://esg-compass-3vkg.onrender.com", "https://n-v-a.onrender.com"]:
                 if domain not in origins:
                     origins.append(domain)
 

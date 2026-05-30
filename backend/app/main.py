@@ -191,8 +191,10 @@ async def health_check():
         "environment": settings.ENVIRONMENT
     }
 
-@app.get("/")
-async def root():
+from fastapi.responses import FileResponse
+
+@app.get("/api")
+async def api_root():
     return {"message": "ESG Compass API is running", "docs": "/docs"}
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
@@ -203,5 +205,29 @@ try:
     app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 except Exception as e:
     m_logger.warning(f"Uploads mount warning: {e}")
+
+# Serve Frontend Static Files
+frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend", "dist")
+frontend_dist = os.path.abspath(frontend_dist)
+
+if os.path.exists(frontend_dist):
+    print(f"[FRONTEND] Serving static files from {frontend_dist}", flush=True)
+    # Mount the assets directory (Vite outputs js/css here)
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+    
+    # Catch-all for React Router / Vite frontend
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        path = os.path.join(frontend_dist, full_path)
+        if os.path.exists(path) and os.path.isfile(path):
+            return FileResponse(path)
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
+else:
+    print(f"[FRONTEND] WARNING: Frontend dist directory not found at {frontend_dist}", flush=True)
+    @app.get("/")
+    async def root():
+        return {"message": "ESG Compass API is running. Frontend not built.", "docs": "/docs"}
 
 print("[OK] Application startup complete!", flush=True)
