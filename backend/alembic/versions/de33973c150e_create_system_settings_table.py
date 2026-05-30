@@ -16,18 +16,34 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
-    # ── system_settings ───────────────────────────────────────────────
-    op.create_table(
-        'system_settings',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('key', sa.String(length=100), nullable=False),
-        sa.Column('value', sa.JSON(), nullable=False),
-        sa.Column('description', sa.String(length=255), nullable=True),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_system_settings_id'), 'system_settings', ['id'], unique=False)
-    op.create_index(op.f('ix_system_settings_key'), 'system_settings', ['key'], unique=True)
+    conn = op.get_bind()
+
+    # Check if table already exists
+    table_exists = False
+    try:
+        if conn.dialect.name == 'sqlite':
+            from sqlalchemy import inspect
+            table_exists = 'system_settings' in inspect(conn).get_table_names()
+        else:
+            table_exists = conn.execute(sa.text(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema='public' AND table_name='system_settings'"
+            )).fetchone() is not None
+    except Exception:
+        pass
+
+    if not table_exists:
+        op.create_table(
+            'system_settings',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('key', sa.String(length=100), nullable=False),
+            sa.Column('value', sa.JSON(), nullable=False),
+            sa.Column('description', sa.String(length=255), nullable=True),
+            sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index(op.f('ix_system_settings_id'), 'system_settings', ['id'], unique=False)
+        op.create_index(op.f('ix_system_settings_key'), 'system_settings', ['key'], unique=True)
 
 def downgrade() -> None:
     op.drop_index(op.f('ix_system_settings_key'), table_name='system_settings')
