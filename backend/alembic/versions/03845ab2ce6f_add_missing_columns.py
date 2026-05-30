@@ -23,28 +23,37 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema — safe and portable across Postgres and SQLite."""
-    from sqlalchemy import inspect
     conn = op.get_bind()
-    inspector = inspect(conn)
 
     def add_if_missing(table, column, col_type):
-        columns = [c['name'] for c in inspector.get_columns(table)]
-        if column not in columns:
-            op.add_column(table, sa.Column(column, col_type))
+        try:
+            if conn.dialect.name == 'sqlite':
+                from sqlalchemy import inspect
+                inspector = inspect(conn)
+                try:
+                    columns = [c['name'] for c in inspector.get_columns(table)]
+                except Exception:
+                    columns = []
+                if column not in columns:
+                    op.add_column(table, sa.Column(column, col_type))
+            else:
+                exists = conn.execute(sa.text(
+                    f"SELECT 1 FROM information_schema.columns "
+                    f"WHERE table_name='{table}' AND column_name='{column}'"
+                )).fetchone()
+                if not exists:
+                    op.add_column(table, sa.Column(column, col_type))
+        except Exception as e:
+            print(f"[migration] skipped {table}.{column}: {e}")
 
-    # Add columns if they are not already present in the tables
     add_if_missing('profiling_questions', 'frameworks', sa.String(255))
-    
     add_if_missing('data_elements', 'condition_logic', sa.String(255))
     add_if_missing('data_elements', 'unit', sa.String(50))
     add_if_missing('data_elements', 'collection_frequency', sa.String(50))
     add_if_missing('data_elements', 'frameworks', sa.String(255))
     add_if_missing('data_elements', 'is_metered', sa.Boolean())
     add_if_missing('data_elements', 'meter_type', sa.String(100))
-    
     add_if_missing('audit_logs', 'details', sa.JSON())
-    
     add_if_missing('companies', 'registration_number', sa.String(100))
     add_if_missing('companies', 'trade_license_number', sa.String(100))
     add_if_missing('companies', 'company_code', sa.String(50))
