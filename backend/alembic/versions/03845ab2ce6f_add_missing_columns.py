@@ -30,19 +30,22 @@ def upgrade() -> None:
             if conn.dialect.name == 'sqlite':
                 from sqlalchemy import inspect
                 inspector = inspect(conn)
-                try:
+                if table in inspector.get_table_names():
                     columns = [c['name'] for c in inspector.get_columns(table)]
-                except Exception:
-                    columns = []
-                if column not in columns:
-                    op.add_column(table, sa.Column(column, col_type))
+                    if column not in columns:
+                        op.add_column(table, sa.Column(column, col_type))
             else:
-                exists = conn.execute(sa.text(
-                    f"SELECT 1 FROM information_schema.columns "
-                    f"WHERE table_name='{table}' AND column_name='{column}'"
+                table_exists = conn.execute(sa.text(
+                    f"SELECT 1 FROM information_schema.tables "
+                    f"WHERE table_schema='public' AND table_name='{table}'"
                 )).fetchone()
-                if not exists:
-                    op.add_column(table, sa.Column(column, col_type))
+                if table_exists:
+                    exists = conn.execute(sa.text(
+                        f"SELECT 1 FROM information_schema.columns "
+                        f"WHERE table_schema='public' AND table_name='{table}' AND column_name='{column}'"
+                    )).fetchone()
+                    if not exists:
+                        op.add_column(table, sa.Column(column, col_type))
         except Exception as e:
             print(f"[migration] skipped {table}.{column}: {e}")
 
