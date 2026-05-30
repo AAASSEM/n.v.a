@@ -22,30 +22,33 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _safe_add_column(table: str, column: sa.Column):
-    try:
-        op.add_column(table, column)
-    except Exception as e:
-        print(f"[migration 03845ab2ce6f] skipped add_column {table}.{column.name}: {e}")
-
-
 def upgrade() -> None:
-    """Upgrade schema — portable across Postgres and SQLite."""
-    _safe_add_column('profiling_questions', sa.Column('frameworks', sa.String(length=255), nullable=True))
+    """Upgrade schema — safe and portable across Postgres and SQLite."""
+    from sqlalchemy import inspect
+    conn = op.get_bind()
+    inspector = inspect(conn)
 
-    _safe_add_column('data_elements', sa.Column('condition_logic', sa.String(length=255), nullable=True))
-    _safe_add_column('data_elements', sa.Column('unit', sa.String(length=50), nullable=True))
-    _safe_add_column('data_elements', sa.Column('collection_frequency', sa.String(length=50), nullable=True))
-    _safe_add_column('data_elements', sa.Column('frameworks', sa.String(length=255), nullable=True))
-    _safe_add_column('data_elements', sa.Column('is_metered', sa.Boolean(), nullable=True))
-    _safe_add_column('data_elements', sa.Column('meter_type', sa.String(length=100), nullable=True))
+    def add_if_missing(table, column, col_type):
+        columns = [c['name'] for c in inspector.get_columns(table)]
+        if column not in columns:
+            op.add_column(table, sa.Column(column, col_type))
 
-    _safe_add_column('audit_logs', sa.Column('details', sa.JSON(), nullable=True))
-
-    _safe_add_column('companies', sa.Column('registration_number', sa.String(length=100), nullable=True))
-    _safe_add_column('companies', sa.Column('trade_license_number', sa.String(length=100), nullable=True))
-    _safe_add_column('companies', sa.Column('company_code', sa.String(length=50), nullable=True))
-    _safe_add_column('companies', sa.Column('has_green_key', sa.Boolean(), nullable=True))
+    # Add columns if they are not already present in the tables
+    add_if_missing('profiling_questions', 'frameworks', sa.String(255))
+    
+    add_if_missing('data_elements', 'condition_logic', sa.String(255))
+    add_if_missing('data_elements', 'unit', sa.String(50))
+    add_if_missing('data_elements', 'collection_frequency', sa.String(50))
+    add_if_missing('data_elements', 'frameworks', sa.String(255))
+    add_if_missing('data_elements', 'is_metered', sa.Boolean())
+    add_if_missing('data_elements', 'meter_type', sa.String(100))
+    
+    add_if_missing('audit_logs', 'details', sa.JSON())
+    
+    add_if_missing('companies', 'registration_number', sa.String(100))
+    add_if_missing('companies', 'trade_license_number', sa.String(100))
+    add_if_missing('companies', 'company_code', sa.String(50))
+    add_if_missing('companies', 'has_green_key', sa.Boolean())
 
 
 def downgrade() -> None:
