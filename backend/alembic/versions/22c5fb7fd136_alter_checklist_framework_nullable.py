@@ -22,15 +22,32 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Make company_checklists.framework_id nullable on both engines."""
+    conn = op.get_bind()
+
+    # Check table exists first
+    table_exists = False
     try:
-        with op.batch_alter_table('company_checklists', schema=None) as batch_op:
-            batch_op.alter_column(
-                'framework_id',
-                existing_type=sa.Integer(),
-                nullable=True,
-            )
-    except Exception as e:
-        print(f"[migration 22c5fb7fd136] skipped alter framework_id nullable: {e}")
+        if conn.dialect.name == 'sqlite':
+            from sqlalchemy import inspect
+            table_exists = 'company_checklists' in inspect(conn).get_table_names()
+        else:
+            table_exists = conn.execute(sa.text(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema='public' AND table_name='company_checklists'"
+            )).fetchone() is not None
+    except Exception:
+        pass
+
+    if table_exists:
+        try:
+            with op.batch_alter_table('company_checklists', schema=None) as batch_op:
+                batch_op.alter_column(
+                    'framework_id',
+                    existing_type=sa.Integer(),
+                    nullable=True,
+                )
+        except Exception as e:
+            print(f"[migration 22c5fb7fd136] skipped alter framework_id nullable: {e}")
 
 
 def downgrade() -> None:

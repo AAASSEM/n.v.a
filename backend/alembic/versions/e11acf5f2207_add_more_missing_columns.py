@@ -5,7 +5,7 @@ Revises: 03845ab2ce6f
 Create Date: 2026-03-19 23:03:56.009698
 
 Originally Postgres-only. Rewritten to run portably on both engines via an
-idempotent try/except wrapper, safe to re-run on already-migrated Postgres.
+idempotent table/column existence check, safe to re-run on already-migrated DBs.
 """
 from typing import Sequence, Union
 
@@ -20,28 +20,47 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _safe_add_column(table: str, column: sa.Column):
-    try:
-        op.add_column(table, column)
-    except Exception as e:
-        print(f"[migration e11acf5f2207] skipped add_column {table}.{column.name}: {e}")
-
-
 def upgrade() -> None:
-    _safe_add_column('company_profile_answers', sa.Column('answered_by', sa.Integer(), nullable=True))
-    _safe_add_column('company_profile_answers', sa.Column('answered_at', sa.DateTime(), nullable=True))
+    conn = op.get_bind()
 
-    _safe_add_column('company_checklists', sa.Column('framework_id', sa.Integer(), nullable=True))
-    _safe_add_column('company_checklists', sa.Column('frequency', sa.String(length=20), nullable=True))
-    _safe_add_column('company_checklists', sa.Column('is_required', sa.Boolean(), nullable=True))
-    _safe_add_column('company_checklists', sa.Column('assigned_to', sa.Integer(), nullable=True))
-    _safe_add_column('company_checklists', sa.Column('added_at', sa.DateTime(), nullable=True))
+    def add_if_missing(table, column, col_type):
+        try:
+            if conn.dialect.name == 'sqlite':
+                from sqlalchemy import inspect
+                inspector = inspect(conn)
+                if table in inspector.get_table_names():
+                    columns = [c['name'] for c in inspector.get_columns(table)]
+                    if column not in columns:
+                        op.add_column(table, sa.Column(column, col_type))
+            else:
+                table_exists = conn.execute(sa.text(
+                    f"SELECT 1 FROM information_schema.tables "
+                    f"WHERE table_schema='public' AND table_name='{table}'"
+                )).fetchone()
+                if table_exists:
+                    exists = conn.execute(sa.text(
+                        f"SELECT 1 FROM information_schema.columns "
+                        f"WHERE table_schema='public' AND table_name='{table}' AND column_name='{column}'"
+                    )).fetchone()
+                    if not exists:
+                        op.add_column(table, sa.Column(column, col_type))
+        except Exception as e:
+            print(f"[migration e11acf5f2207] skipped {table}.{column}: {e}")
 
-    _safe_add_column('meters', sa.Column('site_id', sa.Integer(), nullable=True))
-    _safe_add_column('meters', sa.Column('account_number', sa.String(length=100), nullable=True))
-    _safe_add_column('meters', sa.Column('location', sa.String(length=255), nullable=True))
-    _safe_add_column('meters', sa.Column('is_active', sa.Boolean(), nullable=True))
-    _safe_add_column('meters', sa.Column('updated_at', sa.DateTime(), nullable=True))
+    add_if_missing('company_profile_answers', 'answered_by', sa.Integer())
+    add_if_missing('company_profile_answers', 'answered_at', sa.DateTime())
+
+    add_if_missing('company_checklists', 'framework_id', sa.Integer())
+    add_if_missing('company_checklists', 'frequency', sa.String(length=20))
+    add_if_missing('company_checklists', 'is_required', sa.Boolean())
+    add_if_missing('company_checklists', 'assigned_to', sa.Integer())
+    add_if_missing('company_checklists', 'added_at', sa.DateTime())
+
+    add_if_missing('meters', 'site_id', sa.Integer())
+    add_if_missing('meters', 'account_number', sa.String(length=100))
+    add_if_missing('meters', 'location', sa.String(length=255))
+    add_if_missing('meters', 'is_active', sa.Boolean())
+    add_if_missing('meters', 'updated_at', sa.DateTime())
 
 
 def downgrade() -> None:

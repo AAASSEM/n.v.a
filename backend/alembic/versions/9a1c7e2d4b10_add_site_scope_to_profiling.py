@@ -25,68 +25,115 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _safe(fn, *args, **kwargs):
+def _table_exists(conn, table):
     try:
-        fn(*args, **kwargs)
-    except Exception as e:
-        print(f"[migration 9a1c7e2d4b10] skipped: {e}")
+        if conn.dialect.name == 'sqlite':
+            from sqlalchemy import inspect
+            return table in inspect(conn).get_table_names()
+        else:
+            return conn.execute(sa.text(
+                f"SELECT 1 FROM information_schema.tables "
+                f"WHERE table_schema='public' AND table_name='{table}'"
+            )).fetchone() is not None
+    except Exception:
+        return False
+
+
+def _column_exists(conn, table, column):
+    try:
+        if conn.dialect.name == 'sqlite':
+            from sqlalchemy import inspect
+            columns = [c['name'] for c in inspect(conn).get_columns(table)]
+            return column in columns
+        else:
+            return conn.execute(sa.text(
+                f"SELECT 1 FROM information_schema.columns "
+                f"WHERE table_schema='public' AND table_name='{table}' AND column_name='{column}'"
+            )).fetchone() is not None
+    except Exception:
+        return False
+
+
+def _constraint_exists(conn, constraint_name):
+    """Check if a constraint exists (PostgreSQL only, returns True for SQLite to skip drops)."""
+    try:
+        if conn.dialect.name == 'sqlite':
+            return True  # SQLite doesn't support named constraint introspection well
+        return conn.execute(sa.text(
+            f"SELECT 1 FROM information_schema.table_constraints "
+            f"WHERE constraint_name='{constraint_name}'"
+        )).fetchone() is not None
+    except Exception:
+        return False
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+
     # --- company_profile_answers ---
-    try:
-        with op.batch_alter_table('company_profile_answers', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('site_id', sa.Integer(), nullable=True))
-            batch_op.create_foreign_key(
-                'fk_profile_answers_site', 'sites',
-                ['site_id'], ['id'], ondelete='CASCADE',
-            )
-            batch_op.create_index('ix_company_profile_answers_site_id', ['site_id'])
-            # Replace old (company_id, question_id) unique
-            try:
-                batch_op.drop_constraint('uq_company_question', type_='unique')
-            except Exception as e:
-                print(f"[migration 9a1c7e2d4b10] drop uq_company_question skipped: {e}")
-            batch_op.create_unique_constraint(
-                'uq_company_site_question',
-                ['company_id', 'site_id', 'question_id'],
-            )
-    except Exception as e:
-        print(f"[migration 9a1c7e2d4b10] company_profile_answers batch failed: {e}")
+    if _table_exists(conn, 'company_profile_answers'):
+        try:
+            with op.batch_alter_table('company_profile_answers', schema=None) as batch_op:
+                if not _column_exists(conn, 'company_profile_answers', 'site_id'):
+                    batch_op.add_column(sa.Column('site_id', sa.Integer(), nullable=True))
+                    batch_op.create_foreign_key(
+                        'fk_profile_answers_site', 'sites',
+                        ['site_id'], ['id'], ondelete='CASCADE',
+                    )
+                    batch_op.create_index('ix_company_profile_answers_site_id', ['site_id'])
+                # Replace old (company_id, question_id) unique
+                if _constraint_exists(conn, 'uq_company_question'):
+                    try:
+                        batch_op.drop_constraint('uq_company_question', type_='unique')
+                    except Exception as e:
+                        print(f"[migration 9a1c7e2d4b10] drop uq_company_question skipped: {e}")
+                if not _constraint_exists(conn, 'uq_company_site_question'):
+                    batch_op.create_unique_constraint(
+                        'uq_company_site_question',
+                        ['company_id', 'site_id', 'question_id'],
+                    )
+        except Exception as e:
+            print(f"[migration 9a1c7e2d4b10] company_profile_answers batch failed: {e}")
 
     # --- data_submissions: widen the unique constraint to include site_id + meter_id ---
-    try:
-        with op.batch_alter_table('data_submissions', schema=None) as batch_op:
-            try:
-                batch_op.drop_constraint('uq_submission', type_='unique')
-            except Exception as e:
-                print(f"[migration 9a1c7e2d4b10] drop uq_submission skipped: {e}")
-            batch_op.create_unique_constraint(
-                'uq_submission',
-                ['company_id', 'site_id', 'data_element_id', 'meter_id', 'year', 'month'],
-            )
-    except Exception as e:
-        print(f"[migration 9a1c7e2d4b10] data_submissions batch failed: {e}")
+    if _table_exists(conn, 'data_submissions'):
+        try:
+            with op.batch_alter_table('data_submissions', schema=None) as batch_op:
+                if _constraint_exists(conn, 'uq_submission'):
+                    try:
+                        batch_op.drop_constraint('uq_submission', type_='unique')
+                    except Exception as e:
+                        print(f"[migration 9a1c7e2d4b10] drop uq_submission skipped: {e}")
+                batch_op.create_unique_constraint(
+                    'uq_submission',
+                    ['company_id', 'site_id', 'data_element_id', 'meter_id', 'year', 'month'],
+                )
+        except Exception as e:
+            print(f"[migration 9a1c7e2d4b10] data_submissions batch failed: {e}")
 
     # --- company_checklists ---
-    try:
-        with op.batch_alter_table('company_checklists', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('site_id', sa.Integer(), nullable=True))
-            batch_op.create_foreign_key(
-                'fk_company_checklists_site', 'sites',
-                ['site_id'], ['id'], ondelete='CASCADE',
-            )
-            batch_op.create_index('ix_company_checklists_site_id', ['site_id'])
-            try:
-                batch_op.drop_constraint('uq_company_data_element', type_='unique')
-            except Exception as e:
-                print(f"[migration 9a1c7e2d4b10] drop uq_company_data_element skipped: {e}")
-            batch_op.create_unique_constraint(
-                'uq_company_site_data_element',
-                ['company_id', 'site_id', 'data_element_id'],
-            )
-    except Exception as e:
-        print(f"[migration 9a1c7e2d4b10] company_checklists batch failed: {e}")
+    if _table_exists(conn, 'company_checklists'):
+        try:
+            with op.batch_alter_table('company_checklists', schema=None) as batch_op:
+                if not _column_exists(conn, 'company_checklists', 'site_id'):
+                    batch_op.add_column(sa.Column('site_id', sa.Integer(), nullable=True))
+                    batch_op.create_foreign_key(
+                        'fk_company_checklists_site', 'sites',
+                        ['site_id'], ['id'], ondelete='CASCADE',
+                    )
+                    batch_op.create_index('ix_company_checklists_site_id', ['site_id'])
+                if _constraint_exists(conn, 'uq_company_data_element'):
+                    try:
+                        batch_op.drop_constraint('uq_company_data_element', type_='unique')
+                    except Exception as e:
+                        print(f"[migration 9a1c7e2d4b10] drop uq_company_data_element skipped: {e}")
+                if not _constraint_exists(conn, 'uq_company_site_data_element'):
+                    batch_op.create_unique_constraint(
+                        'uq_company_site_data_element',
+                        ['company_id', 'site_id', 'data_element_id'],
+                    )
+        except Exception as e:
+            print(f"[migration 9a1c7e2d4b10] company_checklists batch failed: {e}")
 
 
 def downgrade() -> None:
