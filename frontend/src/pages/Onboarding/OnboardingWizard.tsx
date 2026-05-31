@@ -11,7 +11,7 @@ interface CompanyData {
     registration_number: string;
     trade_license_number: string;
     emirate: 'Dubai' | 'AbuDhabi' | 'Sharjah' | 'Ajman' | 'UmmAlQuwain' | 'RasAlKhaimah' | 'Fujairah';
-    sector: 'Hospitality' | 'RealEstate' | 'Manufacturing' | 'Technology' | 'Other';
+    sector: string;
     has_green_key: boolean;
     active_frameworks: string[];
 }
@@ -61,7 +61,14 @@ export default function OnboardingWizard() {
     });
 
     const sectorOptions = dbSectors || ['Hospitality', 'RealEstate', 'Manufacturing', 'Technology'];
-    const SECTOR_OPTIONS = [...sectorOptions.filter(s => s !== 'Other'), 'Other'];
+    // Include the current sector if it's a custom value not in the list, so it shows as selected
+    const knownSectors = sectorOptions.filter(s => s !== 'Other');
+    const currentSectorIsCustom = companyData.sector && !knownSectors.some(s => s.toLowerCase() === companyData.sector.toLowerCase());
+    const SECTOR_OPTIONS = [
+        ...knownSectors,
+        ...(currentSectorIsCustom ? [companyData.sector] : []),
+        'Other'
+    ];
 
     const { data: myCompany } = useQuery({
         queryKey: ['myCompany'],
@@ -184,6 +191,9 @@ export default function OnboardingWizard() {
                     sector: companyData.sector
                 }
             });
+            // Invalidate the sectors cache so the new custom sector
+            // appears immediately for this user and future users
+            queryClient.invalidateQueries({ queryKey: ['availableSectors'] });
         } else {
             setStep(2);
         }
