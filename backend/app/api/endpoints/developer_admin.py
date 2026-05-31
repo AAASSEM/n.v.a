@@ -136,7 +136,8 @@ async def list_settings(
     _secret: bool = Depends(verify_developer_secret),
 ) -> Any:
     result = await db.execute(select(SystemSetting))
-    return result.scalars().all()
+    settings = result.scalars().all()
+    return [{"id": s.id, "key": s.key, "value": s.value, "description": s.description} for s in settings]
 
 @router.put("/settings/{key}")
 async def update_setting(
@@ -147,7 +148,7 @@ async def update_setting(
 ) -> Any:
     setting = await platform_service.set_system_setting(db, key, data.value, data.description)
     await audit_service.log_action(db, user_id=None, action="UPDATE_SETTING", entity_type="SYSTEM", entity_id=key, details={"value": data.value})
-    return setting
+    return {"id": setting.id, "key": setting.key, "value": setting.value, "description": setting.description}
 
 # --- Audit Logs ---
 
