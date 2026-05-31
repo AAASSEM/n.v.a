@@ -228,14 +228,14 @@ async def generate_pdf_report(report, company_name: str, submissions: List[DataS
     elements = []
 
     # Title
-    elements.append(Paragraph(f"ESG Disclosure Report - FY {report.year}", styles['Title']))
+    elements.append(Paragraph(f"{report.category} Disclosure Report - FY {report.year}", styles['Title']))
     elements.append(Paragraph(f"Company: {company_name}", styles['Heading2']))
     elements.append(Paragraph(f"Generated on: {report.created_at.strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
     elements.append(Spacer(1, 0.2*inch))
 
     # Summary
     elements.append(Paragraph("Reporting Summary", styles['Heading3']))
-    summary_text = f"This document contains the official ESG disclosures for {company_name} for the fiscal year {report.year}."
+    summary_text = f"This document contains the official {report.category} disclosures for {company_name} for the fiscal year {report.year}."
     elements.append(Paragraph(summary_text, styles['Normal']))
     elements.append(Spacer(1, 0.3*inch))
 
@@ -276,7 +276,7 @@ async def generate_excel_report(report, company_name: str, submissions: List[Dat
 
     header_fmt = workbook.add_format({'bold': True, 'font_color': 'white', 'bg_color': '#6366f1'})
     
-    worksheet.write(0, 0, f"ESG Disclosure Report - {company_name}")
+    worksheet.write(0, 0, f"{report.category} Disclosure Report - {company_name}")
     worksheet.write(1, 0, f"Fiscal Year: {report.year}")
     
     headers = ['Element ID', 'Meter ID', 'Month', 'Value', 'Unit', 'Date']

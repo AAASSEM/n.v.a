@@ -628,7 +628,7 @@ async def seed_demo():
                 
             await db.commit()
             print("  [OK] seeded 16 audit logs")
-        # Pre-generate 2 demo reports
+        # Pre-generate 3 demo reports
         from app.models.report import GeneratedReport
         existing_reports = (await db.execute(select(GeneratedReport).where(GeneratedReport.company_id == company.id))).scalars().all()
         if not existing_reports:
@@ -657,14 +657,27 @@ async def seed_demo():
                     status="Completed",
                     download_url="/reports/download/2"
                 )
-                db.add_all([r1, r2])
+                r3 = GeneratedReport(
+                    company_id=company.id,
+                    user_id=admin_u.id,
+                    name="Full GREEN KEY Report 2026",
+                    year=2026,
+                    category="GREEN KEY",
+                    format="PDF",
+                    size="0.9 MB",
+                    status="Completed",
+                    download_url="/reports/download/3"
+                )
+                db.add_all([r1, r2, r3])
                 await db.commit()
                 await db.refresh(r1)
                 await db.refresh(r2)
+                await db.refresh(r3)
                 r1.download_url = f"/reports/download/{r1.id}"
                 r2.download_url = f"/reports/download/{r2.id}"
+                r3.download_url = f"/reports/download/{r3.id}"
                 await db.commit()
-                print("  [OK] seeded 2 pre-generated reports")
+                print("  [OK] seeded 3 pre-generated reports")
 
         print("[demo] seeding complete")
 
