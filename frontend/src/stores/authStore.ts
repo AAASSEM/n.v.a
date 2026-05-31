@@ -5,42 +5,7 @@ import type { User } from '../types/user.ts';
 import { useSiteStore } from './siteStore.ts';
 import type { Site } from '../types/site';
 
-async function hydrateSitesFor(user: User, token: string): Promise<void> {
-    const siteStore = useSiteStore.getState();
-    try {
-        if (!user.profile?.company_id) {
-            siteStore.setSites([]);
-            siteStore.setCurrentSiteId(null);
-            siteStore.setHydrated(true);
-            return;
-        }
-        const res = await fetch(`${API_URL}/sites/`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-            siteStore.setSites([]);
-            siteStore.setHydrated(true);
-            return;
-        }
-        const sites: Site[] = await res.json();
-        siteStore.setSites(sites);
 
-        // Pin to user's site if any
-        if (user.profile?.site_id != null) {
-            siteStore.setCurrentSiteId(user.profile.site_id);
-        } else {
-            // Admin: keep persisted value if still valid, else first site
-            const persisted = siteStore.currentSiteId;
-            const stillValid = persisted != null && sites.some((s) => s.id === persisted);
-            if (!stillValid) {
-                siteStore.setCurrentSiteId(sites[0]?.id ?? null);
-            }
-        }
-        siteStore.setHydrated(true);
-    } catch {
-        siteStore.setHydrated(true);
-    }
-}
 
 interface AuthState {
     user: User | null;
@@ -177,16 +142,41 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const token = get().accessToken;
                     if (!token) throw new Error("No token");
-                    const response = await fetch(`${API_URL}/auth/me`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
+                    
+                    // Run both requests in parallel to save network latency
+                    const [meRes, sitesRes] = await Promise.all([
+                        fetch(`${API_URL}/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch(`${API_URL}/sites/`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    ]);
+                    
+                    if (!meRes.ok) throw new Error("Failed to fetch user");
+                    const user = (await meRes.json()) as User;
+                    set({ user });
+                    
+                    // Process sites
+                    const siteStore = useSiteStore.getState();
+                    if (!sitesRes.ok || !user.profile?.company_id) {
+                        siteStore.setSites([]);
+                        siteStore.setCurrentSiteId(null);
+                        siteStore.setHydrated(true);
+                        return;
+                    }
+                    
+                    const sites = (await sitesRes.json()) as Site[];
+                    siteStore.setSites(sites);
+
+                    // Pin to user's site if any
+                    if (user.profile?.site_id != null) {
+                        siteStore.setCurrentSiteId(user.profile.site_id);
+                    } else {
+                        // Admin: keep persisted value if still valid, else first site
+                        const persisted = siteStore.currentSiteId;
+                        const stillValid = persisted != null && sites.some((s) => s.id === persisted);
+                        if (!stillValid) {
+                            siteStore.setCurrentSiteId(sites[0]?.id ?? null);
                         }
-                    });
-                    if (!response.ok) throw new Error("Failed to fetch user");
-                    const data = await response.json();
-                    set({ user: data as User });
-                    // Load the sites this user can see and pick a current site
-                    await hydrateSitesFor(data as User, token);
+                    }
+                    siteStore.setHydrated(true);
                 } catch {
                     set({ user: null, accessToken: null, isAuthenticated: false });
                     useSiteStore.getState().reset();

@@ -81,6 +81,7 @@ const LOGOS = ['Unilever', 'BlackRock', 'Nestlé', 'Siemens', 'Schneider', 'BASF
 export default function LandingPage() {
     const { isAuthenticated, demoLogin } = useAuthStore();
     const [showDemoModal, setShowDemoModal] = useState(false);
+    const [loadingEmail, setLoadingEmail] = useState<string | null>(null);
     const navigate = useNavigate();
     const statsRef = useInView();
     const eff = useCountUp(94, 1800, statsRef.inView);
@@ -89,10 +90,13 @@ export default function LandingPage() {
 
     const handleDemoLogin = async (email: string) => {
         try {
+            setLoadingEmail(email);
             await demoLogin(email);
             navigate('/dashboard');
         } catch (err) {
             console.error(err);
+        } finally {
+            setLoadingEmail(null);
         }
     };
 
@@ -280,6 +284,8 @@ export default function LandingPage() {
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; display: inline-block; transform-origin: center; }
         
         .dm-close {
             position: absolute; top: 20px; right: 20px;
@@ -605,7 +611,7 @@ export default function LandingPage() {
                         <h2 className="dm-title">Explore ESG Compass Demo</h2>
                         <p className="dm-sub">Choose a seeded persona card to instantly sign in and explore the app with different access roles.</p>
                         <div className="dm-grid">
-                            <div className="dm-card" onClick={() => handleDemoLogin('super@apex.demo')}>
+                            <div className="dm-card" style={loadingEmail === 'super@apex.demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}} onClick={() => !loadingEmail && handleDemoLogin('super@apex.demo')}>
                                 <div className="dm-card-left">
                                     <div className="dm-card-avatar">SS</div>
                                     <div className="dm-card-info">
@@ -616,10 +622,10 @@ export default function LandingPage() {
                                         <span className="dm-card-desc">Full access to company-wide analytics, settings, audit trails, and developer controls.</span>
                                     </div>
                                 </div>
-                                <span className="dm-card-arrow">→</span>
+                                <span className="dm-card-arrow">{loadingEmail === 'super@apex.demo' ? <span className="spin">↻</span> : '→'}</span>
                             </div>
 
-                            <div className="dm-card" onClick={() => handleDemoLogin('manager.a@apex.demo')}>
+                            <div className="dm-card" style={loadingEmail === 'manager.a@apex.demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}} onClick={() => !loadingEmail && handleDemoLogin('manager.a@apex.demo')}>
                                 <div className="dm-card-left">
                                     <div className="dm-card-avatar">MM</div>
                                     <div className="dm-card-info">
@@ -630,10 +636,10 @@ export default function LandingPage() {
                                         <span className="dm-card-desc">Manages Dubai Marina Resort. Review dashboards, update meters, and sign off data submissions.</span>
                                     </div>
                                 </div>
-                                <span className="dm-card-arrow">→</span>
+                                <span className="dm-card-arrow">{loadingEmail === 'manager.a@apex.demo' ? <span className="spin">↻</span> : '→'}</span>
                             </div>
 
-                            <div className="dm-card" onClick={() => handleDemoLogin('uploader.a1@apex.demo')}>
+                            <div className="dm-card" style={loadingEmail === 'uploader.a1@apex.demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}} onClick={() => !loadingEmail && handleDemoLogin('uploader.a1@apex.demo')}>
                                 <div className="dm-card-left">
                                     <div className="dm-card-avatar">UU</div>
                                     <div className="dm-card-info">
@@ -644,7 +650,7 @@ export default function LandingPage() {
                                         <span className="dm-card-desc">Assigned to Dubai Marina Resort. Restricted access to enter and upload monthly ESG telemetry metrics.</span>
                                     </div>
                                 </div>
-                                <span className="dm-card-arrow">→</span>
+                                <span className="dm-card-arrow">{loadingEmail === 'uploader.a1@apex.demo' ? <span className="spin">↻</span> : '→'}</span>
                             </div>
                         </div>
                     </div>
