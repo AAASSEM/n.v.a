@@ -320,12 +320,25 @@ async def download_report(
         raise HTTPException(status_code=404, detail="Report not found")
 
     # Fetch submissions for accurate data
+    from sqlalchemy import or_
+    
+    if report.category.upper() == 'ESG':
+        framework_filter = or_(
+            DataElement.frameworks.ilike(f"%{report.category}%"),
+            DataElement.frameworks == None,
+            DataElement.frameworks == ""
+        )
+    else:
+        framework_filter = DataElement.frameworks.ilike(f"%{report.category}%")
+
     stmt_subs = (
         select(DataSubmission)
+        .join(DataElement, DataSubmission.data_element_id == DataElement.id)
         .options(selectinload(DataSubmission.data_element))
         .where(
             DataSubmission.company_id == company_id,
-            DataSubmission.year == report.year
+            DataSubmission.year == report.year,
+            framework_filter
         )
     )
     submissions = (await db.execute(stmt_subs)).scalars().all()

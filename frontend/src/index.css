@@ -280,12 +280,24 @@ body {
   padding: 4px;
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav-main-pill::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
   gap: 2px;
+  flex-wrap: nowrap;
+  min-width: min-content;
+  margin: 0 auto;
 }
 
 .nav-user-section {
@@ -2144,23 +2156,7 @@ input:-webkit-autofill:active {
   }
 }
 
-/* On very narrow screens, let the nav pill scroll horizontally
-   rather than wrap onto a second line. */
-@media (max-width: 640px) {
-  .nav-main-pill {
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .nav-main-pill::-webkit-scrollbar {
-    display: none;
-  }
-
-  .nav-links {
-    flex-wrap: nowrap;
-  }
-}
+/* Handled globally via flex-shrink and min-width: 0 */
 
 /* Nav Dropdown Items */
 .nav-dropdown-item {

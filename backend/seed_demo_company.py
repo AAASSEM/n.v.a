@@ -628,6 +628,43 @@ async def seed_demo():
                 
             await db.commit()
             print("  [OK] seeded 16 audit logs")
+        # Pre-generate 2 demo reports
+        from app.models.report import GeneratedReport
+        existing_reports = (await db.execute(select(GeneratedReport).where(GeneratedReport.company_id == company.id))).scalars().all()
+        if not existing_reports:
+            # Get the super user to assign the reports to
+            admin_u = (await db.execute(select(User).where(User.email == "super@apex.demo"))).scalars().first()
+            if admin_u:
+                r1 = GeneratedReport(
+                    company_id=company.id,
+                    user_id=admin_u.id,
+                    name="Full ESG Report 2026",
+                    year=2026,
+                    category="ESG",
+                    format="PDF",
+                    size="1.2 MB",
+                    status="Completed",
+                    download_url="/reports/download/1"
+                )
+                r2 = GeneratedReport(
+                    company_id=company.id,
+                    user_id=admin_u.id,
+                    name="Full DST Report 2026",
+                    year=2026,
+                    category="DST",
+                    format="PDF",
+                    size="1.1 MB",
+                    status="Completed",
+                    download_url="/reports/download/2"
+                )
+                db.add_all([r1, r2])
+                await db.commit()
+                await db.refresh(r1)
+                await db.refresh(r2)
+                r1.download_url = f"/reports/download/{r1.id}"
+                r2.download_url = f"/reports/download/{r2.id}"
+                await db.commit()
+                print("  [OK] seeded 2 pre-generated reports")
 
         print("[demo] seeding complete")
 
