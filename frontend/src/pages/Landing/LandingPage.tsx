@@ -271,27 +271,27 @@ export default function LandingPage() {
         /* ── DEMO MODAL ── */
         .dm-overlay {
             position: fixed; inset: 0; z-index: 200;
-            background: rgba(5,6,16,0.85); backdrop-filter: blur(12px);
+            background: rgba(5,6,16,0.92);
             display: flex; align-items: center; justify-content: center;
             padding: 24px;
-            animation: fadeIn 0.25s ease-out;
+            animation: fadeIn 0.2s ease-out;
         }
         .dm-modal {
             background: #0c0d1e; border: 1px solid rgba(255,255,255,0.08);
             border-radius: 20px; max-width: 620px; width: 100%;
             padding: 32px; box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02);
-            animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
         @keyframes spin { 100% { transform: rotate(360deg); } }
         .spin { animation: spin 1s linear infinite; display: inline-block; transform-origin: center; }
         
         .dm-close {
             position: absolute; top: 20px; right: 20px;
             background: none; border: none; color: var(--muted2);
-            font-size: 20px; cursor: pointer; transition: color 0.2s;
+            font-size: 20px; cursor: pointer; transition: color 0.15s;
         }
         .dm-close:hover { color: #f0f2ff; }
         
@@ -302,12 +302,13 @@ export default function LandingPage() {
         .dm-card {
             background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
             border-radius: 12px; padding: 16px 20px; display: flex; align-items: center;
-            justify-content: space-between; cursor: pointer; transition: all 0.2s ease;
+            justify-content: space-between; cursor: pointer;
+            transition: background 0.12s ease, border-color 0.12s ease;
             gap: 16px;
+            will-change: background, border-color;
         }
         .dm-card:hover {
-            background: rgba(16,185,129,0.04); border-color: rgba(16,185,129,0.3);
-            transform: translateX(4px);
+            background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.35);
         }
         .dm-card-left { display: flex; align-items: flex-start; gap: 14px; flex: 1; }
         .dm-card-avatar {
@@ -331,8 +332,8 @@ export default function LandingPage() {
         .badge-uploader { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
         
         .dm-card-desc { font-size: 12px; color: var(--muted2); line-height: 1.5; font-weight: 300; }
-        .dm-card-arrow { color: var(--muted); font-size: 16px; transition: transform 0.2s, color 0.2s; }
-        .dm-card:hover .dm-card-arrow { color: #10b981; transform: translateX(2px); }
+        .dm-card-arrow { color: var(--muted); font-size: 16px; transition: color 0.12s ease; }
+        .dm-card:hover .dm-card-arrow { color: #10b981; }
       `}</style>
 
             {/* Background orbs */}
