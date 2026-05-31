@@ -17,9 +17,17 @@ export default function ReportsView() {
     const [missingData, setMissingData] = useState<any>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [selectedFormat, setSelectedFormat] = useState<'PDF' | 'XLSX'>('PDF');
+    const [selectedFramework, setSelectedFramework] = useState<string>('ESG');
 
     const canCreate = canPerformAction(user?.profile?.role, 'reports', 'create');
     const canDelete = canPerformAction(user?.profile?.role, 'reports', 'delete');
+
+    const { data: companyData } = useQuery({
+        queryKey: ['company_me'],
+        queryFn: async () => (await api.get('/companies/me')).data,
+    });
+    
+    const activeFrameworks: string[] = companyData?.active_frameworks?.length ? companyData.active_frameworks : ['ESG'];
 
     const [alertModal, setAlertModal] = useState<{
         isOpen: boolean;
@@ -32,8 +40,8 @@ export default function ReportsView() {
 
     // 1. Fetch completion status
     const { data: completionStatus, isLoading: loadingStatus, refetch } = useQuery({
-        queryKey: ['report_completion', selectedPeriod, currentSiteId],
-        queryFn: async () => (await api.get(`/reports/check-completion/${selectedPeriod}`)).data,
+        queryKey: ['report_completion', selectedPeriod, currentSiteId, selectedFramework],
+        queryFn: async () => (await api.get(`/reports/check-completion/${selectedPeriod}?framework=${selectedFramework}`)).data,
     });
 
     // 2. Fetch report history
@@ -47,7 +55,7 @@ export default function ReportsView() {
     // 3. Generate mutation
     const generateMutation = useMutation({
         mutationFn: async (allowIncomplete: boolean = false) => {
-            const res = await api.post(`/reports/generate/${selectedPeriod}?allow_incomplete=${allowIncomplete}&format=${selectedFormat}`);
+            const res = await api.post(`/reports/generate/${selectedPeriod}?allow_incomplete=${allowIncomplete}&format=${selectedFormat}&framework=${selectedFramework}`);
             return res.data;
         },
         onSuccess: (data) => {
@@ -165,10 +173,22 @@ export default function ReportsView() {
                 <div className="page-header">
                     <div>
                         <h1 className="page-title">Reports & Disclosures</h1>
-                        <p className="page-subtitle">Generate and download official ESG performance documents for {selectedPeriod}.</p>
+                        <p className="page-subtitle">Generate and download official {selectedFramework.toUpperCase()} performance documents for {selectedPeriod}.</p>
                     </div>
                     {canCreate && (
                         <div style={{ display: 'flex', gap: 12 }}>
+                            <div className="status-chip-group" style={{ background: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 10 }}>
+                                {activeFrameworks.map(fw => (
+                                    <button 
+                                        key={fw}
+                                        className={`status-chip ${selectedFramework === fw ? 'active' : ''}`} 
+                                        onClick={() => setSelectedFramework(fw)} 
+                                        style={{ fontSize: 11, padding: '4px 12px' }}
+                                    >
+                                        {fw.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
                             <div className="status-chip-group" style={{ background: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 10 }}>
                                 <button className={`status-chip ${selectedFormat === 'PDF' ? 'active' : ''}`} onClick={() => setSelectedFormat('PDF')} style={{ fontSize: 11, padding: '4px 12px' }}>PDF</button>
                                 <button className={`status-chip ${selectedFormat === 'XLSX' ? 'active' : ''}`} onClick={() => setSelectedFormat('XLSX')} style={{ fontSize: 11, padding: '4px 12px' }}>Excel</button>

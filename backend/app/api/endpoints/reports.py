@@ -52,6 +52,7 @@ async def check_report_completion(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
+    framework: str = Query('ESG'),
 ) -> Any:
     company_id = current_user.profile.company_id
     if not company_id:
@@ -69,7 +70,17 @@ async def check_report_completion(
             CompanyChecklist.is_required == True,
         )
     )
-    checklist_records = (await db.execute(stmt_checklist)).scalars().all()
+    all_checklists = (await db.execute(stmt_checklist)).scalars().all()
+    
+    checklist_records = []
+    for item in all_checklists:
+        if item.data_element and item.data_element.frameworks:
+            # Check if the requested framework is part of the element's frameworks (e.g. "ESG, DST")
+            if framework.upper() in item.data_element.frameworks.upper():
+                checklist_records.append(item)
+        elif framework.upper() == 'ESG':
+            # Default fallback for elements with no framework specified
+            checklist_records.append(item)
 
     # 2. Fetch all active meters (site-scoped)
     stmt_meters = select(Meter).where(
@@ -137,11 +148,12 @@ async def generate_report(
     year: int,
     allow_incomplete: bool = False,
     format: str = 'PDF',
+    framework: str = Query('ESG'),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
 ) -> Any:
-    status = await check_report_completion(year, db, current_user, site_id)
+    status = await check_report_completion(year, db, current_user, site_id, framework)
     if not status["is_complete"] and not allow_incomplete:
         raise HTTPException(
             status_code=400, 
@@ -152,13 +164,13 @@ async def generate_report(
         )
     
     # Create persistent record
-    report_name = f"Full ESG Report {year}"
+    report_name = f"Full {framework.upper()} Report {year}"
     new_report = GeneratedReport(
         company_id=current_user.profile.company_id,
         user_id=current_user.id,
         name=report_name,
         year=year,
-        category='Full ESG',
+        category=framework.upper(),
         format=format.upper(),
         size='1.2 MB' if format.upper() == 'PDF' else '850 KB',
         status='Completed',
@@ -230,12 +242,13 @@ async def generate_pdf_report(report, company_name: str, submissions: List[DataS
     # Data Table
     table_data = [['Element', 'Meter', 'Month', 'Value', 'Unit']]
     for s in submissions:
+        unit = s.data_element.unit if s.data_element else s.unit
         table_data.append([
             f"ID: {s.data_element_id}", 
             f"Meter: {s.meter_id}" if s.meter_id else "General", 
             str(s.month), 
             str(s.value) if s.value is not None else "0.00", 
-            s.unit or "-"
+            unit or "-"
         ])
 
     if len(table_data) > 1:
@@ -277,7 +290,8 @@ async def generate_excel_report(report, company_name: str, submissions: List[Dat
         # Convert Decimal to float for XlsxWriter
         val = float(s.value) if s.value is not None else 0.0
         worksheet.write(row, 3, val)
-        worksheet.write(row, 4, s.unit or "-")
+        unit = s.data_element.unit if s.data_element else s.unit
+        worksheet.write(row, 4, unit or "-")
         worksheet.write(row, 5, s.submitted_at.strftime("%Y-%m-%d"))
 
     workbook.close()
@@ -306,9 +320,13 @@ async def download_report(
         raise HTTPException(status_code=404, detail="Report not found")
 
     # Fetch submissions for accurate data
-    stmt_subs = select(DataSubmission).where(
-        DataSubmission.company_id == company_id,
-        DataSubmission.year == report.year
+    stmt_subs = (
+        select(DataSubmission)
+        .options(selectinload(DataSubmission.data_element))
+        .where(
+            DataSubmission.company_id == company_id,
+            DataSubmission.year == report.year
+        )
     )
     submissions = (await db.execute(stmt_subs)).scalars().all()
     company_name = report.company.name if report.company else "Your Company"
