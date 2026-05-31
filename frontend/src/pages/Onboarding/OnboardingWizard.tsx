@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../services/api';
+import { api, sitesApi } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useSiteStore } from '../../stores/siteStore';
 import AppLayout from '../../components/layout/AppLayout';
@@ -148,8 +148,8 @@ export default function OnboardingWizard() {
             return res.data;
         },
         onSuccess: async () => {
-            const res = await api.get('/sites');
-            useSiteStore.getState().setSites(res.data);
+            const resData = await sitesApi.list();
+            useSiteStore.getState().setSites(resData);
             await queryClient.invalidateQueries({ queryKey: ['profilingQuestions', currentSiteId] });
             setStep(2);
         }
