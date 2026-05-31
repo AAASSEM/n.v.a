@@ -664,7 +664,7 @@ export default function DeveloperAdminView() {
                                     const val = settings?.find(
                                         (s: any) => s.key === flag.key,
                                     )?.value;
-                                    const isActive = Boolean(val);
+                                    const isActive = val === true || String(val).toLowerCase() === 'true';
                                     return (
                                         <div
                                             key={flag.key}
@@ -705,7 +705,7 @@ export default function DeveloperAdminView() {
                                                 onClick={() =>
                                                     updateSettingMutation.mutate({
                                                         key: flag.key,
-                                                        value: !val,
+                                                        value: !isActive,
                                                     })
                                                 }
                                                 disabled={loadingSettings || updateSettingMutation.isPending}

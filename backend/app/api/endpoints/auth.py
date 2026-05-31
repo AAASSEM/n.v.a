@@ -120,7 +120,8 @@ async def register_user(
     logger.info(f"REGISTRATION START: New user signup attempt for email: {user_in.email}")
     
     # Check registration toggle
-    if await platform_service.get_system_setting(db, "disable_registration"):
+    setting_val = await platform_service.get_system_setting(db, "disable_registration")
+    if setting_val is True or str(setting_val).lower() == "true":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Public registration is currently disabled."
