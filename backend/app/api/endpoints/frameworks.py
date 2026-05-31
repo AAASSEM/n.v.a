@@ -10,7 +10,7 @@ from app.models.user import User
 
 router = APIRouter()
 
-@router.get("/", response_model=List[dict])
+@router.get("", response_model=List[dict])
 async def list_available_frameworks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
