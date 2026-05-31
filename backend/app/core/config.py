@@ -90,7 +90,7 @@ class Settings(BaseSettings):
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     EMAILS_FROM_EMAIL: Optional[str] = "noreply@esgportal.com"
-    EMAILS_FROM_NAME: str = "ESGravty"
+    EMAILS_FROM_NAME: str = "ESGravity"
     
     # Google Cloud Storage (production uploads)
     GCS_BUCKET: Optional[str] = None

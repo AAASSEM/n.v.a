@@ -484,7 +484,7 @@ export default function HelpCenterView() {
                                 Looking for our <a>Terms of Use</a> or <a>Privacy Policy</a>?
                             </div>
                         </div>
-                        <div className="hc-footer-version">ESGravty v2.43</div>
+                        <div className="hc-footer-version">ESGravity v2.43</div>
                     </div>
 
                 </div>

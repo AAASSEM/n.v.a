@@ -68,7 +68,7 @@ const ResetPassword: React.FC = () => {
                         Reset Password
                     </h2>
                     <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginTop: 6 }}>
-                        Create a new secure password for your ESGravty account.
+                        Create a new secure password for your ESGravity account.
                     </p>
                 </div>
 

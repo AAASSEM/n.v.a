@@ -225,7 +225,7 @@ async def request_login_link(
             token=token_obj,
             context={
                 "name": user.first_name,
-                "company_name": "ESGravty"
+                "company_name": "ESGravity"
             }
         )
     

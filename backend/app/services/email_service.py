@@ -42,9 +42,9 @@ class EmailService:
         if token.token_type == "invitation":
             subject = f"You're invited to join {context.get('company_name', 'ESG Portal')}"
         elif token.token_type == "password_reset":
-            subject = "Reset Your ESGravty Password"
+            subject = "Reset Your ESGravity Password"
         elif token.token_type == "login":
-            subject = "Sign in to ESGravty"
+            subject = "Sign in to ESGravity"
 
         # ALWAYS log the link — visible in Render logs as a backup
         logger.info("=" * 60)
@@ -115,7 +115,7 @@ class EmailService:
         import httpx
 
         sender_email = settings.EMAILS_FROM_EMAIL or "noreply@esgportal.com"
-        sender_name = settings.EMAILS_FROM_NAME or "ESGravty"
+        sender_name = settings.EMAILS_FROM_NAME or "ESGravity"
 
         payload = {
             "personalizations": [{
@@ -194,7 +194,7 @@ class EmailService:
     def _build_html(self, token: EmailVerificationToken, context: dict, magic_link_url: str) -> str:
         is_invitation = token.token_type == "invitation"
         user_name = context.get("name", "User")
-        company_name = context.get("company_name", "ESGravty")
+        company_name = context.get("company_name", "ESGravity")
         inviter_name = context.get("inviter_name", "A team member")
 
         if is_invitation:
@@ -202,7 +202,7 @@ class EmailService:
             description = (
                 f"Hello {user_name},<br><br>"
                 f"<strong>{inviter_name}</strong> has invited you to join the "
-                f"<strong>{company_name}</strong> workspace on ESGravty. "
+                f"<strong>{company_name}</strong> workspace on ESGravity. "
                 f"Collaborate with your team to track environmental, social, and governance disclosures."
             )
             cta_text = "Accept Invitation &amp; Join Team"
@@ -210,15 +210,15 @@ class EmailService:
             heading = "Reset Your Password"
             description = (
                 f"Hello {user_name},<br><br>"
-                f"We received a request to reset your password for your ESGravty account. "
+                f"We received a request to reset your password for your ESGravity account. "
                 f"Click the button below to set a new password. This link is valid for 1 hour."
             )
             cta_text = "Reset Password"
         elif token.token_type == "login":
-            heading = "Sign in to ESGravty"
+            heading = "Sign in to ESGravity"
             description = (
                 f"Hello {user_name},<br><br>"
-                f"Click the button below to sign in to your ESGravty account. "
+                f"Click the button below to sign in to your ESGravity account. "
                 f"This link is valid for 1 hour."
             )
             cta_text = "Sign In"
@@ -226,7 +226,7 @@ class EmailService:
             heading = "Verify Your Account"
             description = (
                 f"Hello {user_name},<br><br>"
-                f"Welcome to ESGravty! We're excited to help you transform your "
+                f"Welcome to ESGravity! We're excited to help you transform your "
                 f"sustainability tracking. Click the button below to verify your email "
                 f"and complete your account setup."
             )
@@ -257,7 +257,7 @@ class EmailService:
             <div class="body-wrap">
                 <div class="container">
                     <div class="header">
-                        <h1 class="logo-text">ESGravty</h1>
+                        <h1 class="logo-text">ESGravity</h1>
                     </div>
                     <div class="content">
                         <h2 class="title">{heading}</h2>
@@ -272,7 +272,7 @@ class EmailService:
                         <p class="not-you">If you didn't request this email, you can safely ignore it.</p>
                     </div>
                     <div class="footer">
-                        <p style="margin: 0; font-size: 13px; color: #64748b;">&copy; 2026 ESGravty Platform. All rights reserved.</p>
+                        <p style="margin: 0; font-size: 13px; color: #64748b;">&copy; 2026 ESGravity Platform. All rights reserved.</p>
                     </div>
                 </div>
             </div>

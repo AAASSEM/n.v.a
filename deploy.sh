@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════════════
-#  ESGravty — Google Cloud Platform Deployment Script
+#  ESGravity — Google Cloud Platform Deployment Script
 #  Run this from the project root directory.
 # ═══════════════════════════════════════════════════════════════════════════════
 set -e
@@ -25,7 +25,7 @@ EMAIL_FROM="your-email@gmail.com"
 # ────────────────────────────────────────────────────────────────────────────────
 echo ""
 echo "╔═══════════════════════════════════════════════════╗"
-echo "║    ESGravty — GCP Deployment                  ║"
+echo "║    ESGravity — GCP Deployment                  ║"
 echo "╚═══════════════════════════════════════════════════╝"
 echo ""
 

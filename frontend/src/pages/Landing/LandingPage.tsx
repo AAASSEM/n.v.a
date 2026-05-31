@@ -353,7 +353,7 @@ export default function LandingPage() {
                             </svg>
                         </div>
                         <div>
-                            <div className="lp-logo-name">ESGRAVTY</div>
+                            <div className="lp-logo-name">ESGRAVITY</div>
                             <div className="lp-logo-sub">Sustainability Intelligence</div>
                         </div>
                     </Link>
@@ -427,7 +427,7 @@ export default function LandingPage() {
                                 <div className="lp-dot" style={{ background: '#ef4444', opacity: 0.5 }} />
                                 <div className="lp-dot" style={{ background: '#f59e0b', opacity: 0.5 }} />
                                 <div className="lp-dot" style={{ background: '#10b981', opacity: 0.5 }} />
-                                <span className="lp-dash-url">esgravty.io/dashboard</span>
+                                <span className="lp-dash-url">esgravity.io/dashboard</span>
                             </div>
                             <div className="lp-dash-body">
                                 <div className="lp-kpis">
@@ -559,7 +559,7 @@ export default function LandingPage() {
             <section className="lp-cta">
                 <div className="lp-cta-eyebrow">Get Started Today</div>
                 <h2 className="lp-cta-h2">Your sustainability<br />journey starts <em>now.</em></h2>
-                <p className="lp-cta-sub">Join 340+ enterprises already using ESGravty to turn compliance into competitive advantage.</p>
+                <p className="lp-cta-sub">Join 340+ enterprises already using ESGravity to turn compliance into competitive advantage.</p>
                 <div className="lp-cta-actions">
                     <Link to="/signup" className="lp-btn-hero lp-btn-hero-p">
                         Start Free — No Card Required
@@ -581,7 +581,7 @@ export default function LandingPage() {
                                     <circle cx="12" cy="12" r="1.5" fill="white" stroke="none" />
                                 </svg>
                             </div>
-                            <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.05em', color: '#f0f2ff' }}>ESGRAVTY</span>
+                            <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.05em', color: '#f0f2ff' }}>ESGRAVITY</span>
                         </div>
                         <p>The command center for corporate sustainability intelligence.</p>
                     </div>
@@ -597,7 +597,7 @@ export default function LandingPage() {
                     ))}
                 </div>
                 <div className="lp-footer-bottom">
-                    <span className="lp-footer-copy">© 2024 ESGRAVTY GLOBAL SYSTEMS — ALL RIGHTS RESERVED</span>
+                    <span className="lp-footer-copy">© 2024 ESGRAVITY GLOBAL SYSTEMS — ALL RIGHTS RESERVED</span>
                     <div className="lp-footer-badges">
                         <span className="lp-badge">SOC 2</span>
                         <span className="lp-badge">ISO 27001</span>
@@ -609,7 +609,7 @@ export default function LandingPage() {
                 <div className="dm-overlay" onClick={() => setShowDemoModal(false)}>
                     <div className="dm-modal" onClick={e => e.stopPropagation()}>
                         <button className="dm-close" onClick={() => setShowDemoModal(false)}>✕</button>
-                        <h2 className="dm-title">Explore ESGravty Demo</h2>
+                        <h2 className="dm-title">Explore ESGravity Demo</h2>
                         <p className="dm-sub">Choose a seeded persona card to instantly sign in and explore the app with different access roles.</p>
                         <div className="dm-grid">
                             <div className="dm-card" style={loadingEmail === 'super@apex.demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}} onClick={() => !loadingEmail && handleDemoLogin('super@apex.demo')}>

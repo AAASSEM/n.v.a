@@ -130,7 +130,7 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                                     <circle cx="12" cy="12" r="1.5" fill="white" stroke="none" />
                                 </svg>
                             </div>
-                            <span className="nav-logo-text" style={{ fontSize: 18, letterSpacing: '-0.5px' }}>ESG<span style={{ color: 'var(--accent-green)' }}>ravty</span></span>
+                            <span className="nav-logo-text" style={{ fontSize: 18, letterSpacing: '-0.5px' }}>ESG<span style={{ color: 'var(--accent-green)' }}>ravity</span></span>
                         </Link>
                     </div>
 

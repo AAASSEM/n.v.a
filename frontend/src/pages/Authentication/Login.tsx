@@ -74,7 +74,7 @@ export default function Login() {
                             </svg>
                         </div>
                         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-                            ESGravty
+                            ESGravity
                         </h1>
                     </div>
                 </Link>

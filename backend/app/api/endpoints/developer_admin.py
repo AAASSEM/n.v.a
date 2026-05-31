@@ -203,7 +203,7 @@ async def impersonate_user(
 @router.post("/seed-demo")
 async def seed_demo(
     name: str = "Demo Site Alpha",
-    email: str = "demo.alpha@esgravty.com",
+    email: str = "demo.alpha@esgravity.com",
     db: AsyncSession = Depends(get_db),
     _secret: bool = Depends(verify_developer_secret),
 ) -> Any:
