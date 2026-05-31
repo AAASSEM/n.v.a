@@ -23,6 +23,9 @@ async def get_db() -> Generator:
 
 from app.services.platform_service import platform_service
 
+# In-memory cache for maintenance mode (avoids a DB query on every single request)
+_maint_cache: dict = {"value": None, "expires": 0}
+
 async def get_current_user(
     db: AsyncSession = Depends(get_db), token: str = Depends(reusable_oauth2)
 ) -> User:
@@ -42,9 +45,14 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    # Check maintenance mode
-    is_maint = await platform_service.get_system_setting(db, "maintenance_mode")
-    if is_maint and not getattr(user, 'is_developer', False):
+    # Check maintenance mode (cached for 30s to avoid per-request DB hit)
+    import time
+    now = time.time()
+    if _maint_cache["expires"] < now:
+        _maint_cache["value"] = await platform_service.get_system_setting(db, "maintenance_mode")
+        _maint_cache["expires"] = now + 30
+    
+    if _maint_cache["value"] and not getattr(user, 'is_developer', False):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Platform is currently under maintenance. Please try again later."

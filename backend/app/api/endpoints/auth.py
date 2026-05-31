@@ -15,6 +15,7 @@ import logging
 from app.services.email_service import email_service
 from app.models.token import EmailVerificationToken, TokenType
 from app.services.audit_service import audit_service
+from app.models.system import AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +238,7 @@ class DemoLoginRequest(BaseModel):
 @router.post("/demo-login", response_model=Token)
 async def demo_login(
     request: DemoLoginRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
@@ -266,22 +268,26 @@ async def demo_login(
         await db.commit()
         await db.refresh(user)
 
-    await audit_service.log_action(
-        db,
-        action="LOGIN",
+    # Issue access token immediately — audit log is non-critical
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = security.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
+
+    # Fire-and-forget: write audit log without blocking the response
+    log = AuditLog(
         user_id=user.id,
         company_id=user.profile.company_id if user.profile else None,
+        action="LOGIN",
         entity_type="USER",
         entity_id=str(user.id),
         details={"email": user.email, "method": "demo_login"},
     )
+    db.add(log)
+    await db.commit()
 
-    # Issue access token
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
-        "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        ),
+        "access_token": token,
         "token_type": "bearer",
     }
 

@@ -92,10 +92,11 @@ export default function LandingPage() {
         try {
             setLoadingEmail(email);
             await demoLogin(email);
+            // Navigate immediately — the dashboard has its own loading state
+            // so the user sees the app shell right away instead of waiting on this modal
             navigate('/dashboard');
         } catch (err) {
             console.error(err);
-        } finally {
             setLoadingEmail(null);
         }
     };
