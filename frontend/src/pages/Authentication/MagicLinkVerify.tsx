@@ -73,7 +73,7 @@ const MagicLinkVerify: React.FC = () => {
             </svg>
           </div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-            ESG Compass
+            ESGravty
           </h2>
         </div>
 

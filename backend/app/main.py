@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO)
 m_logger = logging.getLogger("app.main")
 
 print("=" * 60, flush=True)
-print("ESG Compass Backend - Starting up...", flush=True)
+print("ESGravty Backend - Starting up...", flush=True)
 print(f"Python: {sys.version}", flush=True)
 print(f"PORT: {os.environ.get('PORT', 'not set')}", flush=True)
 print(f"ENVIRONMENT: {os.environ.get('ENVIRONMENT', 'not set')}", flush=True)
@@ -195,7 +195,7 @@ from fastapi.responses import FileResponse
 
 @app.get("/api")
 async def api_root():
-    return {"message": "ESG Compass API is running", "docs": "/docs"}
+    return {"message": "ESGravty API is running", "docs": "/docs"}
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
@@ -228,6 +228,6 @@ else:
     print(f"[FRONTEND] WARNING: Frontend dist directory not found at {frontend_dist}", flush=True)
     @app.get("/")
     async def root():
-        return {"message": "ESG Compass API is running. Frontend not built.", "docs": "/docs"}
+        return {"message": "ESGravty API is running. Frontend not built.", "docs": "/docs"}
 
 print("[OK] Application startup complete!", flush=True)

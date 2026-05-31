@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════════════
-#  ESG Compass — Google Cloud Platform Deployment Script
+#  ESGravty — Google Cloud Platform Deployment Script
 #  Run this from the project root directory.
 # ═══════════════════════════════════════════════════════════════════════════════
 set -e
@@ -25,7 +25,7 @@ EMAIL_FROM="your-email@gmail.com"
 # ────────────────────────────────────────────────────────────────────────────────
 echo ""
 echo "╔═══════════════════════════════════════════════════╗"
-echo "║    ESG Compass — GCP Deployment                  ║"
+echo "║    ESGravty — GCP Deployment                  ║"
 echo "╚═══════════════════════════════════════════════════╝"
 echo ""
 
