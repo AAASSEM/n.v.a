@@ -60,7 +60,7 @@ export default function OnboardingWizard() {
         },
     });
 
-    const sectorOptions = dbSectors || ['Hospitality', 'RealEstate', 'Manufacturing', 'Technology'];
+    const sectorOptions = Array.isArray(dbSectors) ? dbSectors : ['Hospitality', 'RealEstate', 'Manufacturing', 'Technology'];
     // Include the current sector if it's a custom value not in the list, so it shows as selected
     const knownSectors = sectorOptions.filter(s => s !== 'Other');
     const currentSectorIsCustom = companyData.sector && !knownSectors.some(s => s.toLowerCase() === companyData.sector.toLowerCase());
@@ -218,8 +218,9 @@ export default function OnboardingWizard() {
         });
     };
 
-    const totalQuestions = questions?.length || 0;
-    const answeredCount = questions?.filter(q => answers[q.id] !== undefined).length || 0;
+    const questionsList = Array.isArray(questions) ? questions : [];
+    const totalQuestions = questionsList.length;
+    const answeredCount = questionsList.filter(q => answers[q.id] !== undefined).length;
     const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
     const errorMessage = createCompanyMutation.error
@@ -487,7 +488,7 @@ export default function OnboardingWizard() {
                                     {loadingFrameworks ? (
                                         <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><div className="spinner" /></div>
                                     ) : (
-                                        dbFrameworks?.filter((fw: any) => {
+                                        (Array.isArray(dbFrameworks) ? dbFrameworks : []).filter((fw: any) => {
                                             const isDubaiSiteContext = currentSite ? currentSite.location?.toLowerCase() === 'dubai' : companyData.emirate.toLowerCase() === 'dubai';
                                             return fw.type.toLowerCase() === 'mandatory' ||
                                                 (fw.framework_id === 'DST' && companyData.active_frameworks.includes('DST') && isDubaiSiteContext);
@@ -525,7 +526,7 @@ export default function OnboardingWizard() {
                                     {loadingFrameworks ? (
                                         <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><div className="spinner" /></div>
                                     ) : (
-                                        dbFrameworks?.filter((fw: any) => {
+                                        (Array.isArray(dbFrameworks) ? dbFrameworks : []).filter((fw: any) => {
                                             if (fw.type.toLowerCase() !== 'voluntary' || fw.framework_id === 'DST') return false;
                                             if (fw.framework_id.toUpperCase() === 'GREEN KEY' && companyData.sector.toLowerCase() !== 'hospitality') {
                                                 return false;
