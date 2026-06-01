@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import DemoModal from '../../components/ui/DemoModal';
 
 /* ─────────────────────────── tiny hooks ─────────────────────────── */
 function useCountUp(target: number, duration = 2000, start = false) {
@@ -607,58 +608,7 @@ export default function LandingPage() {
                     </div>
                 </div>
             </footer>
-            {showDemoModal && (
-                <div className="dm-overlay" onClick={() => setShowDemoModal(false)}>
-                    <div className="dm-modal" onClick={e => e.stopPropagation()}>
-                        <button className="dm-close" onClick={() => setShowDemoModal(false)}>✕</button>
-                        <h2 className="dm-title">Explore ESGravity Demo</h2>
-                        <p className="dm-sub">Choose a seeded persona card to instantly sign in and explore the app with different access roles.</p>
-                        <div className="dm-grid">
-                            <div className="dm-card" style={loadingEmail === 'super@apex.demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}} onClick={() => !loadingEmail && handleDemoLogin('super@apex.demo')}>
-                                <div className="dm-card-left">
-                                    <div className="dm-card-avatar">SS</div>
-                                    <div className="dm-card-info">
-                                        <div className="dm-card-name-row">
-                                            <span className="dm-card-name">Sam Super (super@apex.demo)</span>
-                                            <span className="dm-card-badge badge-super">Super Admin</span>
-                                        </div>
-                                        <span className="dm-card-desc">Full access to company-wide analytics, settings, audit trails, and developer controls.</span>
-                                    </div>
-                                </div>
-                                <span className="dm-card-arrow">{loadingEmail === 'super@apex.demo' ? <span className="spin">↻</span> : '→'}</span>
-                            </div>
-
-                            <div className="dm-card" style={loadingEmail === 'manager.a@apex.demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}} onClick={() => !loadingEmail && handleDemoLogin('manager.a@apex.demo')}>
-                                <div className="dm-card-left">
-                                    <div className="dm-card-avatar">MM</div>
-                                    <div className="dm-card-info">
-                                        <div className="dm-card-name-row">
-                                            <span className="dm-card-name">Mona Marina (manager.a@apex.demo)</span>
-                                            <span className="dm-card-badge badge-manager">Site Manager</span>
-                                        </div>
-                                        <span className="dm-card-desc">Manages Dubai Marina Resort. Review dashboards, update meters, and sign off data submissions.</span>
-                                    </div>
-                                </div>
-                                <span className="dm-card-arrow">{loadingEmail === 'manager.a@apex.demo' ? <span className="spin">↻</span> : '→'}</span>
-                            </div>
-
-                            <div className="dm-card" style={loadingEmail === 'uploader.a1@apex.demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}} onClick={() => !loadingEmail && handleDemoLogin('uploader.a1@apex.demo')}>
-                                <div className="dm-card-left">
-                                    <div className="dm-card-avatar">UU</div>
-                                    <div className="dm-card-info">
-                                        <div className="dm-card-name-row">
-                                            <span className="dm-card-name">Usama Upload (uploader.a1@apex.demo)</span>
-                                            <span className="dm-card-badge badge-uploader">Data Entry</span>
-                                        </div>
-                                        <span className="dm-card-desc">Assigned to Dubai Marina Resort. Restricted access to enter and upload monthly ESG telemetry metrics.</span>
-                                    </div>
-                                </div>
-                                <span className="dm-card-arrow">{loadingEmail === 'uploader.a1@apex.demo' ? <span className="spin">↻</span> : '→'}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DemoModal isOpen={showDemoModal} onClose={() => setShowDemoModal(false)} />
         </div>
     );
 }

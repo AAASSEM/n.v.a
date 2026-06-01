@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_URL } from '../../config';
+import DemoModal from '../../components/ui/DemoModal';
 
 export default function Signup() {
     const [firstName, setFirstName] = useState('');
@@ -9,6 +10,7 @@ export default function Signup() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [showDemoModal, setShowDemoModal] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -143,13 +145,14 @@ export default function Signup() {
                         ) : 'Create Account'}
                     </button>
 
-                    <Link
-                        to="/"
+                    <button
+                        type="button"
+                        onClick={() => setShowDemoModal(true)}
                         className="btn btn-secondary btn-lg"
-                        style={{ width: '100%', marginTop: 8, justifyContent: 'center', textDecoration: 'none' }}
+                        style={{ width: '100%', marginTop: 8, justifyContent: 'center' }}
                     >
                         View Demo
-                    </Link>
+                    </button>
                 </form>
 
                 <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13.5, color: 'var(--text-muted)' }}>
@@ -159,6 +162,7 @@ export default function Signup() {
                     </Link>
                 </div>
             </div>
+            <DemoModal isOpen={showDemoModal} onClose={() => setShowDemoModal(false)} />
         </div>
     );
 }
