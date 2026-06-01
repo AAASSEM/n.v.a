@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import DemoModal from '../../components/ui/DemoModal';
 
@@ -82,7 +82,6 @@ const LOGOS = ['Unilever', 'BlackRock', 'Nestlé', 'Siemens', 'Schneider', 'BASF
 export default function LandingPage() {
     const { isAuthenticated } = useAuthStore();
     const [showDemoModal, setShowDemoModal] = useState(false);
-    const navigate = useNavigate();
     const statsRef = useInView();
     const eff = useCountUp(94, 1800, statsRef.inView);
     const metrics = useCountUp(12, 2200, statsRef.inView);
