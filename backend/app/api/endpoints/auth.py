@@ -205,21 +205,30 @@ async def request_login_link(
 ) -> Any:
     """
     Send a login magic link to the user's email if they exist.
+    If the user exists but is not active, resend the verification link.
     """
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalars().first()
     
-    if user and user.is_active:
-        # Create token
-        token_obj = EmailVerificationToken(
-            user_id=user.id,
-            token_type=TokenType.login
-        )
+    if user:
+        if user.is_active:
+            # Create login token
+            token_obj = EmailVerificationToken(
+                user_id=user.id,
+                token_type=TokenType.login
+            )
+        else:
+            # User hasn't verified email yet, resend verification token
+            token_obj = EmailVerificationToken(
+                user_id=user.id,
+                token_type=TokenType.email_verification
+            )
+            
         db.add(token_obj)
         await db.commit()
         await db.refresh(token_obj)
         
-        # Send login magic link email
+        # Send magic link email
         background_tasks.add_task(
             email_service.send_magic_link_email,
             email=user.email,

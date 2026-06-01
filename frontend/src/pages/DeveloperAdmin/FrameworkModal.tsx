@@ -70,12 +70,13 @@ export default function FrameworkModal({ isOpen, onClose, initialData, reqConfig
                 <div className="modal-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" opacity="0.4" />
-                                <path d="M12 12L12 3C12 3 14 4.5 14 6C14 7.5 12 9 12 9" fill="currentColor" stroke="currentColor" strokeWidth="1" />
-                                <path d="M12 12L12 21" opacity="0.6" />
-                                <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-                            </svg>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" opacity="0.25" />
+    <path d="M12 2C6.5 2 2 6.5 2 12c0 3 1.3 5.7 3.5 7.5" opacity="0.6" />
+    <path d="M12 6a6 6 0 0 0-6 6c0 3.3 2.7 6 6 6 2.3 0 4.3-1.3 5.3-3.3" />
+    <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+    <path d="M18.5 11c0-2-1.5-3.5-3.5-3.5S11.5 9 11.5 11s1.5 3.5 3.5 3.5s3.5-1.5 3.5-3.5Z" fill="currentColor" stroke="none" />
+</svg>
                         </div>
                         <span className="modal-title">{initialData ? 'Edit Framework' : 'New Framework'}</span>
                     </div>

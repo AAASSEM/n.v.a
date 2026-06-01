@@ -473,12 +473,13 @@ export default function HelpCenterView() {
                     <div className="hc-footer-banner hc-fade hc-fade-4">
                         <div className="hc-footer-left">
                             <div className="hc-footer-icon">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="10" opacity="0.4" />
-                                    <path d="M12 12L12 3C12 3 14 4.5 14 6C14 7.5 12 9 12 9" fill="white" stroke="white" strokeWidth="1" />
-                                    <path d="M12 12L12 21" opacity="0.6" />
-                                    <circle cx="12" cy="12" r="1.5" fill="white" stroke="none" />
-                                </svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" opacity="0.25" />
+    <path d="M12 2C6.5 2 2 6.5 2 12c0 3 1.3 5.7 3.5 7.5" opacity="0.6" />
+    <path d="M12 6a6 6 0 0 0-6 6c0 3.3 2.7 6 6 6 2.3 0 4.3-1.3 5.3-3.3" />
+    <circle cx="12" cy="12" r="2.5" fill="white" stroke="none" />
+    <path d="M18.5 11c0-2-1.5-3.5-3.5-3.5S11.5 9 11.5 11s1.5 3.5 3.5 3.5s3.5-1.5 3.5-3.5Z" fill="white" stroke="none" />
+</svg>
                             </div>
                             <div className="hc-footer-text">
                                 Looking for our <a>Terms of Use</a> or <a>Privacy Policy</a>?

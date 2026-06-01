@@ -190,7 +190,7 @@ async def invite_user(
         role=user_in.role,
         company_id=current_user.profile.company_id,
         site_id=target_site_id,
-        must_reset_password=False
+        must_reset_password=True
     )
     db.add(profile)
     

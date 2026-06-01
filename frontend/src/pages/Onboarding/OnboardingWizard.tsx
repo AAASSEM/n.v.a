@@ -37,7 +37,7 @@ export default function OnboardingWizard() {
     const { fetchUser, user } = useAuthStore();
     const currentSiteId = useSiteStore((s) => s.currentSiteId);
     const sites = useSiteStore((s) => s.sites);
-    const currentSite = sites.find((s) => s.id === currentSiteId);
+    const currentSite = (sites || []).find((s) => s.id === currentSiteId);
     const [step, setStep] = useState(1);
     const [companyId, setCompanyId] = useState<number | null>(null);
     const [answers, setAnswers] = useState<Record<number, boolean>>({});
