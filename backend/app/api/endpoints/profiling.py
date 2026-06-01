@@ -60,19 +60,32 @@ async def read_profiling_questions(
         for fw in company.active_frameworks:
             active_frameworks.add(fw.strip().lower())
 
-    if getattr(company, 'has_green_key', False):
+    # Always ensure ESG is active
+    active_frameworks.add("esg")
+
+    if getattr(company, 'has_green_key', False) and company.sector.lower() == "hospitality":
         active_frameworks.add("green key")
 
-    # If site_id is provided, resolve site and override DST if site is not in Dubai
+    # Resolve emirate and sector to decide DST
+    resolved_emirate = company.emirate
+    resolved_sector = company.sector
+
     if site_id is not None:
         from app.models.company import Site
         effective_site_id = await resolve_site_id(current_user, site_id, db, required=False)
         if effective_site_id:
             site = await db.get(Site, effective_site_id)
-            if site and site.location:
-                site_loc = site.location.strip().lower()
-                if "dubai" not in site_loc:
-                    active_frameworks.discard("dst")
+            if site:
+                if site.location:
+                    resolved_emirate = site.location
+                if site.sector:
+                    resolved_sector = site.sector
+
+    if resolved_emirate and resolved_sector:
+        if "dubai" in resolved_emirate.lower() and "hospitality" in resolved_sector.lower():
+            active_frameworks.add("dst")
+        else:
+            active_frameworks.discard("dst")
 
     filtered_questions = []
     for q in all_questions:
@@ -161,11 +174,28 @@ async def get_my_checklist(
     effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
 
     company = await db.get(Company, current_user.profile.company_id)
-    active_frameworks = []
+    active_frameworks = set()
     if company.active_frameworks:
-        active_frameworks = [f.strip().lower() for f in company.active_frameworks]
-    if getattr(company, 'has_green_key', False):
-        active_frameworks.append('green key')
+        for fw in company.active_frameworks:
+            active_frameworks.add(fw.strip().lower())
+
+    # Always ensure ESG is active
+    active_frameworks.add("esg")
+
+    if getattr(company, 'has_green_key', False) and company.sector.lower() == "hospitality":
+        active_frameworks.add("green key")
+
+    # Resolve emirate and sector for this site
+    from app.models.company import Site
+    site = await db.get(Site, effective_site_id)
+    resolved_emirate = site.location if site else company.emirate
+    resolved_sector = site.sector if site else company.sector
+
+    if resolved_emirate and resolved_sector:
+        if "dubai" in resolved_emirate.lower() and "hospitality" in resolved_sector.lower():
+            active_frameworks.add("dst")
+        else:
+            active_frameworks.discard("dst")
 
     result = await db.execute(
         select(CompanyChecklist)

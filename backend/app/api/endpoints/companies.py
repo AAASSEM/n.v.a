@@ -96,6 +96,18 @@ async def create_company(
         exists = await db.execute(select(Company).where(Company.company_code == generated_code))
         if not exists.scalars().first():
             break
+    fws = list(company_in.active_frameworks or [])
+    if "esg" not in [f.lower() for f in fws]:
+        fws.append("ESG")
+    
+    comp_emirate = company_in.emirate or ""
+    comp_sector = company_in.sector or ""
+    if "dubai" in comp_emirate.lower() and "hospitality" in comp_sector.lower():
+        if "dst" not in [f.lower() for f in fws]:
+            fws.append("DST")
+    else:
+        fws = [f for f in fws if f.lower() != "dst"]
+
     company = Company(
         owner_id=current_user.id,
         name=company_in.name,
@@ -105,7 +117,7 @@ async def create_company(
         emirate=company_in.emirate.lower(),
         sector=company_in.sector.lower(),
         has_green_key=company_in.has_green_key if company_in.sector.lower() == "hospitality" else False,
-        active_frameworks=company_in.active_frameworks
+        active_frameworks=fws
     )
     db.add(company)
     await db.commit()
@@ -184,7 +196,20 @@ async def update_company(
     company.emirate = company_in.emirate.lower()
     company.sector = company_in.sector.lower()
     company.has_green_key = company_in.has_green_key if company.sector == "hospitality" else False
-    company.active_frameworks = company_in.active_frameworks
+    
+    fws = list(company_in.active_frameworks or [])
+    if "esg" not in [f.lower() for f in fws]:
+        fws.append("ESG")
+    
+    comp_emirate = company_in.emirate or ""
+    comp_sector = company_in.sector or ""
+    if "dubai" in comp_emirate.lower() and "hospitality" in comp_sector.lower():
+        if "dst" not in [f.lower() for f in fws]:
+            fws.append("DST")
+    else:
+        fws = [f for f in fws if f.lower() != "dst"]
+
+    company.active_frameworks = fws
 
     db.add(company)
     await db.commit()
