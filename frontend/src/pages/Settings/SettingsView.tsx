@@ -30,14 +30,15 @@ export default function SettingsView() {
 
     const [orgData, setOrgData] = useState({
         name: '', registration_number: '', trade_license_number: '',
-        emirate: '', sector: '', has_green_key: false
+        emirate: '', sector: '', has_green_key: false, active_frameworks: [] as string[]
     });
 
     React.useEffect(() => {
         if (company) setOrgData({
             name: company.name || '', registration_number: company.registration_number || '',
             trade_license_number: company.trade_license_number || '', emirate: company.emirate || '',
-            sector: company.sector || '', has_green_key: company.has_green_key || false
+            sector: company.sector || '', has_green_key: company.has_green_key || false,
+            active_frameworks: company.active_frameworks || []
         });
     }, [company]);
 
@@ -108,6 +109,7 @@ export default function SettingsView() {
                 .sv-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; padding: 11px 14px; font-size: 13.5px; color: #f0f2ff; font-family: inherit; outline: none; transition: all 0.18s; box-sizing: border-box; }
                 .sv-input::placeholder { color: #4b5563; }
                 .sv-input:focus { border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.05); box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+                .sv-input option { background: #0c0d1e; color: #f0f2ff; }
                 .sv-input-hint { font-size: 11px; color: #4b5563; font-weight: 300; }
                 .sv-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
                 @media (max-width: 600px) { .sv-row { grid-template-columns: 1fr; } }
