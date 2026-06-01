@@ -86,6 +86,7 @@ export default function LandingPage() {
 
     useEffect(() => {
         if (wasAuthenticatedOnMount.current && isAuthenticated && user?.email?.includes('demo')) {
+            wasAuthenticatedOnMount.current = false;
             logout();
         }
     }, [isAuthenticated, user, logout]);
