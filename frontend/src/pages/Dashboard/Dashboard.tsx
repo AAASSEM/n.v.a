@@ -358,7 +358,7 @@ export default function Dashboard() {
 
                 {/* Detail Modal */}
                 {selectedStat && (
-                    <div className="modal-backdrop" onClick={() => setSelectedStat(null)} style={{ backdropFilter: 'blur(8px)' }}>
+                    <div className="modal-backdrop" onClick={() => setSelectedStat(null)}>
                         <div 
                             className="modal modal-lg animate-scale-in" 
                             onClick={e => e.stopPropagation()}
