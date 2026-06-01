@@ -80,27 +80,13 @@ const LOGOS = ['Unilever', 'BlackRock', 'Nestlé', 'Siemens', 'Schneider', 'BASF
 
 /* ─────────────────────────── component ─────────────────────────── */
 export default function LandingPage() {
-    const { isAuthenticated, demoLogin } = useAuthStore();
+    const { isAuthenticated } = useAuthStore();
     const [showDemoModal, setShowDemoModal] = useState(false);
-    const [loadingEmail, setLoadingEmail] = useState<string | null>(null);
     const navigate = useNavigate();
     const statsRef = useInView();
     const eff = useCountUp(94, 1800, statsRef.inView);
     const metrics = useCountUp(12, 2200, statsRef.inView);
     const clients = useCountUp(340, 1600, statsRef.inView);
-
-    const handleDemoLogin = async (email: string) => {
-        try {
-            setLoadingEmail(email);
-            await demoLogin(email);
-            // Navigate immediately — the dashboard has its own loading state
-            // so the user sees the app shell right away instead of waiting on this modal
-            navigate('/dashboard');
-        } catch (err) {
-            console.error(err);
-            setLoadingEmail(null);
-        }
-    };
 
     return (
         <div style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", background: '#050610', color: '#f0f2ff', minHeight: '100vh', overflowX: 'hidden' }}>
