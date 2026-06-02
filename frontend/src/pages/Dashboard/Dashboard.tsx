@@ -40,75 +40,75 @@ const CustomTooltipStyle = {
 };
 
 const STAT_CONFIG: Record<string, { color: string, icon: React.ReactNode, themeClass: string, order: number, dataKey: string }> = {
-    'Energy': { 
-        color: '#fbbf24', 
+    'Energy': {
+        color: '#fbbf24',
         themeClass: 'amber',
         order: 1,
         dataKey: 'Energy',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg> 
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
     },
-    'Water': { 
-        color: '#0ea5e9', 
+    'Water': {
+        color: '#0ea5e9',
         themeClass: 'blue',
         order: 2,
         dataKey: 'Water',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5s-3 3.5-3 5.5a7 7 0 0 0 7 7z" /></svg> 
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5s-3 3.5-3 5.5a7 7 0 0 0 7 7z" /></svg>
     },
-    'Emissions': { 
-        color: '#f43f5e', 
+    'Emissions': {
+        color: '#f43f5e',
         themeClass: 'red',
         order: 3,
         dataKey: 'Emissions',
         icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="M16 17H7" /><path d="M17 21H9" /></svg>
     },
-    'Waste': { 
-        color: '#ef4444', 
+    'Waste': {
+        color: '#ef4444',
         themeClass: 'red',
         order: 4,
         dataKey: 'Waste',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
     },
-    'Fuel': { 
-        color: '#be123c', 
+    'Fuel': {
+        color: '#be123c',
         themeClass: 'red',
         order: 5,
         dataKey: 'Fuel',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 22V4c0-1.1.9-2 2-2h5c1.1 0 2 .9 2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/><line x1="7" y1="6" x2="10" y2="6"/><line x1="7" y1="10" x2="10" y2="10"/></svg>
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="22" x2="15" y2="22" /><path d="M4 22V4c0-1.1.9-2 2-2h5c1.1 0 2 .9 2 2v18" /><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5" /><line x1="7" y1="6" x2="10" y2="6" /><line x1="7" y1="10" x2="10" y2="10" /></svg>
     },
-    'Environment Other': { 
-        color: '#10b981', 
+    'Environment Other': {
+        color: '#10b981',
         themeClass: 'green',
         order: 6,
         dataKey: 'Environment Other',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 22v-5"/><path d="M10 17 8 15"/><path d="M10 14.5 12 11"/><path d="M14 22v-7"/><path d="M14 15 16 13"/><path d="M14 12 12 9"/><path d="M18 19c2.2 0 4-1.8 4-4 0-1.5-1-2.9-2.4-3.4C19.3 8.3 16.3 6 13 6c-1.3 0-2.5.4-3.5 1.1A4.95 4.95 0 0 0 4.5 10C2.5 10.5 1 12.3 1 14.5c0 2.5 2 4.5 4.5 4.5H18z"/></svg>
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 22v-5" /><path d="M10 17 8 15" /><path d="M10 14.5 12 11" /><path d="M14 22v-7" /><path d="M14 15 16 13" /><path d="M14 12 12 9" /><path d="M18 19c2.2 0 4-1.8 4-4 0-1.5-1-2.9-2.4-3.4C19.3 8.3 16.3 6 13 6c-1.3 0-2.5.4-3.5 1.1A4.95 4.95 0 0 0 4.5 10C2.5 10.5 1 12.3 1 14.5c0 2.5 2 4.5 4.5 4.5H18z" /></svg>
     },
-    'Social': { 
-        color: '#6366f1', 
+    'Social': {
+        color: '#6366f1',
         themeClass: 'blue',
         order: 7,
         dataKey: 'Social',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> 
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
     },
-    'Governance': { 
-        color: '#8b5cf6', 
+    'Governance': {
+        color: '#8b5cf6',
         themeClass: 'purple',
         order: 8,
         dataKey: 'Governance',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> 
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
     },
-    'Score': { 
-        color: '#2dd4bf', 
+    'Score': {
+        color: '#2dd4bf',
         themeClass: 'cyan',
         order: 9,
         dataKey: 'Score',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> 
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
     },
-    'default': { 
-        color: '#94a3b8', 
+    'default': {
+        color: '#94a3b8',
         themeClass: 'gray',
         order: 99,
         dataKey: 'Other',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> 
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>
     }
 };
 
@@ -166,13 +166,13 @@ export default function Dashboard() {
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
-                         <button 
+                        <button
                             className="btn btn-secondary"
                             onClick={() => navigate('/checklist')}
                         >
                             Data Collection
                         </button>
-                        <button 
+                        <button
                             className="btn btn-primary"
                             onClick={() => navigate('/reports')}
                         >
@@ -196,11 +196,11 @@ export default function Dashboard() {
                         {sortedStats.map((stat: StatMetric) => {
                             const config = getStatConfig(stat.name);
                             return (
-                                <div 
-                                    key={stat.name} 
+                                <div
+                                    key={stat.name}
                                     className={`stat-card ${config.themeClass} interactive animate-fade-in`}
                                     onClick={() => setSelectedStat(stat)}
-                                    style={{ 
+                                    style={{
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease'
                                     }}
@@ -262,9 +262,9 @@ export default function Dashboard() {
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} />
                                     <Tooltip {...CustomTooltipStyle} />
-                                    <Legend 
-                                        iconType="circle" 
-                                        wrapperStyle={{ paddingTop: 24, color: '#8b90b8', fontSize: 12, fontWeight: 600 }} 
+                                    <Legend
+                                        iconType="circle"
+                                        wrapperStyle={{ paddingTop: 24, color: '#8b90b8', fontSize: 12, fontWeight: 600 }}
                                         formatter={(value) => <span style={{ color: '#f0f2ff' }}>{value}</span>}
                                     />
                                     {categories.map((cat: string) => {
@@ -304,10 +304,10 @@ export default function Dashboard() {
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} />
                                     <Tooltip {...CustomTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                                    <Bar 
-                                        dataKey="Emissions" 
-                                        fill={getStatConfig('Emissions').color} 
-                                        radius={[6, 6, 0, 0]} 
+                                    <Bar
+                                        dataKey="Emissions"
+                                        fill={getStatConfig('Emissions').color}
+                                        radius={[6, 6, 0, 0]}
                                         animationDuration={1500}
                                     />
                                 </BarChart>
@@ -317,9 +317,9 @@ export default function Dashboard() {
                 </div>
 
                 {/* Help Section */}
-                <div className="surface" style={{ 
-                    marginTop: 24, 
-                    padding: 32, 
+                <div className="surface" style={{
+                    marginTop: 24,
+                    padding: 32,
                     background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(16,24,47,1) 100%)',
                     border: '1px solid rgba(99,102,241,0.2)',
                     display: 'flex',
@@ -329,15 +329,15 @@ export default function Dashboard() {
                     borderRadius: 24
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-                        <div style={{ 
-                            width: 60, height: 60, borderRadius: 16, 
+                        <div style={{
+                            width: 60, height: 60, borderRadius: 16,
                             background: 'rgba(99,102,241,0.15)', color: '#818cf8',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0,
                             boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
                         }}>
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                                <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
                             </svg>
                         </div>
                         <div>
@@ -347,7 +347,7 @@ export default function Dashboard() {
                             </p>
                         </div>
                     </div>
-                    <button 
+                    <button
                         className="btn btn-secondary"
                         onClick={() => navigate('/help')}
                         style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'white', color: 'white' }}
@@ -358,16 +358,23 @@ export default function Dashboard() {
 
                 {/* Detail Modal */}
                 {selectedStat && (
-                    <div className="modal-backdrop" onClick={() => setSelectedStat(null)}>
-                        <div 
-                            className="modal modal-lg animate-scale-in" 
+                    <div className="modal-backdrop" onClick={() => setSelectedStat(null)} style={{ backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.6)' }}>
+                        <div
+                            className="modal modal-lg animate-scale-in"
                             onClick={e => e.stopPropagation()}
-                            style={{ maxWidth: 960, borderRadius: 28, overflow: 'hidden' }}
+                            style={{
+                                maxWidth: 960,
+                                borderRadius: 28,
+                                overflow: 'hidden',
+                                background: '#1a1d2e',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                boxShadow: '0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)'
+                            }}
                         >
                             <div className="modal-header" style={{ padding: '32px 32px 16px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                    <div style={{ 
-                                        width: 52, height: 52, borderRadius: 14, 
+                                    <div style={{
+                                        width: 52, height: 52, borderRadius: 14,
                                         background: getStatConfig(selectedStat.name).color + '20',
                                         color: getStatConfig(selectedStat.name).color,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -405,11 +412,11 @@ export default function Dashboard() {
                                     </div>
                                 </div>
 
-                                <div style={{ 
-                                    height: 400, 
-                                    background: 'rgba(255,255,255,0.02)', 
-                                    borderRadius: 24, 
-                                    padding: '32px 24px 12px', 
+                                <div style={{
+                                    height: 400,
+                                    background: 'rgba(255,255,255,0.02)',
+                                    borderRadius: 24,
+                                    padding: '32px 24px 12px',
                                     border: '1px solid var(--border-subtle)',
                                     boxShadow: 'inset 0 0 40px rgba(0,0,0,0.2)'
                                 }}>
@@ -428,13 +435,13 @@ export default function Dashboard() {
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={10} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} />
                                             <Tooltip {...CustomTooltipStyle} />
-                                            <Area 
-                                                type="monotone" 
-                                                dataKey={getStatConfig(selectedStat.name).dataKey} 
-                                                stroke={getStatConfig(selectedStat.name).color} 
-                                                strokeWidth={4} 
-                                                fillOpacity={1} 
-                                                fill="url(#detailGrad)" 
+                                            <Area
+                                                type="monotone"
+                                                dataKey={getStatConfig(selectedStat.name).dataKey}
+                                                stroke={getStatConfig(selectedStat.name).color}
+                                                strokeWidth={4}
+                                                fillOpacity={1}
+                                                fill="url(#detailGrad)"
                                                 animationDuration={1500}
                                                 activeDot={{ r: 8, strokeWidth: 0 }}
                                             />
@@ -444,9 +451,9 @@ export default function Dashboard() {
                             </div>
                             <div className="modal-footer" style={{ background: 'rgba(255,255,255,0.02)', padding: '24px 32px' }}>
                                 <button className="btn btn-ghost" onClick={() => setSelectedStat(null)}>Close Insight</button>
-                                <button 
-                                    className="btn btn-primary" 
-                                    style={{ 
+                                <button
+                                    className="btn btn-primary"
+                                    style={{
                                         background: getStatConfig(selectedStat.name).color,
                                         boxShadow: `0 8px 16px ${getStatConfig(selectedStat.name).color}40`
                                     }}
