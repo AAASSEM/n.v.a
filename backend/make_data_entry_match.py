@@ -121,7 +121,7 @@ async def main():
             'Governance':        {1: 1900.0, 2: 1500.0}
         }
 
-        months = [1, 2, 3, 4, 5]
+        months = [1, 2, 3, 4, 5, 6]
         year = 2026
         seeded_count = 0
 

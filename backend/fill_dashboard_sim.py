@@ -37,10 +37,10 @@ async def main():
     print("Simulating historical dashboard data matched to the site checklists...")
 
     async with async_session() as db:
-        # Clear existing submissions for company 1 (Apex)
-        await db.execute(text("DELETE FROM data_submissions WHERE company_id = 1;"))
-        await db.commit()
-        print("Cleared previous submissions for Apex.")
+        # Do not delete previous submissions in this script because we want to keep months 1-5
+        # await db.execute(text("DELETE FROM data_submissions WHERE company_id = 1;"))
+        # await db.commit()
+        print("Retaining previous submissions.")
 
         # Query company, sites, and admin user
         company = await db.get(Company, 1)
@@ -64,7 +64,7 @@ async def main():
             'Governance':        {1: 1900.0, 2: 1500.0}
         }
 
-        months = [1, 2, 3, 4, 5]  # Jan to May 2026
+        months = [6]  # Seed June 2026
         year = 2026
         seeded_count = 0
 
