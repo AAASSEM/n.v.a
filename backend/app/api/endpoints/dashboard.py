@@ -35,6 +35,26 @@ from app.services.carbon_accounting import (
 
 router = APIRouter()
 
+# Framework display-name → DB abbreviation mapping
+# DB stores: E (ESG), D (DST), G (GREEN KEY)
+FRAMEWORK_NAME_TO_ABBR = {
+    "ESG": "E",
+    "DST": "D",
+    "GREEN KEY": "G",
+    "GREENKEY": "G",
+    "GREEN_KEY": "G",
+    # pass-through for already-abbreviated values
+    "E": "E",
+    "D": "D",
+    "G": "G",
+}
+
+def _resolve_framework(fw: Optional[str]) -> Optional[str]:
+    """Convert a user-facing framework name to the DB abbreviation."""
+    if not fw:
+        return None
+    return FRAMEWORK_NAME_TO_ABBR.get(fw.upper().strip(), fw)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -109,6 +129,7 @@ async def _base_filters(
     site_id: Optional[int],
     db: AsyncSession,
     pillar: Optional[str] = None,
+    framework: Optional[str] = None,
 ) -> tuple[int, Optional[int], list]:
     """Resolve company_id, effective site_id, and shared WHERE clauses."""
     company_id = current_user.profile.company_id if current_user.profile else None
@@ -125,6 +146,9 @@ async def _base_filters(
         filters.append(DataSubmission.site_id == effective_site_id)
     if pillar in ("E", "S", "G"):
         filters.append(DataElement.category == pillar)
+    if framework:
+        fw_abbr = _resolve_framework(framework)
+        filters.append(DataElement.frameworks.ilike(f"%{fw_abbr}%"))
 
     return company_id, effective_site_id, filters
 
@@ -139,6 +163,7 @@ async def get_dashboard_metrics(
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
     pillar: Optional[str] = Query(None),   # "E" | "S" | "G" | None
+    framework: Optional[str] = Query(None),
 ) -> Any:
     """
     Main dashboard KPI cards and 7-month chart data.
@@ -147,7 +172,7 @@ async def get_dashboard_metrics(
     Carbon GHG cards are always Pillar E and are suppressed for S / G.
     """
     company_id, effective_site_id, filters = await _base_filters(
-        current_user, site_id, db, pillar
+        current_user, site_id, db, pillar, framework
     )
     emirate = await _get_company_emirate(db, company_id)
 
@@ -197,6 +222,9 @@ async def get_dashboard_metrics(
 
     # ── GHG engine ────────────────────────────────────────────────────────
     show_ghg = pillar in (None, "E")
+    if framework and _resolve_framework(framework) == "G":
+        show_ghg = False
+    
     ghg = build_emissions_breakdown(carbon_inputs, emirate=emirate) if show_ghg else None
 
     # Inject monthly emissions into chart slots
@@ -306,6 +334,7 @@ async def get_pillar_elements(
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
     pillar: str = Query(...),   # required: "S" or "G"
+    framework: Optional[str] = Query(None),
 ) -> Any:
     """
     Return individual element values for the Social or Governance pillar.
@@ -318,7 +347,7 @@ async def get_pillar_elements(
         raise HTTPException(status_code=400, detail="pillar must be 'S' or 'G'")
 
     company_id, effective_site_id, filters = await _base_filters(
-        current_user, site_id, db, pillar
+        current_user, site_id, db, pillar, framework
     )
 
     # Get the latest submission per element (max year+month combination)
@@ -557,4 +586,162 @@ async def get_month_comparison(
             "no_change": no_change,
         },
         "ghg": ghg_result,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /dashboard/completeness
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/completeness")
+async def get_completeness(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
+    framework: Optional[str] = Query(None),
+) -> Any:
+    """
+    Data completeness tracker for the current month.
+    """
+    import calendar
+    from sqlalchemy import func as sqlfunc
+    
+    today = datetime.date.today()
+    year = today.year
+    month = today.month
+    
+    company_id = current_user.profile.company_id if current_user.profile else None
+    if not company_id:
+        raise HTTPException(status_code=400, detail="User not assigned to a company.")
+    effective_site_id = await resolve_site_id(current_user, site_id, db, required=False)
+
+    el_query = select(DataElement.category, sqlfunc.count(DataElement.id)).group_by(DataElement.category)
+    if framework:
+        fw_abbr = _resolve_framework(framework)
+        el_query = el_query.where(DataElement.frameworks.ilike(f"%{fw_abbr}%"))
+    el_res = await db.execute(el_query)
+    total_by_cat = dict(el_res.all())
+    
+    sub_filters = [
+        DataSubmission.company_id == company_id,
+        DataSubmission.value.isnot(None),
+        DataSubmission.year == year,
+        DataSubmission.month == month
+    ]
+    if effective_site_id is not None:
+        sub_filters.append(DataSubmission.site_id == effective_site_id)
+    if framework:
+        fw_abbr = _resolve_framework(framework)
+        sub_filters.append(DataElement.frameworks.ilike(f"%{fw_abbr}%"))
+        
+    sub_query = (
+        select(DataElement.category, sqlfunc.count(DataSubmission.data_element_id.distinct()))
+        .join(DataElement, DataSubmission.data_element_id == DataElement.id)
+        .where(*sub_filters)
+        .group_by(DataElement.category)
+    )
+    sub_res = await db.execute(sub_query)
+    sub_by_cat = dict(sub_res.all())
+    
+    total_e = total_by_cat.get("E", 0)
+    total_s = total_by_cat.get("S", 0)
+    total_g = total_by_cat.get("G", 0)
+    total_elements = total_e + total_s + total_g
+    
+    sub_e = sub_by_cat.get("E", 0)
+    sub_s = sub_by_cat.get("S", 0)
+    sub_g = sub_by_cat.get("G", 0)
+    submitted = sub_e + sub_s + sub_g
+    
+    return {
+        "period": f"{calendar.month_name[month]} {year}",
+        "year": year,
+        "month": month,
+        "total_elements": total_elements,
+        "submitted": submitted,
+        "by_pillar": {
+            "E": {"total": total_e, "submitted": sub_e},
+            "S": {"total": total_s, "submitted": sub_s},
+            "G": {"total": total_g, "submitted": sub_g}
+        }
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /dashboard/score
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/score")
+async def get_esg_score(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    site_id: Optional[int] = Query(None),
+) -> Any:
+    """
+    Computes a composite ESG score (0-100).
+    Only allowed for admins and super users.
+    """
+    if not current_user.profile or current_user.profile.role not in ("admin", "super_user"):
+        raise HTTPException(status_code=403, detail="Not authorized to view ESG score.")
+        
+    # Get Completeness for S score
+    comp_res = await get_completeness(db, current_user, site_id, framework=None)
+    s_total = comp_res["by_pillar"]["S"]["total"]
+    s_sub = comp_res["by_pillar"]["S"]["submitted"]
+    s_score = (s_sub / s_total * 100) if s_total > 0 else 0
+    
+    # Get E trends for E score
+    metrics_res = await get_dashboard_metrics(db, current_user, site_id, pillar="E", framework=None)
+    e_stats = metrics_res.get("stats", [])
+    
+    e_cats_count = 0
+    e_score_raw = 0
+    
+    for stat in e_stats:
+        if stat.get("name") in ("Total Energy", "Total Water", "Total Waste", "Total Fuel", "Total GHG Emissions"):
+            e_cats_count += 1
+            trend = stat.get("trend")
+            if trend == "down":
+                e_score_raw += 25
+            elif trend == "neutral":
+                e_score_raw += 12.5
+    
+    e_score = (e_score_raw / (e_cats_count * 25) * 100) if e_cats_count > 0 else 0
+    
+    # Get G policies for G score
+    elems_res = await get_pillar_elements(db, current_user, site_id, pillar="G", framework=None)
+    g_elements = elems_res.get("elements", [])
+    
+    BOOLEAN_CODES = {
+        'HOSP-S-012', 'HOSP-G-013', 'HOSP-G-014', 'HOSP-G-035', 'HOSP-G-037',
+        'HOSP-G-038', 'HOSP-G-039', 'HOSP-G-040', 'HOSP-G-041', 'HOSP-S-044',
+        'HOSP-S-045', 'HOSP-S-046', 'HOSP-S-047', 'HOSP-S-058', 'HOSP-G-059',
+        'HOSP-G-070', 'HOSP-G-079', 'HOSP-G-080'
+    }
+    
+    g_bools = [e for e in g_elements if e["code"] in BOOLEAN_CODES or e["unit"] == "boolean"]
+    g_total = len(g_bools)
+    g_yes = sum(1 for e in g_bools if e["value"] == 1)
+    
+    g_score = (g_yes / g_total * 100) if g_total > 0 else 0
+    
+    # Total
+    overall = (e_score * 0.4) + (s_score * 0.3) + (g_score * 0.3)
+    
+    def get_grade(score):
+        if score >= 90: return "A+"
+        if score >= 80: return "A"
+        if score >= 70: return "B+"
+        if score >= 60: return "B"
+        if score >= 50: return "C"
+        return "D"
+        
+    return {
+        "overall": round(overall),
+        "grade": get_grade(overall),
+        "e_score": round(e_score),
+        "s_score": round(s_score),
+        "g_score": round(g_score),
+        "trend": "neutral",
+        "delta": 0.0
     }

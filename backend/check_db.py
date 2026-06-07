@@ -1,15 +1,9 @@
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import text
+import sqlite3
 
-async def check_db():
-    engine = create_async_engine('sqlite+aiosqlite:///./esg_portal.db')
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
-    async with async_session() as session:
-        result = await session.execute(text('SELECT u.email, p.company_id FROM users u LEFT JOIN user_profiles p ON u.id = p.user_id'))
-        for row in result:
-            print(f'User: {row[0]}, Company ID: {row[1]}')
-
-asyncio.run(check_db())
+conn = sqlite3.connect('c:/Users/20100/thefinal/n.v.a/backend/esg_portal.db')
+c = conn.cursor()
+c.execute("SELECT id, name, active_frameworks FROM companies;")
+rows = c.fetchall()
+for r in rows:
+    print(r)
+conn.close()

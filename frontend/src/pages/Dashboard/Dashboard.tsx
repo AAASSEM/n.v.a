@@ -6,13 +6,14 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, BarChart, Bar, ReferenceLine, Cell,
 } from 'recharts';
-import { SocialScorecard } from './components/SocialScorecard';
-import { GovernanceScorecard } from './components/GovernanceScorecard';
-import { RadarPillarChart } from './components/RadarPillarChart';
 import StatDetailModal from './components/StatDetailModal';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import AppLayout from '../../components/layout/AppLayout';
+import { CompletenessTracker } from './components/CompletenessTracker';
+import { ScoreRing } from './components/ScoreRing';
+import { AnomalyAlerts } from './components/AnomalyAlerts';
+import { PillarMetricsGrid } from './components/PillarMetricsGrid';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -481,21 +482,42 @@ export default function Dashboard() {
     const [activePillar, setActivePillar] = useState<Pillar>('E');
     const [compareMode, setCompareMode] = useState(false);
     const [selectedStat, setSelectedStat] = useState<StatMetric | null>(null);
-    const [sView, setSView] = useState<'scorecard' | 'radar'>('scorecard');
-    const [gView, setGView] = useState<'scorecard' | 'radar'>('scorecard');
+
+    const [frameworkFilter, setFrameworkFilter] = useState<string | null>(null);
 
     // ── Data fetch ──────────────────────────────────────────────────────────
+    const { data: companyData } = useQuery({
+        queryKey: ['company_me'],
+        queryFn: async () => (await api.get('/companies/me')).data,
+    });
+    
+    const activeFrameworks = useMemo(() => {
+        let fws = ['ESG', 'DST', 'GREEN KEY'];
+        if (companyData?.active_frameworks) {
+            if (typeof companyData.active_frameworks === 'string') {
+                try { fws = JSON.parse(companyData.active_frameworks); } catch(e) {}
+            } else if (Array.isArray(companyData.active_frameworks) && companyData.active_frameworks.length > 0) {
+                fws = companyData.active_frameworks;
+            }
+        }
+        return fws;
+    }, [companyData]);
+
     const { data: dashboardData, isLoading } = useQuery({
-        queryKey: ['dashboard', 'metrics', currentSiteId, activePillar],
+        queryKey: ['dashboard', 'metrics', currentSiteId, activePillar, frameworkFilter],
         queryFn: async () => {
-            return (await api.get(`/dashboard/metrics?pillar=${activePillar}`)).data;
+            const fwParam = frameworkFilter ? `&framework=${frameworkFilter}` : '';
+            return (await api.get(`/dashboard/metrics?pillar=${activePillar}${fwParam}`)).data;
         },
     });
 
     // ── Element-level data for S and G pillars ──────────────────────────────
     const { data: elementData } = useQuery({
-        queryKey: ['dashboard', 'elements', currentSiteId, activePillar],
-        queryFn: async () => (await api.get(`/dashboard/elements?pillar=${activePillar}`)).data,
+        queryKey: ['dashboard', 'elements', currentSiteId, activePillar, frameworkFilter],
+        queryFn: async () => {
+            const fwParam = frameworkFilter ? `&framework=${frameworkFilter}` : '';
+            return (await api.get(`/dashboard/elements?pillar=${activePillar}${fwParam}`)).data;
+        },
         enabled: activePillar === 'S' || activePillar === 'G',
     });
 
@@ -524,9 +546,16 @@ export default function Dashboard() {
     if (isLoading) {
         return (
             <AppLayout>
-                <div className="loading-screen" style={{ minHeight: 'calc(100vh - 60px)' }}>
-                    <div className="spinner" />
-                    <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading dashboard...</span>
+                <div className="page-header" style={{ marginBottom: 24 }}>
+                    <div className="skeleton" style={{ width: 300, height: 40, borderRadius: 8, marginBottom: 8 }} />
+                    <div className="skeleton" style={{ width: 500, height: 20, borderRadius: 8 }} />
+                </div>
+                <div className="skeleton" style={{ width: '100%', height: 100, borderRadius: 16, marginBottom: 24 }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                    <div className="skeleton" style={{ height: 140, borderRadius: 16 }} />
+                    <div className="skeleton" style={{ height: 140, borderRadius: 16 }} />
+                    <div className="skeleton" style={{ height: 140, borderRadius: 16 }} />
+                    <div className="skeleton" style={{ height: 140, borderRadius: 16 }} />
                 </div>
             </AppLayout>
         );
@@ -543,32 +572,62 @@ export default function Dashboard() {
         <AppLayout>
             <div className="animate-fade-in">
                 {/* ── Header ───────────────────────────────────────────────── */}
-                <div className="page-header">
-                    <div>
+                <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                    <div style={{ flex: 1 }}>
                         <h1 className="page-title">ESG Overview</h1>
                         <p className="page-subtitle">
                             Welcome back, <strong style={{ color: 'var(--accent-green)' }}>{user?.first_name || user?.email}</strong> — here's your sustainability performance summary.
                         </p>
                     </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        <button className="btn btn-secondary" onClick={() => navigate('/checklist')}>Data Collection</button>
-                        <button className="btn btn-primary" onClick={() => navigate('/reports')}>
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-                                <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
-                            </svg>
-                            Analytics Reports
-                        </button>
+                    
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: 6, background: 'rgba(255,255,255,0.02)', padding: 6, borderRadius: 100, border: '1px solid rgba(255,255,255,0.05)' }}>
+                            {(['E', 'S', 'G'] as Pillar[]).map(p => (
+                                <PillarTab key={p} pillar={p} active={activePillar === p} onClick={() => { setActivePillar(p); setCompareMode(false); }} />
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                        <ScoreRing />
                     </div>
                 </div>
 
-                {/* ── Pillar filter bar + Compare toggle ───────────────────── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {(['E', 'S', 'G'] as Pillar[]).map(p => (
-                            <PillarTab key={p} pillar={p} active={activePillar === p} onClick={() => setActivePillar(p)} />
+                {/* ── Framework Filter ───────────────────────────────────────── */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>
+                        <button
+                            onClick={() => setFrameworkFilter(null)}
+                            style={{
+                                padding: '6px 16px', borderRadius: 100, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap',
+                                border: frameworkFilter === null ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                                background: frameworkFilter === null ? 'rgba(16,185,129,0.1)' : 'transparent',
+                                color: frameworkFilter === null ? '#10b981' : 'var(--text-secondary)',
+                                boxShadow: frameworkFilter === null ? '0 0 10px rgba(16,185,129,0.2)' : 'none',
+                            }}
+                        >
+                            All Frameworks
+                        </button>
+                        {activeFrameworks.map(fw => (
+                            <button
+                                key={fw}
+                                onClick={() => setFrameworkFilter(fw)}
+                                style={{
+                                    padding: '6px 16px', borderRadius: 100, fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap',
+                                    border: frameworkFilter === fw ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)',
+                                    background: frameworkFilter === fw ? 'rgba(99,102,241,0.1)' : 'transparent',
+                                    color: frameworkFilter === fw ? '#818cf8' : 'var(--text-secondary)',
+                                    boxShadow: frameworkFilter === fw ? '0 0 10px rgba(99,102,241,0.2)' : 'none',
+                                }}
+                            >
+                                {fw === 'GREEN KEY' ? 'Green Key' : fw}
+                            </button>
                         ))}
                     </div>
+
+                <AnomalyAlerts />
+
+                {/* ── Compare toggle ────────────────────────────────────────── */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
                     <button
                         onClick={() => setCompareMode(v => !v)}
                         style={{
@@ -587,6 +646,8 @@ export default function Dashboard() {
                         {compareMode ? 'Hide Comparison' : 'Compare Months'}
                     </button>
                 </div>
+                
+                <CompletenessTracker framework={frameworkFilter} />
 
                 {/* ── Compare Panel ─────────────────────────────────────────── */}
                 {compareMode && <ComparePanel pillar={activePillar} onClose={() => setCompareMode(false)} />}
@@ -607,7 +668,14 @@ export default function Dashboard() {
                                     style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
                                 >
                                     <div className="stat-card-header">
-                                        <span className="stat-card-label">{stat.name}</span>
+                                        <span className="stat-card-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            {stat.name}
+                                            {stat.methodology && (
+                                                <span style={{ color: '#38bdf8', fontSize: 14, display: 'inline-flex' }} title="Click to view Carbon Calculation Methodology">
+                                                    ⓘ
+                                                </span>
+                                            )}
+                                        </span>
                                         <div className="stat-card-icon" style={{ background: config.color + '20', color: config.color }}>{config.icon}</div>
                                     </div>
                                     <div className="stat-card-value" style={{ color: config.color }}>{stat.value}</div>
@@ -626,42 +694,9 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ── Social Element Cards ──────────────────────────────────── */}
-                {activePillar === 'S' && (
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Social Metrics</span>
-                            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                            <button onClick={() => setSView('scorecard')} 
-                                style={{ padding: '6px 12px', background: sView === 'scorecard' ? 'rgba(99,102,241,0.15)' : 'transparent', color: sView === 'scorecard' ? '#f0f2ff' : '#8b90b8', border: sView === 'scorecard' ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                                Scorecard
-                            </button>
-                            <button onClick={() => setSView('radar')} 
-                                style={{ padding: '6px 12px', background: sView === 'radar' ? 'rgba(99,102,241,0.15)' : 'transparent', color: sView === 'radar' ? '#f0f2ff' : '#8b90b8', border: sView === 'radar' ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                                Radar View
-                            </button>
-                        </div>
-                        {sView === 'scorecard' ? <SocialScorecard elements={elementCards} history={elementData?.history || []} /> : <RadarPillarChart pillar="S" elements={elementCards} />}
-                    </div>
-                )}
-
-                {/* ── Governance Element Cards ──────────────────────────────── */}
-                {activePillar === 'G' && (
-                    <div style={{ marginBottom: 24 }}>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                            <button onClick={() => setGView('scorecard')} 
-                                style={{ padding: '6px 12px', background: gView === 'scorecard' ? 'rgba(245,158,11,0.15)' : 'transparent', color: gView === 'scorecard' ? '#f0f2ff' : '#8b90b8', border: gView === 'scorecard' ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                                Scorecard
-                            </button>
-                            <button onClick={() => setGView('radar')} 
-                                style={{ padding: '6px 12px', background: gView === 'radar' ? 'rgba(245,158,11,0.15)' : 'transparent', color: gView === 'radar' ? '#f0f2ff' : '#8b90b8', border: gView === 'radar' ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                                Radar View
-                            </button>
-                        </div>
-                        {gView === 'scorecard' ? <GovernanceScorecard elements={elementCards} /> : <RadarPillarChart pillar="G" elements={elementCards} />}
-                    </div>
+                {/* ── Social / Governance Element Cards ─────────────────────── */}
+                {(activePillar === 'S' || activePillar === 'G') && elementCards.length > 0 && (
+                    <PillarMetricsGrid pillar={activePillar as 'S' | 'G'} elements={elementCards} />
                 )}
 
                 {/* ── Charts Section (E) ──────────────────────────────── */}

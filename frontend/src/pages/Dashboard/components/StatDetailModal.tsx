@@ -305,12 +305,17 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                 </div>
 
                 {stat.methodology && (
-                    <details style={{ marginTop: 16 }}>
-                        <summary style={{ fontSize: 12, color: '#8b90b8', cursor: 'pointer', userSelect: 'none' }}>View Methodology</summary>
-                        <div style={{ marginTop: 8, padding: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 8, fontSize: 11, color: '#8b90b8', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                    <div style={{ marginTop: 20, background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 12, padding: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                            </svg>
+                            <h5 style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8', margin: 0 }}>Carbon Calculation Methodology</h5>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#bae6fd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                             {stat.methodology}
                         </div>
-                    </details>
+                    </div>
                 )}
             </div>
         );
