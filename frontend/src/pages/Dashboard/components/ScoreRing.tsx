@@ -62,7 +62,7 @@ export const ScoreRing = () => {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    ESG Score
+                    Reporting Coverage
                 </span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                     <span style={{ fontSize: 20, fontWeight: 800, color: '#f0f2ff', lineHeight: 1 }}>

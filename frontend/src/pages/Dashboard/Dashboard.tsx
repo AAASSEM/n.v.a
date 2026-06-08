@@ -27,7 +27,7 @@ interface StatMetric {
     pillar?: string;
     scope?: number;
     methodology?: string;
-    breakdown?: any;
+    breakdown?: Array<{ label: string; scope: number; tco2e: number; ef_used: number; unit: string }>;
 }
 
 function deriveUnit(valueStr: string): string {
@@ -81,41 +81,6 @@ const CATEGORY_PILLAR: Record<string, Pillar> = {
     'Governance': 'G',
 };
 
-// Element metadata derived from seed — unit + display type
-const ELEMENT_META: Record<string, { unit: string; type: 'numeric' | 'boolean' | 'percent' | 'text' }> = {
-    'HOSP-E-001': { unit: 'kWh', type: 'numeric' },
-    'HOSP-E-002': { unit: 'm³', type: 'numeric' },
-    'HOSP-E-003': { unit: 'RT-h', type: 'numeric' },
-    'HOSP-E-005': { unit: 'kg', type: 'numeric' },
-    'HOSP-E-006': { unit: 'kg', type: 'numeric' },
-    'HOSP-E-007': { unit: 'L', type: 'numeric' },
-    'HOSP-E-008': { unit: 'L', type: 'numeric' },
-    'HOSP-E-009': { unit: 'L', type: 'numeric' },
-    'HOSP-E-010': { unit: 'kg', type: 'numeric' },
-    'HOSP-E-019': { unit: '%', type: 'percent' },
-    'HOSP-E-023': { unit: 'kWh', type: 'numeric' },
-    'HOSP-E-042': { unit: 'L', type: 'numeric' },
-    'HOSP-E-072': { unit: '%', type: 'percent' },
-    'HOSP-E-073': { unit: 'kg', type: 'numeric' },
-    'HOSP-S-024': { unit: 'people', type: 'numeric' },
-    'HOSP-S-025': { unit: '%', type: 'percent' },
-    'HOSP-S-026': { unit: 'hires', type: 'numeric' },
-    'HOSP-S-027': { unit: '%', type: 'percent' },
-    'HOSP-S-028': { unit: 'hrs/emp', type: 'numeric' },
-    'HOSP-S-029': { unit: 'per M hrs', type: 'numeric' },
-    'HOSP-S-030': { unit: 'count', type: 'numeric' },
-    'HOSP-S-031': { unit: 'count', type: 'numeric' },
-    'HOSP-S-032': { unit: 'count', type: 'numeric' },
-    'HOSP-S-033': { unit: 'nationalities', type: 'numeric' },
-    'HOSP-S-034': { unit: 'AED', type: 'numeric' },
-    'HOSP-S-076': { unit: 'hours', type: 'numeric' },
-    'HOSP-S-077': { unit: 'activities', type: 'numeric' },
-    'HOSP-G-060': { unit: 'actions', type: 'numeric' },
-    'HOSP-G-061': { unit: '%', type: 'percent' },
-    'HOSP-G-065': { unit: 'checks/day', type: 'numeric' },
-    'HOSP-G-071': { unit: 'categories', type: 'numeric' },
-    'HOSP-G-078': { unit: '%', type: 'percent' },
-};
 
 const BOOLEAN_CODES = new Set([
     'HOSP-S-012', 'HOSP-G-013', 'HOSP-G-014', 'HOSP-G-035', 'HOSP-G-037',
@@ -227,47 +192,6 @@ function PillarTab({ pillar, active, onClick }: { pillar: Pillar; active: boolea
     );
 }
 
-// Individual element card for S and G pillars
-function ElementCard({ row, name, code, value, unit, pillar }: { row: CompareRow | null; name: string; code: string; value: string | number | null; unit: string; pillar: Pillar }) {
-    const meta = PILLAR_META[pillar] || PILLAR_META.E;
-    const isBoolean = BOOLEAN_CODES.has(code) || unit === 'boolean';
-    const boolVal = value === 1 || value === true || value === 'true' || value === '1';
-
-    return (
-        <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 16, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8,
-            transition: 'border-color 0.2s',
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    {code}
-                </span>
-                {isBoolean && (
-                    <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999,
-                        background: boolVal ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-                        color: boolVal ? '#10b981' : '#f43f5e',
-                    }}>
-                        {boolVal ? '✓ YES' : '✗ NO'}
-                    </span>
-                )}
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{name}</div>
-            {!isBoolean && value !== null && value !== undefined && (
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
-                    <span style={{ fontSize: 22, fontWeight: 800, color: meta.color }}>
-                        {formatVal(Number(value), unit)}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{unit}</span>
-                </div>
-            )}
-            {value === null && (
-                <span style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>No data submitted</span>
-            )}
-        </div>
-    );
-}
 
 // ─── Compare Panel ────────────────────────────────────────────────────────────
 
@@ -406,7 +330,6 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                             </thead>
                             <tbody>
                                 {rows.map((row) => {
-                                    const hasData = row.value_a !== null || row.value_b !== null;
                                     const showDelta = row.delta_pct !== null;
                                     const good = row.is_improvement;
                                     const deltaColor = row.direction === 'neutral' ? 'var(--text-muted)' : good ? '#10b981' : '#f87171';
@@ -453,7 +376,7 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                                         <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 11 }} width={120} />
                                         <Tooltip
                                             {...CustomTooltipStyle}
-                                            formatter={(val: number) => [`${val > 0 ? '+' : ''}${val.toFixed(1)}%`, 'Change']}
+                                            formatter={(val: number | string | undefined) => [`${Number(val) > 0 ? '+' : ''}${Number(val).toFixed(1)}%`, 'Change']}
                                         />
                                         <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
                                         <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
@@ -495,7 +418,7 @@ export default function Dashboard() {
         let fws = ['ESG', 'DST', 'GREEN KEY'];
         if (companyData?.active_frameworks) {
             if (typeof companyData.active_frameworks === 'string') {
-                try { fws = JSON.parse(companyData.active_frameworks); } catch(e) {}
+                try { fws = JSON.parse(companyData.active_frameworks); } catch { /* ignore */ }
             } else if (Array.isArray(companyData.active_frameworks) && companyData.active_frameworks.length > 0) {
                 fws = companyData.active_frameworks;
             }
@@ -565,7 +488,6 @@ export default function Dashboard() {
     const elementCards: { code: string; name: string; value: number | null; unit: string }[] =
         elementData?.elements || [];
 
-    const pillarColor = PILLAR_META[activePillar].color;
     const pillarHasSeries = visibleCategories.length > 0;
 
     return (
