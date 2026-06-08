@@ -21,7 +21,6 @@ interface Props {
 
 export const PillarMetricsGrid: React.FC<Props> = ({ pillar, elements }) => {
     const color = pillar === 'S' ? '#3b82f6' : '#8b5cf6';
-    const colorLight = pillar === 'S' ? 'rgba(59,130,246,0.1)' : 'rgba(139,92,246,0.1)';
 
     // Segregate into Quantitative and Policies
     const policies: ElementCardData[] = [];
@@ -98,7 +97,6 @@ export const PillarMetricsGrid: React.FC<Props> = ({ pillar, elements }) => {
                         {policies.map(el => {
                             const isYes = el.value === 1;
                             const isNo = el.value === 0;
-                            const isPending = el.value === null;
                             
                             let badgeBg = 'rgba(255,255,255,0.04)';
                             let badgeColor = '#64748b';

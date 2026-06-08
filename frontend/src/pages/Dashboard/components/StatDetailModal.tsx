@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Dot } from 'recharts';
+import { useState, useEffect } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
 
 interface StatDetailModalProps {
     stat: {
@@ -30,7 +29,7 @@ interface StatDetailModalProps {
 }
 
 export default function StatDetailModal({ stat, chartData, color, dataKey, unit, onClose }: StatDetailModalProps) {
-    const navigate = useNavigate();
+
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -107,7 +106,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
     let peak = { month: '', value: -Infinity };
     let low = { month: '', value: Infinity };
     
-    chartData.forEach((d, i) => {
+    chartData.forEach((d) => {
         const v = typeof d[dataKey] === 'number' ? d[dataKey] as number : 0;
         if (v > 0) {
             if (v > peak.value) { peak = { month: d.name, value: v }; }
@@ -325,17 +324,13 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
         if (dataKey !== 'Water') return null;
         
         const rooms = 300;
-        const intensity = (currentVal / rooms / 30) * 1000; // rough L/room/day approx assuming monthly total
-        // Wait, the prompt says [value / 300 rooms] L/room/day
-        const valPerRoomDay = currentVal / rooms / 30; // If currentVal is in m3, then *1000 for L
         // Let's assume currentVal is m3 based on the app logic, so * 1000
         const isM3 = unit.includes('m³');
         const intensityL = isM3 ? (currentVal * 1000) / (rooms * 30) : currentVal / (rooms * 30);
         
-        let statusColor = '#f87171'; // > 350
         let statusPct = 90;
-        if (intensityL < 200) { statusColor = '#10b981'; statusPct = 20; }
-        else if (intensityL <= 350) { statusColor = '#fbbf24'; statusPct = 50; }
+        if (intensityL < 200) { statusPct = 20; }
+        else if (intensityL <= 350) { statusPct = 50; }
 
         return (
             <div style={{ marginTop: 24, padding: 20, background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -375,10 +370,9 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
         const rooms = 300;
         const intensity = currentVal / (rooms * 30); // kWh / room / day
         
-        let statusColor = '#f87171'; // > 45
         let statusPct = 90;
-        if (intensity < 30) { statusColor = '#10b981'; statusPct = 20; }
-        else if (intensity <= 45) { statusColor = '#fbbf24'; statusPct = 50; }
+        if (intensity < 30) { statusPct = 20; }
+        else if (intensity <= 45) { statusPct = 50; }
 
         return (
             <div style={{ marginTop: 24, padding: 20, background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
