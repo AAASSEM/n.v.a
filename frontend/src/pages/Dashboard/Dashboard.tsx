@@ -76,6 +76,7 @@ const PILLAR_META = {
 // Which display category belongs to which pillar
 const CATEGORY_PILLAR: Record<string, Pillar> = {
     'Energy': 'E', 'Water': 'E', 'Waste': 'E', 'Fuel': 'E',
+    'Recycling Rate': 'E', 'Renewable Energy %': 'E',
     'Environment Other': 'E', 'Emissions': 'E',
     'Social': 'S',
     'Governance': 'G',
@@ -118,7 +119,7 @@ const STAT_CONFIG: Record<string, { color: string; icon: React.ReactNode; themeC
     },
     'Recycling Rate': {
         color: '#22c55e', themeClass: 'green', order: 7, dataKey: 'Recycling Rate',
-        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" /><path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" /></svg>
     },
     'Renewable Energy %': {
         color: '#84cc16', themeClass: 'green', order: 8, dataKey: 'Renewable Energy %',
@@ -415,6 +416,7 @@ export default function Dashboard() {
     const [selectedStat, setSelectedStat] = useState<StatMetric | null>(null);
 
     const [frameworkFilter, setFrameworkFilter] = useState<string | null>(null);
+    const [chartMode, setChartMode] = useState<'indexed' | 'actual'>('indexed');
 
     // NEW: Period Filter
     const months = useMemo(() => getLast24Months(), []);
@@ -492,6 +494,34 @@ export default function Dashboard() {
     const visibleCategories: string[] = useMemo(() => {
         return categories.filter((c: string) => CATEGORY_PILLAR[c] === activePillar);
     }, [categories, activePillar]);
+
+    const normalizedChartData = useMemo(() => {
+        if (!chartData || chartData.length === 0) return chartData;
+
+        // Find max per category across all 7 months
+        const maxPerCat: Record<string, number> = {};
+        visibleCategories.forEach((cat: string) => {
+            const vals = chartData
+                .map((d: any) => typeof d[cat] === 'number' ? d[cat] : 0)
+                .filter((v: number) => v > 0);
+            maxPerCat[cat] = vals.length > 0 ? Math.max(...vals) : 1;
+        });
+
+        // Normalize each month slot
+        return chartData.map((d: any) => {
+            const row: any = { name: d.name, year: d.year, month: d.month };
+            visibleCategories.forEach((cat: string) => {
+                const raw = typeof d[cat] === 'number' ? d[cat] : 0;
+                row[cat] = maxPerCat[cat] > 0
+                    ? Math.round((raw / maxPerCat[cat]) * 100 * 10) / 10  // 1 decimal
+                    : 0;
+            });
+            return row;
+        });
+    }, [chartData, visibleCategories]);
+
+    // Pick which dataset to feed the chart
+    const activeChartData = chartMode === 'indexed' ? normalizedChartData : chartData;
 
     if (isLoading) {
         return (
@@ -767,15 +797,57 @@ export default function Dashboard() {
                                 <div>
                                     <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Sustainability Dynamics</h3>
                                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-                                        {activePillar === 'E' ? 'Environmental performance over time' : 'Cross-category performance comparison'}
+                                        {chartMode === 'indexed'
+                                            ? 'Indexed to peak — 100% = each series\' highest recorded value'
+                                            : activePillar === 'E'
+                                            ? 'Environmental performance over time (actual values)'
+                                            : 'Cross-category performance comparison (actual values)'
+                                        }
                                     </p>
                                 </div>
-                                <div className="badge badge-gray">Last 7 Months</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {/* Mode toggle */}
+                                    <div style={{
+                                        display: 'flex',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: 999,
+                                        padding: 3,
+                                        gap: 2,
+                                    }}>
+                                        {(['indexed', 'actual'] as const).map(mode => (
+                                            <button
+                                                key={mode}
+                                                onClick={() => setChartMode(mode)}
+                                                style={{
+                                                    padding: '4px 12px',
+                                                    borderRadius: 999,
+                                                    fontSize: 11,
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer',
+                                                    border: 'none',
+                                                    transition: 'all 0.2s ease',
+                                                    background: chartMode === mode
+                                                        ? 'rgba(255,255,255,0.12)'
+                                                        : 'transparent',
+                                                    color: chartMode === mode
+                                                        ? '#f0f2ff'
+                                                        : 'var(--text-muted)',
+                                                }}
+                                            >
+                                                {mode === 'indexed' ? '% Index' : 'Actual'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Existing badge */}
+                                    <div className="badge badge-gray">Last 7 Months</div>
+                                </div>
                             </div>
                             {pillarHasSeries ? (
                                 <div style={{ height: 350, cursor: 'pointer' }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} onClick={(e: any) => {
+                                        <AreaChart data={activeChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} onClick={(e: any) => {
                                             if (e && e.activePayload && e.activePayload.length > 0) {
                                                 const pd = e.activePayload[0].payload;
                                                 setSelectedPeriod({ year: pd.year, month: pd.month });
@@ -795,8 +867,99 @@ export default function Dashboard() {
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} />
-                                            <Tooltip {...CustomTooltipStyle} />
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#8b90b8', fontSize: 11 }}
+                                                width={72}
+                                                domain={chartMode === 'indexed' ? [0, 100] : ['auto', 'auto']}
+                                                tickFormatter={(v: number) =>
+                                                    chartMode === 'indexed' ? `${v}%` : (
+                                                        v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` :
+                                                        v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` :
+                                                        String(v)
+                                                    )
+                                                }
+                                            />
+                                            <Tooltip
+                                                {...CustomTooltipStyle}
+                                                content={({ active, payload, label }: any) => {
+                                                    if (!active || !payload || payload.length === 0) return null;
+                                                    return (
+                                                        <div style={{
+                                                            background: '#1c1e30',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: 12,
+                                                            padding: '12px 16px',
+                                                            boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+                                                            minWidth: 180,
+                                                        }}>
+                                                            <div style={{ fontSize: 12, fontWeight: 700, color: '#8b90b8', marginBottom: 8 }}>
+                                                                {label}
+                                                            </div>
+                                                            {payload.map((entry: any, i: number) => {
+                                                                // Find raw value from original chartData for the same month
+                                                                const rawSlot = chartData.find((d: any) => d.name === label);
+                                                                const rawVal = rawSlot ? rawSlot[entry.dataKey] : null;
+
+                                                                return (
+                                                                    <div key={i} style={{
+                                                                        display: 'flex', justifyContent: 'space-between',
+                                                                        alignItems: 'center', gap: 16, marginBottom: 4,
+                                                                    }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                            <div style={{
+                                                                                width: 8, height: 8, borderRadius: '50%',
+                                                                                background: entry.color, flexShrink: 0,
+                                                                            }} />
+                                                                            <span style={{ fontSize: 12, color: '#f0f2ff' }}>
+                                                                                {entry.dataKey}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div style={{ textAlign: 'right' }}>
+                                                                            {chartMode === 'indexed' ? (
+                                                                                <>
+                                                                                    <span style={{ fontSize: 13, fontWeight: 700, color: entry.color }}>
+                                                                                        {entry.value}%
+                                                                                    </span>
+                                                                                    {rawVal != null && (
+                                                                                        <span style={{ fontSize: 10, color: '#8b90b8', display: 'block' }}>
+                                                                                            {rawVal >= 1_000_000
+                                                                                                ? `${(rawVal / 1_000_000).toFixed(2)}M`
+                                                                                                : rawVal >= 1_000
+                                                                                                ? `${(rawVal / 1_000).toFixed(1)}k`
+                                                                                                : rawVal.toFixed(1)
+                                                                                            } actual
+                                                                                        </span>
+                                                                                    )}
+                                                                                </>
+                                                                            ) : (
+                                                                                <span style={{ fontSize: 13, fontWeight: 700, color: entry.color }}>
+                                                                                    {entry.value >= 1_000_000
+                                                                                        ? `${(entry.value / 1_000_000).toFixed(2)}M`
+                                                                                        : entry.value >= 1_000
+                                                                                        ? `${(entry.value / 1_000).toFixed(1)}k`
+                                                                                        : entry.value
+                                                                                    }
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {chartMode === 'indexed' && (
+                                                                <div style={{
+                                                                    marginTop: 8, paddingTop: 8,
+                                                                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                                                                    fontSize: 10, color: '#8b90b8', fontStyle: 'italic',
+                                                                }}>
+                                                                    100% = peak value for each series
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }}
+                                            />
                                             {visibleCategories.map((cat: string) => (
                                                 <Area key={cat} type="monotone" dataKey={cat}
                                                     stroke={getStatConfig(cat).color} strokeWidth={3}

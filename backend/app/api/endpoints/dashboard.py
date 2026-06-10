@@ -345,9 +345,9 @@ async def get_dashboard_metrics(
         ]
 
     # ── Chart category list ───────────────────────────────────────────────
-    ORDER = ["Energy", "Water", "Waste", "Fuel", "Environment Other", "Emissions"]
+    ORDER = ["Energy", "Water", "Waste", "Fuel", "Recycling Rate", "Renewable Energy %", "Emissions"]
     chart_categories = sorted(
-        [c for c in found_categories if c not in ("Social", "Governance", "Other", "Recycling Rate", "Renewable Energy %")],
+        [c for c in found_categories if c not in ("Social", "Governance", "Other", "Environment Other")],
         key=lambda x: ORDER.index(x) if x in ORDER else 99,
     )
 
