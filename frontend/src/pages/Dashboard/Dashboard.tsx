@@ -116,8 +116,16 @@ const STAT_CONFIG: Record<string, { color: string; icon: React.ReactNode; themeC
         color: '#10b981', themeClass: 'green', order: 6, dataKey: 'Environment Other',
         icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 22v-5" /><path d="M10 17 8 15" /><path d="M10 14.5 12 11" /><path d="M14 22v-7" /><path d="M14 15 16 13" /><path d="M14 12 12 9" /><path d="M18 19c2.2 0 4-1.8 4-4 0-1.5-1-2.9-2.4-3.4C19.3 8.3 16.3 6 13 6c-1.3 0-2.5.4-3.5 1.1A4.95 4.95 0 0 0 4.5 10C2.5 10.5 1 12.3 1 14.5c0 2.5 2 4.5 4.5 4.5H18z" /></svg>
     },
+    'Recycling Rate': {
+        color: '#22c55e', themeClass: 'green', order: 7, dataKey: 'Recycling Rate',
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>
+    },
+    'Renewable Energy %': {
+        color: '#84cc16', themeClass: 'green', order: 8, dataKey: 'Renewable Energy %',
+        icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+    },
     'Social': {
-        color: '#6366f1', themeClass: 'blue', order: 7, dataKey: 'Social',
+        color: '#6366f1', themeClass: 'blue', order: 9, dataKey: 'Social',
         icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
     },
     'Governance': {
@@ -408,6 +416,19 @@ export default function Dashboard() {
 
     const [frameworkFilter, setFrameworkFilter] = useState<string | null>(null);
 
+    // NEW: Period Filter
+    const months = useMemo(() => getLast24Months(), []);
+    const [selectedPeriod, setSelectedPeriod] = useState<{ year: number, month: number } | null>(null);
+
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+    const availableYears = useMemo(() => {
+        const years = [];
+        for (let y = new Date().getFullYear(); y >= 2019; y--) {
+            years.push(y);
+        }
+        return years;
+    }, []);
+
     // ── Data fetch ──────────────────────────────────────────────────────────
     const { data: companyData } = useQuery({
         queryKey: ['company_me'],
@@ -427,19 +448,25 @@ export default function Dashboard() {
     }, [companyData]);
 
     const { data: dashboardData, isLoading } = useQuery({
-        queryKey: ['dashboard', 'metrics', currentSiteId, activePillar, frameworkFilter],
+        queryKey: ['dashboard', 'metrics', currentSiteId, activePillar, frameworkFilter, selectedPeriod],
         queryFn: async () => {
-            const fwParam = frameworkFilter ? `&framework=${frameworkFilter}` : '';
-            return (await api.get(`/dashboard/metrics?pillar=${activePillar}${fwParam}`)).data;
+            let url = `/dashboard/metrics?pillar=${activePillar}`;
+            if (frameworkFilter) url += `&framework=${frameworkFilter}`;
+            if (selectedPeriod) url += `&target_year=${selectedPeriod.year}&target_month=${selectedPeriod.month}`;
+            return (await api.get(url)).data;
         },
     });
 
     // ── Element-level data for S and G pillars ──────────────────────────────
     const { data: elementData } = useQuery({
-        queryKey: ['dashboard', 'elements', currentSiteId, activePillar, frameworkFilter],
+        queryKey: ['dashboard', 'elements', currentSiteId, activePillar, frameworkFilter, selectedYear],
         queryFn: async () => {
-            const fwParam = frameworkFilter ? `&framework=${frameworkFilter}` : '';
-            return (await api.get(`/dashboard/elements?pillar=${activePillar}${fwParam}`)).data;
+            let url = `/dashboard/elements?pillar=${activePillar}`;
+            if (frameworkFilter) url += `&framework=${frameworkFilter}`;
+            if (activePillar === 'S' || activePillar === 'G') {
+                url += `&target_year=${selectedYear}&target_month=12`;
+            }
+            return (await api.get(url)).data;
         },
         enabled: activePillar === 'S' || activePillar === 'G',
     });
@@ -515,8 +542,9 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* ── Framework Filter ───────────────────────────────────────── */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 24, overflowX: 'auto', paddingBottom: 8 }}>
+                {/* ── Framework Filter & Period Selector ──────────────────────── */}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, flex: 1 }}>
                         <button
                             onClick={() => setFrameworkFilter(null)}
                             style={{
@@ -545,6 +573,115 @@ export default function Dashboard() {
                             </button>
                         ))}
                     </div>
+
+                    {/* Period / Year selector — switches based on active pillar */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 100, padding: '4px 6px', marginBottom: 8
+                    }}>
+                        {activePillar === 'E' ? (
+                            <>
+                                <button 
+                                    onClick={() => {
+                                        const current = selectedPeriod || { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+                                        const idx = months.findIndex(m => m.year === current.year && m.month === current.month);
+                                        if (idx < months.length - 1) {
+                                            setSelectedPeriod({ year: months[idx+1].year, month: months[idx+1].month });
+                                        }
+                                    }}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
+                                    title="Previous Month"
+                                >
+                                    ◀
+                                </button>
+                                
+                                <select
+                                    value={selectedPeriod ? `${selectedPeriod.year}-${selectedPeriod.month}` : ""}
+                                    onChange={(e) => {
+                                        if (e.target.value === "") {
+                                            setSelectedPeriod(null);
+                                        } else {
+                                            const [y, m] = e.target.value.split('-');
+                                            setSelectedPeriod({ year: Number(y), month: Number(m) });
+                                        }
+                                    }}
+                                    style={{ 
+                                        background: 'transparent', border: 'none', color: '#f0f2ff', fontSize: 13, fontWeight: 700, 
+                                        cursor: 'pointer', appearance: 'none', padding: '4px 12px', textAlign: 'center', minWidth: 100, outline: 'none'
+                                    }}
+                                >
+                                    <option value="" style={{ background: '#1c1e30' }}>Current Period</option>
+                                    {months.map((m, i) => (
+                                        <option key={i} value={`${m.year}-${m.month}`} style={{ background: '#1c1e30' }}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                
+                                <button 
+                                    onClick={() => {
+                                        const current = selectedPeriod || { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+                                        const idx = months.findIndex(m => m.year === current.year && m.month === current.month);
+                                        if (idx > 0) {
+                                            setSelectedPeriod({ year: months[idx-1].year, month: months[idx-1].month });
+                                        } else if (idx === 0) {
+                                            setSelectedPeriod(null);
+                                        }
+                                    }}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
+                                    title="Next Month"
+                                >
+                                    ▶
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => setSelectedYear(y => Math.min(new Date().getFullYear(), y + 1))}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
+                                    title="Next Year"
+                                >◀</button>
+                                <select
+                                    value={selectedYear}
+                                    onChange={e => setSelectedYear(Number(e.target.value))}
+                                    style={{
+                                        background: 'transparent', border: 'none', color: '#f0f2ff',
+                                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                                        appearance: 'none', padding: '4px 12px', textAlign: 'center',
+                                        minWidth: 80, outline: 'none'
+                                    }}
+                                >
+                                    {availableYears.map(y => (
+                                        <option key={y} value={y} style={{ background: '#1c1e30' }}>{y}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={() => setSelectedYear(y => Math.max(2019, y - 1))}
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
+                                    title="Previous Year"
+                                >▶</button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Annual Data Notice ────────────────────────────────────── */}
+                {(activePillar === 'S' || activePillar === 'G') && (
+                    <div style={{
+                        fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic',
+                        marginTop: -16, marginBottom: 24, paddingLeft: 4,
+                        display: 'flex', alignItems: 'center', gap: 6,
+                    }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 16v-4M12 8h.01"/>
+                        </svg>
+                        {activePillar === 'S' ? 'Social' : 'Governance'} metrics are reported annually.
+                        Showing the most recent annual submission.
+                    </div>
+                )}
 
                 <AnomalyAlerts />
 
@@ -636,9 +773,14 @@ export default function Dashboard() {
                                 <div className="badge badge-gray">Last 7 Months</div>
                             </div>
                             {pillarHasSeries ? (
-                                <div style={{ height: 350 }}>
+                                <div style={{ height: 350, cursor: 'pointer' }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} onClick={(e: any) => {
+                                            if (e && e.activePayload && e.activePayload.length > 0) {
+                                                const pd = e.activePayload[0].payload;
+                                                setSelectedPeriod({ year: pd.year, month: pd.month });
+                                            }
+                                        }}>
                                             <defs>
                                                 {visibleCategories.map((cat: string) => {
                                                     const cfg = getStatConfig(cat);
@@ -680,9 +822,14 @@ export default function Dashboard() {
                                 <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Emissions Analysis</h3>
                                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Total CO₂e (Metric Tonnes) — GHG Protocol</p>
                             </div>
-                            <div style={{ height: 320 }}>
+                            <div style={{ height: 320, cursor: 'pointer' }}>
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }} barSize={16}>
+                                    <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }} barSize={16} onClick={(e: any) => {
+                                        if (e && e.activePayload && e.activePayload.length > 0) {
+                                            const pd = e.activePayload[0].payload;
+                                            setSelectedPeriod({ year: pd.year, month: pd.month });
+                                        }
+                                    }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} />

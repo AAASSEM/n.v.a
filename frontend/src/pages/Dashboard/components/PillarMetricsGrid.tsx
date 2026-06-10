@@ -7,11 +7,19 @@ const BOOLEAN_CODES = new Set([
     'HOSP-G-070', 'HOSP-G-079', 'HOSP-G-080'
 ]);
 
+const MONTH_ABBR = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function asOfLabel(year: number, month: number): string {
+    return `As of ${MONTH_ABBR[month]} ${year}`;
+}
+
 interface ElementCardData {
     code: string;
     name: string;
     value: number | null;
     unit: string;
+    year?: number;
+    month?: number;
 }
 
 interface Props {
@@ -65,6 +73,26 @@ export const PillarMetricsGrid: React.FC<Props> = ({ pillar, elements }) => {
                                 e.currentTarget.style.boxShadow = 'none';
                                 e.currentTarget.style.border = '1px solid rgba(255,255,255,0.06)';
                             }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <span style={{
+                                        fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                                        textTransform: 'uppercase', letterSpacing: '0.06em'
+                                    }}>
+                                        {el.code}
+                                    </span>
+                                    {el.year && el.month && (
+                                        <span style={{
+                                            fontSize: 10, fontWeight: 600,
+                                            color: 'var(--text-muted)',
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            borderRadius: 999,
+                                            padding: '2px 8px',
+                                        }}>
+                                            {asOfLabel(el.year, el.month)}
+                                        </span>
+                                    )}
+                                </div>
                                 <div style={{ fontSize: 13, color: '#8b90b8', marginBottom: 12, lineHeight: 1.4, minHeight: 36 }}>{el.name}</div>
                                 {el.value !== null ? (
                                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
@@ -126,7 +154,17 @@ export const PillarMetricsGrid: React.FC<Props> = ({ pillar, elements }) => {
                                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
                                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
                                 >
-                                    <div style={{ fontSize: 13, color: '#f0f2ff', lineHeight: 1.4, flex: 1 }}>{el.name}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{el.code}</span>
+                                            {el.year && el.month && (
+                                                <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', borderRadius: 999, padding: '2px 6px' }}>
+                                                    {asOfLabel(el.year, el.month)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: 13, color: '#f0f2ff', lineHeight: 1.4 }}>{el.name}</div>
+                                    </div>
                                     <div style={{ 
                                         display: 'flex', alignItems: 'center', gap: 6,
                                         background: badgeBg, color: badgeColor,

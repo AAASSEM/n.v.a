@@ -63,6 +63,10 @@ def _resolve_framework(fw: Optional[str]) -> Optional[str]:
 def _display_category(name: str, db_cat: str) -> str:
     """Map an element to a chart/stat bucket."""
     n = name.lower()
+    if "recycling rate" in n:
+        return "Recycling Rate"
+    if "renewable energy" in n and "%" in n:
+        return "Renewable Energy %"
     if "water" in n:
         return "Water"
     if "waste" in n or "recycling" in n or "compost" in n:
@@ -84,7 +88,11 @@ def _trend(this_val: float, prev_val: float) -> tuple[str, str]:
     """Return (direction, label) comparing two monthly totals."""
     if prev_val == 0:
         return "neutral", "No prior data"
+    if prev_val < 1.0:
+        return "neutral", "Insufficient prior data"
     pct = ((this_val - prev_val) / prev_val) * 100
+    if abs(pct) > 999:
+        return "neutral", "Large variance — check data"
     if abs(pct) < 0.01:
         return "neutral", "No change"
     direction = "up" if pct > 0 else "down"
@@ -164,6 +172,8 @@ async def get_dashboard_metrics(
     site_id: Optional[int] = Query(None),
     pillar: Optional[str] = Query(None),   # "E" | "S" | "G" | None
     framework: Optional[str] = Query(None),
+    target_year: Optional[int] = Query(None),
+    target_month: Optional[int] = Query(None),
 ) -> Any:
     """
     Main dashboard KPI cards and 7-month chart data.
@@ -206,13 +216,21 @@ async def get_dashboard_metrics(
     carbon_inputs: list[tuple] = []
     found_categories: set[str] = set()
 
+    is_specific_period = target_year is not None and target_month is not None
+
+    if not is_specific_period:
+        target_year = today.year
+        target_month = today.month
+
     for year, month, value, db_cat, el_name, el_code, el_unit in rows:
         if value is None:
             continue
         fval = float(value)
         disp = _display_category(el_name, db_cat)
         found_categories.add(disp)
-        stats_map[disp] = stats_map.get(disp, 0) + fval
+
+        if year == target_year and month == target_month:
+            stats_map[disp] = stats_map.get(disp, 0) + fval
 
         if (year, month) in month_index:
             slot = month_index[(year, month)]
@@ -220,22 +238,38 @@ async def get_dashboard_metrics(
 
         carbon_inputs.append((el_code, fval, year, month))
 
+    # Fallback to previous month if no specific period was requested and current month is empty
+    if not is_specific_period and not stats_map:
+        prev = today.replace(day=1) - datetime.timedelta(days=1)
+        target_year = prev.year
+        target_month = prev.month
+        for year, month, value, db_cat, el_name, el_code, el_unit in rows:
+            if value is None:
+                continue
+            if year == prev.year and month == prev.month:
+                disp = _display_category(el_name, db_cat)
+                stats_map[disp] = stats_map.get(disp, 0) + float(value)
+
     # ── GHG engine ────────────────────────────────────────────────────────
     show_ghg = pillar in (None, "E")
     if framework and _resolve_framework(framework) == "G":
         show_ghg = False
     
-    ghg = build_emissions_breakdown(carbon_inputs, emirate=emirate) if show_ghg else None
-
-    # Inject monthly emissions into chart slots
-    if ghg:
-        for em in ghg["monthly_emissions"]:
+    ghg = None
+    if show_ghg:
+        # All-time for charts
+        ghg_all = build_emissions_breakdown(carbon_inputs, emirate=emirate)
+        for em in ghg_all["monthly_emissions"]:
             key = (em["year"], em["month"])
             if key in month_index:
                 slot = month_index[key]
                 slot["Scope 1"] = round(em["scope1"], 3)
                 slot["Scope 2"] = round(em["scope2"], 3)
                 slot["Emissions"] = round(em["total"], 3)
+
+        # Target period only for the stat cards
+        target_carbon_inputs = [c for c in carbon_inputs if c[2] == target_year and c[3] == target_month]
+        ghg = build_emissions_breakdown(target_carbon_inputs, emirate=emirate)
 
     # ── Month-over-month trend helpers ────────────────────────────────────
     this_m  = (today.year, today.month)
@@ -248,16 +282,19 @@ async def get_dashboard_metrics(
         return _trend(a, b)
 
     # ── Build stat cards ──────────────────────────────────────────────────
-    UNIT_MAP = {"Energy": " kWh", "Water": " m³", "Waste": " kg", "Fuel": " L"}
+    UNIT_MAP = {
+        "Energy": " kWh", "Water": " m³", "Waste": " kg", "Fuel": " L",
+        "Recycling Rate": "%", "Renewable Energy %": "%"
+    }
     formatted_stats = []
 
     for cat, total in stats_map.items():
-        if cat in ("Social", "Governance"):
-            continue   # S and G shown via /elements, not aggregate cards
+        if cat in ("Social", "Governance", "Environment Other", "Other"):
+            continue   # S, G and incomparable E-buckets shown via /elements
         trend, change = cat_trend(cat)
         formatted_stats.append({
-            "name": f"Total {cat}",
-            "value": f"{total:,.0f}{UNIT_MAP.get(cat, '')}",
+            "name": f"Total {cat}" if cat not in ("Recycling Rate", "Renewable Energy %") else cat,
+            "value": f"{total:,.1f}{UNIT_MAP.get(cat, '')}" if cat in ("Recycling Rate", "Renewable Energy %") else f"{total:,.0f}{UNIT_MAP.get(cat, '')}",
             "change": change,
             "trend": trend,
             "pillar": "E" if cat not in ("Social", "Governance") else ("S" if cat == "Social" else "G"),
@@ -310,7 +347,7 @@ async def get_dashboard_metrics(
     # ── Chart category list ───────────────────────────────────────────────
     ORDER = ["Energy", "Water", "Waste", "Fuel", "Environment Other", "Emissions"]
     chart_categories = sorted(
-        [c for c in found_categories if c not in ("Social", "Governance", "Other")],
+        [c for c in found_categories if c not in ("Social", "Governance", "Other", "Recycling Rate", "Renewable Energy %")],
         key=lambda x: ORDER.index(x) if x in ORDER else 99,
     )
 
@@ -335,6 +372,8 @@ async def get_pillar_elements(
     site_id: Optional[int] = Query(None),
     pillar: str = Query(...),   # required: "S" or "G"
     framework: Optional[str] = Query(None),
+    target_year: Optional[int] = Query(None),
+    target_month: Optional[int] = Query(None),
 ) -> Any:
     """
     Return individual element values for the Social or Governance pillar.
@@ -350,20 +389,31 @@ async def get_pillar_elements(
         current_user, site_id, db, pillar, framework
     )
 
-    # Get the latest submission per element (max year+month combination)
     from sqlalchemy import func as sqlfunc
 
-    # Subquery: latest (year, month) per element for this company/site
-    sub = (
-        select(
-            DataSubmission.data_element_id,
-            sqlfunc.max(DataSubmission.year * 100 + DataSubmission.month).label("latest_ym"),
+    if target_year and pillar in ("S", "G"):
+        sub = (
+            select(
+                DataSubmission.data_element_id,
+                sqlfunc.max(DataSubmission.year * 100 + DataSubmission.month).label("latest_ym"),
+            )
+            .join(DataElement, DataSubmission.data_element_id == DataElement.id)
+            .where(*filters)
+            .where(DataSubmission.year == target_year)
+            .group_by(DataSubmission.data_element_id)
+            .subquery()
         )
-        .join(DataElement, DataSubmission.data_element_id == DataElement.id)
-        .where(*filters)
-        .group_by(DataSubmission.data_element_id)
-        .subquery()
-    )
+    else:
+        sub = (
+            select(
+                DataSubmission.data_element_id,
+                sqlfunc.max(DataSubmission.year * 100 + DataSubmission.month).label("latest_ym"),
+            )
+            .join(DataElement, DataSubmission.data_element_id == DataElement.id)
+            .where(*filters)
+            .group_by(DataSubmission.data_element_id)
+            .subquery()
+        )
 
     query = (
         select(
@@ -421,7 +471,19 @@ async def get_pillar_elements(
             "month": month,
         })
 
-    return {"pillar": pillar, "elements": elements, "history": history}
+    if elements:
+        latest = max(elements, key=lambda e: e["year"] * 100 + e["month"])
+        import calendar
+        reported_period = f"{calendar.month_abbr[latest['month']]} {latest['year']}"
+    else:
+        reported_period = None
+
+    return {
+        "pillar": pillar,
+        "elements": elements,
+        "history": history,
+        "reported_period": reported_period,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
