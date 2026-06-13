@@ -27,7 +27,16 @@ interface StatMetric {
     pillar?: string;
     scope?: number;
     methodology?: string;
+    emirate?: string;
+    grid_ef?: number;
+    grid_ef_source?: string;
     breakdown?: Array<{ label: string; scope: number; tco2e: number; ef_used: number; unit: string }>;
+    contributing_elements?: Array<{
+        code: string;
+        name: string;
+        value: number;
+        unit: string;
+    }>;
 }
 
 function deriveUnit(valueStr: string): string {
@@ -409,6 +418,7 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
 export default function Dashboard() {
     const { user } = useAuthStore();
     const currentSiteId = useSiteStore(s => s.currentSiteId);
+    const sites = useSiteStore(s => s.sites);
     const navigate = useNavigate();
 
     const [activePillar, setActivePillar] = useState<Pillar>('E');
@@ -416,7 +426,7 @@ export default function Dashboard() {
     const [selectedStat, setSelectedStat] = useState<StatMetric | null>(null);
 
     const [frameworkFilter, setFrameworkFilter] = useState<string | null>(null);
-    const [chartMode, setChartMode] = useState<'indexed' | 'actual'>('indexed');
+    const [chartMode, setChartMode] = useState<'indexed' | 'actual' | 'logarithmic'>('indexed');
 
     // NEW: Period Filter
     const months = useMemo(() => getLast24Months(), []);
@@ -446,8 +456,23 @@ export default function Dashboard() {
                 fws = companyData.active_frameworks;
             }
         }
+        
+        if (currentSiteId) {
+            const site = sites.find(s => s.id === currentSiteId);
+            if (site && site.location && site.location.toLowerCase() !== 'dubai') {
+                fws = fws.filter(fw => fw !== 'DST');
+            }
+        } else {
+            if (companyData && companyData.emirate && companyData.emirate.toLowerCase() !== 'dubai') {
+                const hasDubaiSite = sites.some(s => s.location && s.location.toLowerCase() === 'dubai');
+                if (!hasDubaiSite) {
+                    fws = fws.filter(fw => fw !== 'DST');
+                }
+            }
+        }
+        
         return fws;
-    }, [companyData]);
+    }, [companyData, currentSiteId, sites]);
 
     const { data: dashboardData, isLoading } = useQuery({
         queryKey: ['dashboard', 'metrics', currentSiteId, activePillar, frameworkFilter, selectedPeriod],
@@ -521,7 +546,19 @@ export default function Dashboard() {
     }, [chartData, visibleCategories]);
 
     // Pick which dataset to feed the chart
-    const activeChartData = chartMode === 'indexed' ? normalizedChartData : chartData;
+    const activeChartData = useMemo(() => {
+        if (chartMode === 'indexed') return normalizedChartData;
+        if (chartMode === 'logarithmic') {
+            return chartData.map((d: any) => {
+                const row = { ...d };
+                visibleCategories.forEach((cat: string) => {
+                    if (typeof row[cat] === 'number' && row[cat] <= 0) row[cat] = 1;
+                });
+                return row;
+            });
+        }
+        return chartData;
+    }, [chartMode, normalizedChartData, chartData, visibleCategories]);
 
     if (isLoading) {
         return (
@@ -815,7 +852,7 @@ export default function Dashboard() {
                                         padding: 3,
                                         gap: 2,
                                     }}>
-                                        {(['indexed', 'actual'] as const).map(mode => (
+                                        {(['indexed', 'actual', 'logarithmic'] as const).map(mode => (
                                             <button
                                                 key={mode}
                                                 onClick={() => setChartMode(mode)}
@@ -835,13 +872,13 @@ export default function Dashboard() {
                                                         : 'var(--text-muted)',
                                                 }}
                                             >
-                                                {mode === 'indexed' ? '% Index' : 'Actual'}
+                                                {mode === 'indexed' ? '% Index' : mode === 'actual' ? 'Actual' : 'Logarithmic'}
                                             </button>
                                         ))}
                                     </div>
 
                                     {/* Existing badge */}
-                                    <div className="badge badge-gray">Last 7 Months</div>
+                                    <div className="badge badge-gray">YTD ({selectedPeriod?.year || new Date().getFullYear()})</div>
                                 </div>
                             </div>
                             {pillarHasSeries ? (
@@ -868,11 +905,12 @@ export default function Dashboard() {
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
                                             <YAxis
+                                                scale={chartMode === 'logarithmic' ? 'log' : 'auto'}
                                                 axisLine={false}
                                                 tickLine={false}
                                                 tick={{ fill: '#8b90b8', fontSize: 11 }}
                                                 width={72}
-                                                domain={chartMode === 'indexed' ? [0, 100] : ['auto', 'auto']}
+                                                domain={chartMode === 'indexed' ? [0, 100] : chartMode === 'logarithmic' ? [1, 'auto'] : ['auto', 'auto']}
                                                 tickFormatter={(v: number) =>
                                                     chartMode === 'indexed' ? `${v}%` : (
                                                         v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` :

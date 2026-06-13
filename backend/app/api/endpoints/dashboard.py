@@ -21,16 +21,18 @@ from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import or_
 
 from app.api.deps import get_db, get_current_active_user, resolve_site_id
 from app.models.user import User
 from app.models.submission import DataSubmission
 from app.models.data_element import DataElement
-from app.models.company import Company
+from app.models.company import Company, Site
 from app.services.carbon_accounting import (
     build_emissions_breakdown,
     ELEMENT_EF_MAP,
     get_electricity_ef,
+    get_electricity_ef_source,
 )
 
 router = APIRouter()
@@ -83,6 +85,18 @@ def _display_category(name: str, db_cat: str) -> str:
         return "Environment Other"
     return "Other"
 
+def _is_additive(db_cat: str, el_unit: Optional[str], disp: str) -> bool:
+    """Determine if a metric's unit should be summed into the category total."""
+    if not el_unit: 
+        return True
+    u = el_unit.lower().strip()
+    if u in ("boolean", "count", "l/min", "text"): 
+        return False
+    if u == "%" and disp not in ("Recycling Rate", "Renewable Energy %"): 
+        return False
+    # If the unit has weird characters like m, we assume it's m³ which is additive.
+    return True
+
 
 def _trend(this_val: float, prev_val: float) -> tuple[str, str]:
     """Return (direction, label) comparing two monthly totals."""
@@ -127,9 +141,50 @@ def _is_improvement(code: str, direction: str) -> bool:
     return (direction == "up") == higher_is_better
 
 
-async def _get_company_emirate(db: AsyncSession, company_id: int) -> Optional[str]:
-    result = await db.execute(select(Company.emirate).where(Company.id == company_id))
+async def _get_emirate(
+    db: AsyncSession,
+    company_id: int,
+    site_id: Optional[int] = None,
+) -> Optional[str]:
+    """
+    Return the emirate for GHG grid factor lookup.
+    Priority: Site.emirate → Company.emirate → None (defaults to Dubai in carbon engine)
+    """
+    if site_id:
+        result = await db.execute(
+            select(Site).where(Site.id == site_id)
+        )
+        site_obj = result.scalar_one_or_none()
+        if site_obj:
+            search_str = f"{site_obj.location or ''} {site_obj.name or ''}".lower()
+            emirates = ["abu dhabi", "dubai", "sharjah", "ajman", "ras al khaimah", "fujairah", "umm al quwain"]
+            for em in emirates:
+                if em in search_str:
+                    return em
+            if site_obj.location:
+                return site_obj.location
+    # Fallback to company-level emirate
+    result = await db.execute(
+        select(Company.emirate).where(Company.id == company_id)
+    )
     return result.scalar_one_or_none()
+
+
+def get_electricity_ef_source(emirate: Optional[str]) -> str:
+    """Human-readable source label for the grid emission factor."""
+    if not emirate:
+        return "DEWA 2023 (default)"
+    e = emirate.lower().strip()
+    sources = {
+        "dubai":           "DEWA Sustainability Report 2023",
+        "abu dhabi":       "ADWEA Annual Report 2023",
+        "sharjah":         "IEA UAE National Average 2023",
+        "ajman":           "IEA UAE National Average 2023",
+        "ras al khaimah":  "IEA UAE National Average 2023",
+        "fujairah":        "IEA UAE National Average 2023",
+        "umm al quwain":   "IEA UAE National Average 2023",
+    }
+    return sources.get(e, "IEA UAE National Average 2023")
 
 
 async def _base_filters(
@@ -156,7 +211,13 @@ async def _base_filters(
         filters.append(DataElement.category == pillar)
     if framework:
         fw_abbr = _resolve_framework(framework)
-        filters.append(DataElement.frameworks.ilike(f"%{fw_abbr}%"))
+        filters.append(
+            or_(
+                DataElement.frameworks.ilike(f"%{fw_abbr}%"),
+                DataElement.frameworks == None,
+                DataElement.frameworks == ""
+            )
+        )
 
     return company_id, effective_site_id, filters
 
@@ -184,7 +245,7 @@ async def get_dashboard_metrics(
     company_id, effective_site_id, filters = await _base_filters(
         current_user, site_id, db, pillar, framework
     )
-    emirate = await _get_company_emirate(db, company_id)
+    emirate = await _get_emirate(db, company_id, effective_site_id)
 
     today = datetime.date.today()
 
@@ -205,22 +266,23 @@ async def get_dashboard_metrics(
     result = await db.execute(query)
     rows = result.all()
 
-    # ── 7-month skeleton ──────────────────────────────────────────────────
-    months_series = []
-    for i in range(6, -1, -1):
-        d = today - relativedelta(months=i)
-        months_series.append({"year": d.year, "month": d.month, "name": d.strftime("%b")})
-    month_index = {(m["year"], m["month"]): m for m in months_series}
-
-    stats_map: dict[str, float] = {}
-    carbon_inputs: list[tuple] = []
-    found_categories: set[str] = set()
-
     is_specific_period = target_year is not None and target_month is not None
-
     if not is_specific_period:
         target_year = today.year
         target_month = today.month
+
+    # ── YTD skeleton (Jan to target_month) ──────────────────────────
+    import calendar
+    months_series = []
+    for m in range(1, target_month + 1):
+        months_series.append({"year": target_year, "month": m, "name": calendar.month_abbr[m]})
+    month_index = {(m["year"], m["month"]): m for m in months_series}
+
+    stats_map: dict[str, float] = {}
+    stats_elements: dict[str, dict[str, dict]] = {}
+    global_stats: dict[tuple, dict] = {}
+    carbon_inputs: list[tuple] = []
+    found_categories: set[str] = set()
 
     for year, month, value, db_cat, el_name, el_code, el_unit in rows:
         if value is None:
@@ -230,11 +292,23 @@ async def get_dashboard_metrics(
         found_categories.add(disp)
 
         if year == target_year and month == target_month:
-            stats_map[disp] = stats_map.get(disp, 0) + fval
+            if disp not in stats_elements:
+                stats_elements[disp] = {}
+            if el_code not in stats_elements[disp]:
+                stats_elements[disp][el_code] = {"code": el_code, "name": el_name, "value": 0, "unit": el_unit}
+            stats_elements[disp][el_code]["value"] += fval
 
-        if (year, month) in month_index:
-            slot = month_index[(year, month)]
-            slot[disp] = slot.get(disp, 0) + fval
+            if _is_additive(db_cat, el_unit, disp):
+                stats_map[disp] = stats_map.get(disp, 0) + fval
+
+        if _is_additive(db_cat, el_unit, disp):
+            if (year, month) in month_index:
+                slot = month_index[(year, month)]
+                slot[disp] = slot.get(disp, 0) + fval
+                
+            if (year, month) not in global_stats:
+                global_stats[(year, month)] = {}
+            global_stats[(year, month)][disp] = global_stats[(year, month)].get(disp, 0) + fval
 
         carbon_inputs.append((el_code, fval, year, month))
 
@@ -243,12 +317,37 @@ async def get_dashboard_metrics(
         prev = today.replace(day=1) - datetime.timedelta(days=1)
         target_year = prev.year
         target_month = prev.month
+        # Rebuild skeleton for the fallback target_month
+        months_series = []
+        for m in range(1, target_month + 1):
+            months_series.append({"year": target_year, "month": m, "name": calendar.month_abbr[m]})
+        month_index = {(m["year"], m["month"]): m for m in months_series}
+        # Re-run slot mapping for new skeleton
+        for year, month, value, db_cat, el_name, el_code, el_unit in rows:
+            if value is None:
+                continue
+            fval = float(value)
+            disp = _display_category(el_name, db_cat)
+            if _is_additive(db_cat, el_unit, disp):
+                if (year, month) in month_index:
+                    slot = month_index[(year, month)]
+                    slot[disp] = slot.get(disp, 0) + fval
+
         for year, month, value, db_cat, el_name, el_code, el_unit in rows:
             if value is None:
                 continue
             if year == prev.year and month == prev.month:
+                fval = float(value)
                 disp = _display_category(el_name, db_cat)
-                stats_map[disp] = stats_map.get(disp, 0) + float(value)
+                
+                if disp not in stats_elements:
+                    stats_elements[disp] = {}
+                if el_code not in stats_elements[disp]:
+                    stats_elements[disp][el_code] = {"code": el_code, "name": el_name, "value": 0, "unit": el_unit}
+                stats_elements[disp][el_code]["value"] += fval
+
+                if _is_additive(db_cat, el_unit, disp):
+                    stats_map[disp] = stats_map.get(disp, 0) + fval
 
     # ── GHG engine ────────────────────────────────────────────────────────
     show_ghg = pillar in (None, "E")
@@ -272,13 +371,12 @@ async def get_dashboard_metrics(
         ghg = build_emissions_breakdown(target_carbon_inputs, emirate=emirate)
 
     # ── Month-over-month trend helpers ────────────────────────────────────
-    this_m  = (today.year, today.month)
-    prev_m  = ((today - relativedelta(months=1)).year,
-               (today - relativedelta(months=1)).month)
+    this_m  = (target_year, target_month)
+    prev_m  = (target_year - 1, 12) if target_month == 1 else (target_year, target_month - 1)
 
     def cat_trend(cat: str):
-        a = month_index.get(this_m, {}).get(cat, 0)
-        b = month_index.get(prev_m, {}).get(cat, 0)
+        a = global_stats.get(this_m, {}).get(cat, 0)
+        b = global_stats.get(prev_m, {}).get(cat, 0)
         return _trend(a, b)
 
     # ── Build stat cards ──────────────────────────────────────────────────
@@ -292,19 +390,44 @@ async def get_dashboard_metrics(
         if cat in ("Social", "Governance", "Environment Other", "Other"):
             continue   # S, G and incomparable E-buckets shown via /elements
         trend, change = cat_trend(cat)
+        
+        # Convert dict of elements to a sorted list
+        contributing_elements = list(stats_elements.get(cat, {}).values())
+        contributing_elements.sort(key=lambda x: (-x["value"], x["name"]))
+        
         formatted_stats.append({
             "name": f"Total {cat}" if cat not in ("Recycling Rate", "Renewable Energy %") else cat,
             "value": f"{total:,.1f}{UNIT_MAP.get(cat, '')}" if cat in ("Recycling Rate", "Renewable Energy %") else f"{total:,.0f}{UNIT_MAP.get(cat, '')}",
             "change": change,
             "trend": trend,
             "pillar": "E" if cat not in ("Social", "Governance") else ("S" if cat == "Social" else "G"),
+            "contributing_elements": contributing_elements,
         })
 
     # GHG scope cards
     if ghg and show_ghg:
-        em_this  = month_index.get(this_m, {}).get("Emissions", 0)
-        em_prev  = month_index.get(prev_m, {}).get("Emissions", 0)
+        target_carbon_this = [c for c in carbon_inputs if c[2] == this_m[0] and c[3] == this_m[1]]
+        target_carbon_prev = [c for c in carbon_inputs if c[2] == prev_m[0] and c[3] == prev_m[1]]
+        em_this = build_emissions_breakdown(target_carbon_this, emirate=emirate)["total_tco2e"]
+        em_prev = build_emissions_breakdown(target_carbon_prev, emirate=emirate)["total_tco2e"]
+        
         em_trend, em_change = _trend(em_this, em_prev)
+
+        full_breakdown = [
+            {
+                "label": v["label"],
+                "scope": v["scope"],
+                "tco2e": round(v["tco2e"], 3),
+                "ef_used": v["ef_used"],
+                "unit": v["unit"],
+            }
+            for v in ghg["breakdown_by_source"].values()
+            if abs(v["tco2e"]) > 0
+        ]
+        scope1_breakdown = [b for b in full_breakdown if b["scope"] == 1]
+        scope2_breakdown = [b for b in full_breakdown if b["scope"] == 2]
+        
+        grid_ef = get_electricity_ef(emirate)
 
         formatted_stats += [
             {
@@ -314,6 +437,15 @@ async def get_dashboard_metrics(
                 "trend": "neutral",
                 "pillar": "E",
                 "scope": 1,
+                "breakdown": scope1_breakdown,
+                "methodology": (
+                    f"Scope 1 covers direct GHG emissions from sources owned or controlled by the company. "
+                    f"Diesel combustion: 2.684 kgCO₂e/L (IPCC 2006 Vol.2 + DEFRA 2023). "
+                    f"Petrol combustion: 2.312 kgCO₂e/L (DEFRA 2023). "
+                    f"LPG combustion: 2.943 kgCO₂e/kg (IPCC 2006 Table 1.4, propane-dominant blend). "
+                    f"Refrigerant leakage (R-410A): 2,088 kgCO₂e/kg GWP100 (IPCC AR5 Table AII.1.2). "
+                    f"Standard: GHG Protocol Corporate Accounting and Reporting Standard."
+                ),
             },
             {
                 "name": "Scope 2 Emissions",
@@ -322,6 +454,20 @@ async def get_dashboard_metrics(
                 "trend": "neutral",
                 "pillar": "E",
                 "scope": 2,
+                "breakdown": scope2_breakdown,
+                "emirate": emirate,
+                "grid_ef": grid_ef,
+                "grid_ef_source": get_electricity_ef_source(emirate),
+                "methodology": (
+                    f"Scope 2 covers indirect GHG emissions from purchased electricity and district cooling. "
+                    f"Method: location-based (uses average grid emission factor for {emirate or 'UAE'}). "
+                    f"Electricity grid factor ({(emirate or 'UAE').title()}): {grid_ef} kgCO₂e/kWh "
+                    f"({get_electricity_ef_source(emirate)}). "
+                    f"District cooling: 0.0928 kgCO₂e/RT-h (Tabreed/EMPOWER UAE benchmark, "
+                    f"derived from grid EF ÷ system COP 4.92). "
+                    f"On-site renewable generation offsets Scope 2 at the same grid factor. "
+                    f"Standard: GHG Protocol Corporate Accounting and Reporting Standard."
+                ),
             },
             {
                 "name": "Total GHG Emissions",
@@ -329,18 +475,11 @@ async def get_dashboard_metrics(
                 "change": em_change,
                 "trend": em_trend,
                 "pillar": "E",
+                "breakdown": full_breakdown,
+                "emirate": emirate,
+                "grid_ef": grid_ef,
+                "grid_ef_source": get_electricity_ef_source(emirate),
                 "methodology": ghg["methodology"],
-                "breakdown": [
-                    {
-                        "label": v["label"],
-                        "scope": v["scope"],
-                        "tco2e": round(v["tco2e"], 3),
-                        "ef_used": v["ef_used"],
-                        "unit": v["unit"],
-                    }
-                    for v in ghg["breakdown_by_source"].values()
-                    if abs(v["tco2e"]) > 0
-                ],
             },
         ]
 
@@ -351,6 +490,8 @@ async def get_dashboard_metrics(
         key=lambda x: ORDER.index(x) if x in ORDER else 99,
     )
 
+    grid_ef = get_electricity_ef(emirate) if show_ghg else None
+
     return {
         "stats": formatted_stats,
         "chartData": months_series,
@@ -358,6 +499,8 @@ async def get_dashboard_metrics(
         "pillar": pillar,
         "ghg_visible": show_ghg,
         "emirate": emirate,
+        "grid_ef": grid_ef,
+        "grid_ef_source": get_electricity_ef_source(emirate),
     }
 
 
@@ -513,7 +656,7 @@ async def get_month_comparison(
     company_id, effective_site_id, base_filters = await _base_filters(
         current_user, site_id, db, pillar
     )
-    emirate = await _get_company_emirate(db, company_id)
+    emirate = await _get_emirate(db, company_id, effective_site_id)
 
     # ── Fetch submissions for BOTH months in one query ────────────────────
     filters = base_filters + [
@@ -753,7 +896,7 @@ async def get_esg_score(
     s_score = (s_sub / s_total * 100) if s_total > 0 else 0
     
     # Get E trends for E score
-    metrics_res = await get_dashboard_metrics(db, current_user, site_id, pillar="E", framework=None)
+    metrics_res = await get_dashboard_metrics(db, current_user, site_id, pillar="E", framework=None, target_year=None, target_month=None)
     e_stats = metrics_res.get("stats", [])
     
     e_cats_count = 0
@@ -771,7 +914,7 @@ async def get_esg_score(
     e_score = (e_score_raw / (e_cats_count * 25) * 100) if e_cats_count > 0 else 0
     
     # Get G policies for G score
-    elems_res = await get_pillar_elements(db, current_user, site_id, pillar="G", framework=None)
+    elems_res = await get_pillar_elements(db, current_user, site_id, pillar="G", framework=None, target_year=None, target_month=None)
     g_elements = elems_res.get("elements", [])
     
     BOOLEAN_CODES = {

@@ -186,6 +186,24 @@ def get_electricity_ef(emirate: Optional[str]) -> float:
     key = emirate.lower().strip()
     return ELECTRICITY_EF.get(key, ELECTRICITY_EF["default"])
 
+def get_electricity_ef_source(emirate: Optional[str]) -> str:
+    """Human-readable source label for the grid emission factor."""
+    if not emirate:
+        return "DEWA Sustainability Report 2023"
+    e = emirate.lower().strip()
+    sources = {
+        "dubai":           "DEWA Sustainability Report 2023",
+        "abu dhabi":       "ADWEA Annual Report 2023",
+        "sharjah":         "SEWA / IEA UAE National Average 2023",
+        "ajman":           "IEA UAE National Average 2023",
+        "umm al quwain":   "IEA UAE National Average 2023",
+        "ras al khaimah":  "IEA UAE National Average 2023",
+        "fujairah":        "IEA UAE National Average 2023",
+        "cairo":           "IEA Egypt National Average 2023",
+        "egypt":           "IEA Egypt National Average 2023",
+    }
+    return sources.get(e, "IEA UAE National Average 2023")
+
 
 def calculate_emissions_tco2e(
     element_code: str,
@@ -297,13 +315,15 @@ def build_emissions_breakdown(
     elec_ef = get_electricity_ef(emirate)
     emirate_label = (emirate or "UAE").title()
 
+    elec_ef_source = get_electricity_ef_source(emirate)
+
     methodology = (
         f"GHG Protocol Corporate Standard. "
         f"Scope 1: direct combustion (diesel {DIESEL_EF_PER_LITER} kgCO2e/L, "
         f"petrol {PETROL_EF_PER_LITER} kgCO2e/L, LPG {LPG_EF_PER_KG} kgCO2e/kg) "
         f"and fugitive refrigerant (R-410A GWP {int(REFRIGERANT_EF_DEFAULT)}). "
         f"Scope 2: location-based grid factor for {emirate_label} = "
-        f"{elec_ef} kgCO2e/kWh (DEWA/ADWEA/IEA 2023); "
+        f"{elec_ef} kgCO2e/kWh ({elec_ef_source}); "
         f"district cooling = {DISTRICT_COOLING_EF} kgCO2e/RT-h (Tabreed benchmark). "
         f"On-site renewable generation offsets Scope 2 at the same grid factor."
     )

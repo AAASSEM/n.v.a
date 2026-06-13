@@ -108,6 +108,13 @@ async def create_company(
     else:
         fws = [f for f in fws if f.lower() != "dst"]
 
+    has_gk = company_in.has_green_key if company_in.sector.lower() == "hospitality" else False
+    if has_gk:
+        if "green key" not in [f.lower() for f in fws]:
+            fws.append("GREEN KEY")
+    else:
+        fws = [f for f in fws if f.lower() != "green key"]
+
     company = Company(
         owner_id=current_user.id,
         name=company_in.name,
@@ -116,7 +123,7 @@ async def create_company(
         company_code=generated_code,
         emirate=company_in.emirate.lower(),
         sector=company_in.sector.lower(),
-        has_green_key=company_in.has_green_key if company_in.sector.lower() == "hospitality" else False,
+        has_green_key=has_gk,
         active_frameworks=fws
     )
     db.add(company)
@@ -208,6 +215,12 @@ async def update_company(
             fws.append("DST")
     else:
         fws = [f for f in fws if f.lower() != "dst"]
+
+    if company.has_green_key:
+        if "green key" not in [f.lower() for f in fws]:
+            fws.append("GREEN KEY")
+    else:
+        fws = [f for f in fws if f.lower() != "green key"]
 
     company.active_frameworks = fws
 

@@ -1,50 +1,25 @@
-2026-05-29T16:10:10.788917212Z ==> Using Node.js version 22.22.0 (default)
-2026-05-29T16:10:10.788933943Z ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
-2026-05-29T16:10:10.794554043Z ==> Installing Node.js version 22.22.0...
-2026-05-29T16:10:18.211906754Z 
-2026-05-29T16:10:18.211935575Z up to date, audited 266 packages in 1s
-2026-05-29T16:10:18.211976056Z 
-2026-05-29T16:10:18.211985326Z 62 packages are looking for funding
-2026-05-29T16:10:18.211992866Z   run `npm fund` for details
-2026-05-29T16:10:18.226012103Z 
-2026-05-29T16:10:18.226033633Z 7 vulnerabilities (3 moderate, 4 high)
-2026-05-29T16:10:18.226036203Z 
-2026-05-29T16:10:18.226039174Z To address all issues, run:
-2026-05-29T16:10:18.226041703Z   npm audit fix
-2026-05-29T16:10:18.226043703Z 
-2026-05-29T16:10:18.226045744Z Run `npm audit` for details.
-2026-05-29T16:10:19.124252472Z 
-2026-05-29T16:10:19.124281532Z up to date, audited 266 packages in 752ms
-2026-05-29T16:10:19.124284662Z 
-2026-05-29T16:10:19.124295083Z 62 packages are looking for funding
-2026-05-29T16:10:19.124298473Z   run `npm fund` for details
-2026-05-29T16:10:19.139270975Z 
-2026-05-29T16:10:19.139297655Z 7 vulnerabilities (3 moderate, 4 high)
-2026-05-29T16:10:19.139301645Z 
-2026-05-29T16:10:19.139306236Z To address all issues, run:
-2026-05-29T16:10:19.139309446Z   npm audit fix
-2026-05-29T16:10:19.139312116Z 
-2026-05-29T16:10:19.139315386Z Run `npm audit` for details.
-2026-05-29T16:10:19.288545109Z ==> Running build command 'npm install && npm run build'...
-2026-05-29T16:10:20.12163531Z 
-2026-05-29T16:10:20.121665021Z up to date, audited 266 packages in 787ms
-2026-05-29T16:10:20.121667721Z 
-2026-05-29T16:10:20.121679301Z 62 packages are looking for funding
-2026-05-29T16:10:20.121683982Z   run `npm fund` for details
-2026-05-29T16:10:20.143839766Z 
-2026-05-29T16:10:20.143875747Z 7 vulnerabilities (3 moderate, 4 high)
-2026-05-29T16:10:20.143879427Z 
-2026-05-29T16:10:20.143883567Z To address all issues, run:
-2026-05-29T16:10:20.143886517Z   npm audit fix
-2026-05-29T16:10:20.143889057Z 
-2026-05-29T16:10:20.143891688Z Run `npm audit` for details.
-2026-05-29T16:10:20.301683801Z 
-2026-05-29T16:10:20.301710422Z > frontend@0.0.0 build
-2026-05-29T16:10:20.301714232Z > tsc -b && vite build
-2026-05-29T16:10:20.301716832Z 
-2026-05-29T16:10:27.30525971Z src/pages/Authentication/Login.tsx(9,11): error TS6133: 'navigate' is declared but its value is never read.
-2026-05-29T16:10:27.305404164Z src/pages/Authentication/Login.tsx(10,11): error TS6133: 'location' is declared but its value is never read.
-2026-05-29T16:10:27.305413254Z src/pages/Authentication/ResetPassword.tsx(9,13): error TS2339: Property 'resetPassword' does not exist on type 'AuthState'.
-2026-05-29T16:10:27.305425894Z src/stores/authStore.ts(4,21): error TS6196: 'LoginCredentials' is declared but never used.
-2026-05-29T16:10:27.945143007Z ==> Build failed 😞
-2026-05-29T16:10:27.945161008Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/metrics?pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/metrics?pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/metrics?pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/metrics?pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/metrics?pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/metrics?pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/metrics?pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/metrics?pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/score?site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/score?site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/score?site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/score?site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/score?site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/score?site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/compare?month_a_year=2026&month_a_month=5&month_b_year=2026&month_b_month=6&pillar=E&site_id=1:1  Failed to load resource: net::ERR_FAILED
+dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/dashboard/score?site_id=1' from origin 'http://localhost:5173' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+:8000/api/v1/dashboard/score?site_id=1:1  Failed to load resource: net::ERR_FAILED
+[NEW] Explain Console errors by using Copilot in Edge: click  to explain an error. Learn moreDon't show again

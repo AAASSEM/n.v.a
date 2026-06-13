@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import AppLayout from '../../components/layout/AppLayout';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../../services/api';
@@ -18,6 +18,7 @@ export default function ReportsView() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [selectedFormat, setSelectedFormat] = useState<'PDF' | 'XLSX'>('PDF');
     const [selectedFramework, setSelectedFramework] = useState<string>('ESG');
+    const [selectedSubPeriod, setSelectedSubPeriod] = useState<string>('Full Year');
 
     const canCreate = canPerformAction(user?.profile?.role, 'reports', 'create');
     const canDelete = canPerformAction(user?.profile?.role, 'reports', 'delete');
@@ -27,7 +28,16 @@ export default function ReportsView() {
         queryFn: async () => (await api.get('/companies/me')).data,
     });
     
-    const activeFrameworks: string[] = companyData?.active_frameworks?.length ? companyData.active_frameworks : ['ESG'];
+    const activeFrameworks = React.useMemo(() => {
+        let fws = companyData?.active_frameworks?.length ? companyData.active_frameworks : ['ESG'];
+        if (currentSiteId) {
+            const site = useSiteStore.getState().sites.find(s => s.id === currentSiteId);
+            if (site && site.location && site.location.toLowerCase() !== 'dubai') {
+                fws = fws.filter((fw: string) => fw !== 'DST');
+            }
+        }
+        return fws;
+    }, [companyData, currentSiteId]);
 
     const [alertModal, setAlertModal] = useState<{
         isOpen: boolean;
@@ -40,8 +50,8 @@ export default function ReportsView() {
 
     // 1. Fetch completion status
     const { data: completionStatus, isLoading: loadingStatus, refetch } = useQuery({
-        queryKey: ['report_completion', selectedPeriod, currentSiteId, selectedFramework],
-        queryFn: async () => (await api.get(`/reports/check-completion/${selectedPeriod}?framework=${selectedFramework}`)).data,
+        queryKey: ['report_completion', selectedPeriod, currentSiteId, selectedFramework, selectedSubPeriod],
+        queryFn: async () => (await api.get(`/reports/check-completion/${selectedPeriod}?framework=${selectedFramework}&period=${selectedSubPeriod}`)).data,
     });
 
     // 2. Fetch report history
@@ -55,7 +65,7 @@ export default function ReportsView() {
     // 3. Generate mutation
     const generateMutation = useMutation({
         mutationFn: async (allowIncomplete: boolean = false) => {
-            const res = await api.post(`/reports/generate/${selectedPeriod}?allow_incomplete=${allowIncomplete}&format=${selectedFormat}&framework=${selectedFramework}`);
+            const res = await api.post(`/reports/generate/${selectedPeriod}?allow_incomplete=${allowIncomplete}&format=${selectedFormat}&framework=${selectedFramework}&period=${selectedSubPeriod}`);
             return res.data;
         },
         onSuccess: (data) => {
@@ -227,7 +237,7 @@ export default function ReportsView() {
                 </div>
 
                 <div className="command-bar">
-                    <div className="command-bar-main">
+                    <div className="command-bar-main" style={{ gap: 16 }}>
                         <div className="status-chip-group">
                             {[0, 1, 2, 3, 4].map(offset => {
                                 const year = String(currentYear - offset);
@@ -235,6 +245,12 @@ export default function ReportsView() {
                                     <button key={year} className={`status-chip ${selectedPeriod === year ? 'active' : ''}`} onClick={() => setSelectedPeriod(year)}>FY {year}</button>
                                 );
                             })}
+                        </div>
+                        <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }} />
+                        <div className="status-chip-group">
+                            {['Full Year', 'H1', 'H2', 'Q1', 'Q2', 'Q3', 'Q4'].map(p => (
+                                <button key={p} className={`status-chip ${selectedSubPeriod === p ? 'active' : ''}`} onClick={() => setSelectedSubPeriod(p)}>{p}</button>
+                            ))}
                         </div>
                     </div>
                 </div>

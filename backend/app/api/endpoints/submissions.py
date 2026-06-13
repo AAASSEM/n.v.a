@@ -65,7 +65,36 @@ async def get_submission_grid(
             CompanyChecklist.site_id == effective_site_id,
         )
     )
-    checklist_records = (await db.execute(stmt_checklist)).scalars().all()
+    raw_checklist_records = (await db.execute(stmt_checklist)).scalars().all()
+
+    # 1.1 Fetch company and site to respect framework toggles
+    from app.models.company import Company, Site
+    company = await db.get(Company, company_id)
+    site = await db.get(Site, effective_site_id)
+    
+    active_fws = [f.upper() for f in (company.active_frameworks or [])]
+    if site and site.location and site.location.lower() != 'dubai':
+        active_fws = [f for f in active_fws if f != 'DST']
+
+    checklist_records = []
+    for item in raw_checklist_records:
+        el = item.data_element
+        if not el: continue
+        
+        # If element is tied to a specific framework, it must be active
+        if el.frameworks:
+            fw_map = {"E": "ESG", "D": "DST", "G": "GREEN KEY"}
+            el_fws = []
+            for f in el.frameworks.split(','):
+                f_clean = f.strip().upper()
+                el_fws.append(fw_map.get(f_clean, f_clean))
+                
+            # Always show ESG by default if no framework or if ESG is one of them
+            if "ESG" in el_fws or any(f in active_fws for f in el_fws):
+                checklist_records.append(item)
+        else:
+            # Elements without specific framework are base/ESG
+            checklist_records.append(item)
 
     # 2. Fetch active meters for the site
     stmt_meters = select(Meter).where(

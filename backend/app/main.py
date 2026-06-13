@@ -112,6 +112,13 @@ async def run_migrations():
                     result = conn.execute(text("SELECT version_num FROM alembic_version"))
                     current = result.scalar()
                     print(f"[MIGRATE] Current version: {current}", flush=True)
+                    
+                    # --- TEMP FIX: Auto-reset broken migrations ---
+                    if current in ('03845ab2ce6f', 'e11acf5f2207', '22c5fb7fd136', '9a1c7e2d4b10', '3429fa218f4a'):
+                        conn.execute(text("UPDATE alembic_version SET version_num = 'de33973c150e'"))
+                        conn.commit()
+                        print(f"[MIGRATE] Auto-reset alembic_version from {current} back to de33973c150e", flush=True)
+                    # ----------------------------------------------
                 except Exception:
                     print("[MIGRATE] No existing migration state — fresh database", flush=True)
             sync_engine.dispose()

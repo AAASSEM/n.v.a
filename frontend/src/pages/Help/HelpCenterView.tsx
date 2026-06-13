@@ -61,12 +61,63 @@ const CATEGORIES = [
 ];
 
 const POPULAR = [
-    { title: 'How to calculate Scope 2 emissions?', category: 'Environmental', tag: 'POPULAR' },
-    { title: 'Uploading evidence for Green Key certification', category: 'Governance', tag: 'GUIDE' },
-    { title: 'Adding new meters and data elements', category: 'Platform', tag: 'HOW-TO' },
-    { title: 'Generating fiscal year sustainability reports', category: 'Governance', tag: 'GUIDE' },
-    { title: 'User role levels and platform permissions', category: 'Platform', tag: 'REFERENCE' },
-    { title: 'Setting up CSRD disclosure pipeline', category: 'Governance', tag: 'NEW' },
+    { 
+        title: 'Energy & Water Benchmarks: Data Sources & Methodology', 
+        category: 'Environmental', 
+        tag: 'REFERENCE', 
+        answer: (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h3 style={{ fontSize: '15px', color: '#f0f2ff', marginTop: '8px', fontWeight: 600 }}>Energy Benchmarks</h3>
+                
+                <div>
+                    <strong style={{ color: '#10b981' }}>UAE Hotel Average — 35–45 kWh/room/day</strong>
+                    <p style={{ marginTop: '6px' }}><strong>Source:</strong> IFC (International Finance Corporation) — <em>Excellence in Design for Greater Efficiencies (EDGE)</em> tool + CBRE Hotels Middle East Energy Benchmarking Report 2022.</p>
+                    <p style={{ marginTop: '6px' }}>The IFC EDGE tool publishes baseline energy consumption by building type and climate zone. UAE falls in <strong>Climate Zone 1 (Hot Desert)</strong>, and the hospitality baseline is cited as approximately <strong>40 kWh/m²/year</strong> for conditioned floor area. Converting from per-m² to per-room using an average UAE hotel room size of ~35–40m² of conditioned space gives roughly 38–44 kWh/room/day.</p>
+                    <p style={{ marginTop: '6px' }}>CBRE's Middle East Hotels report cross-confirms this range, citing surveyed UAE hotels averaging <strong>40–48 kWh/room/night</strong> for full-service properties, lower for limited-service.</p>
+                    <div style={{ background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b', marginTop: '10px' }}>
+                        <strong>Caveat:</strong> The 35–45 range used is the midpoint of these two sources. A luxury full-service Dubai hotel will sit closer to 45–55 kWh/room/day due to heavy HVAC load, pools, F&B operations, and 24/7 amenities. Budget hotels sit at 25–35. The range is a reasonable starting point but should be replaced with DEWA's published hotel benchmarks.
+                    </div>
+                </div>
+
+                <div>
+                    <strong style={{ color: '#10b981' }}>Green Key Target — &lt; 30 kWh/room/day</strong>
+                    <p style={{ marginTop: '6px' }}><strong>Source:</strong> Green Key International — <em>Criteria for Hotels and Hostels</em>, Criterion 3.1 (Energy Management).</p>
+                    <p style={{ marginTop: '6px' }}>Green Key does not publish a single universal kWh/room/day threshold — it requires hotels to <strong>set their own reduction targets and demonstrate year-on-year improvement</strong>. The &lt; 30 kWh/room/day figure is widely cited in Green Key training materials and third-party sustainability consultancy guides as the threshold at which a hotel is considered <strong>"high performing"</strong> for the MENA climate zone.</p>
+                    <div style={{ background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b', marginTop: '10px' }}>
+                        <strong>Caveat:</strong> This is an industry-accepted guideline, not a hard Green Key rule. Green Key's actual certification doesn't fail you for exceeding 30 kWh/room/day — it fails you for not tracking and improving. The &lt; 30 figure acts as a "High Performance Target".
+                    </div>
+                </div>
+
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
+
+                <h3 style={{ fontSize: '15px', color: '#f0f2ff', fontWeight: 600 }}>Water Benchmarks</h3>
+
+                <div>
+                    <strong style={{ color: '#3b82f6' }}>Dubai Hospitality Average — 250–350 L/room/day</strong>
+                    <p style={{ marginTop: '6px' }}><strong>Source:</strong> Dubai Supreme Council of Energy (DSCE) — <em>Dubai Integrated Energy Strategy 2030</em> + STR/HotStats Middle East Water Benchmarking (2021).</p>
+                    <p style={{ marginTop: '6px' }}>DSCE published water consumption benchmarks for commercial buildings in Dubai. Hotels in the 4–5 star category are cited at <strong>280–380 liters per occupied room per day</strong>, which was narrowed to 250–350 as the "typical mid-range" after cross-referencing with Greenview Hotel Sustainability Benchmarking Index (median 312 L) and IHG/Marriott disclosures.</p>
+                    <div style={{ background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b', marginTop: '10px' }}>
+                        <strong>Caveat:</strong> "Per room" vs "per occupied room" matters enormously. The benchmark above is <strong>per occupied room per day</strong>. If total water is divided by total rooms (not occupied), it may overstate consumption intensity.
+                    </div>
+                </div>
+
+                <div>
+                    <strong style={{ color: '#3b82f6' }}>LEED O+M Target — &lt; 200 L/room/day</strong>
+                    <p style={{ marginTop: '6px' }}><strong>Source:</strong> USGBC LEED v4.1 Operations + Maintenance — <em>Indoor Water Use Reduction</em> credit.</p>
+                    <p style={{ marginTop: '6px' }}>LEED O+M awards points on a sliding scale. The baseline for a hotel in a hot/dry climate works out to approximately <strong>220–260 L/room/day</strong>. Achieving the minimum points threshold requires roughly 10–15% reduction from baseline, landing at approximately 200 L/room/day.</p>
+                    <div style={{ background: 'rgba(245,158,11,0.1)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b', marginTop: '10px' }}>
+                        <strong>Caveat:</strong> LEED awards credits based on percentage reduction from a <strong>calculated building-specific baseline</strong> using fixture counts, flow rates, and occupancy patterns. The 200 L figure is a reasonable approximation but is not a universal LEED threshold.
+                    </div>
+                </div>
+            </div>
+        )
+    },
+    { title: 'How to calculate Scope 2 emissions?', category: 'Environmental', tag: 'POPULAR', answer: 'Scope 2 emissions are calculated using the location-based method by multiplying your total purchased electricity (kWh) by the grid emission factor for your region. To calculate this automatically, go to the Data Entry workflow and input your grid consumption.' },
+    { title: 'Uploading evidence for Green Key certification', category: 'Governance', tag: 'GUIDE', answer: 'To upload evidence, navigate to the Data Entry workflow. Expand the specific metric row, and upload your utility bills, policy documents, or certificates directly into the Evidence section.' },
+    { title: 'Adding new meters and data elements', category: 'Platform', tag: 'HOW-TO', answer: 'Go to the Meters page from the main navigation. Click to add a new meter and define the meter type (e.g., Water, Electricity), unit of measurement, and associated site. Once created, it will appear in your Monthly Data Entry workflow.' },
+    { title: 'Generating fiscal year sustainability reports', category: 'Governance', tag: 'GUIDE', answer: 'Navigate to the Reports module. Choose to generate a new report, select your framework, and set the reporting period to your fiscal year. Click "Generate" to download a formatted export.' },
+    { title: 'User role levels and platform permissions', category: 'Platform', tag: 'REFERENCE', answer: 'ESGravity supports several roles including: Super User (full system authority and global settings), Admin (system-wide permissions and user management), Site Manager (manage specific property operations), Uploader (submit and review ESG evidence documents), Meter Manager (configure building meters), and Viewer (read-only access).' },
+    { title: 'Setting up CSRD disclosure pipeline', category: 'Governance', tag: 'NEW', answer: 'Navigate to your Checklist view to monitor framework compliance. The platform automatically tracks your monthly metrics and evidence against the required data points to identify disclosure gaps and guide your readiness.' },
 ];
 
 const TAG_COLORS: Record<string, string> = {
@@ -81,6 +132,7 @@ export default function HelpCenterView() {
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+    const [activeArticle, setActiveArticle] = useState<number | null>(null);
 
     const filtered = POPULAR.filter(a =>
         a.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -214,6 +266,8 @@ export default function HelpCenterView() {
             .hc-article-row:hover { background: rgba(16,185,129,0.04); }
             .hc-article-row:hover .hc-article-arrow { opacity: 1; transform: translateX(0); color: #10b981; }
             .hc-article-row:hover .hc-article-title { color: #f0f2ff; }
+            .hc-article-row.active .hc-article-arrow { opacity: 1; transform: rotate(90deg); color: #10b981; }
+            .hc-article-row.active .hc-article-title { color: #f0f2ff; }
 
             .hc-article-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
             .hc-article-tag {
@@ -386,27 +440,38 @@ export default function HelpCenterView() {
                                 </div>
                             ) : (
                                 filtered.map((article, idx) => (
-                                    <div className="hc-article-row" key={idx}>
-                                        <div className="hc-article-left">
-                                            <span
-                                                className="hc-article-tag"
-                                                style={{
-                                                    color: TAG_COLORS[article.tag] ?? '#9ca3af',
-                                                    background: `${TAG_COLORS[article.tag] ?? '#9ca3af'}15`,
-                                                    border: `1px solid ${TAG_COLORS[article.tag] ?? '#9ca3af'}30`,
-                                                }}
-                                            >
-                                                {article.tag}
+                                    <React.Fragment key={idx}>
+                                        <div 
+                                            className={`hc-article-row ${activeArticle === idx ? 'active' : ''}`}
+                                            onClick={() => setActiveArticle(activeArticle === idx ? null : idx)}
+                                            style={{ borderBottom: activeArticle === idx ? 'none' : undefined }}
+                                        >
+                                            <div className="hc-article-left">
+                                                <span
+                                                    className="hc-article-tag"
+                                                    style={{
+                                                        color: TAG_COLORS[article.tag] ?? '#9ca3af',
+                                                        background: `${TAG_COLORS[article.tag] ?? '#9ca3af'}15`,
+                                                        border: `1px solid ${TAG_COLORS[article.tag] ?? '#9ca3af'}30`,
+                                                    }}
+                                                >
+                                                    {article.tag}
+                                                </span>
+                                                <span className="hc-article-title">{article.title}</span>
+                                            </div>
+                                            <span className="hc-article-cat">{article.category}</span>
+                                            <span className="hc-article-arrow">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M5 12h14M12 5l7 7-7 7" />
+                                                </svg>
                                             </span>
-                                            <span className="hc-article-title">{article.title}</span>
                                         </div>
-                                        <span className="hc-article-cat">{article.category}</span>
-                                        <span className="hc-article-arrow">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M5 12h14M12 5l7 7-7 7" />
-                                            </svg>
-                                        </span>
-                                    </div>
+                                        {activeArticle === idx && (
+                                            <div style={{ padding: '0 24px 20px 24px', fontSize: 13, color: '#9ca3af', lineHeight: 1.6, borderBottom: '1px solid rgba(255,255,255,0.04)', animation: 'hcFade 0.3s ease both' }}>
+                                                {article.answer}
+                                            </div>
+                                        )}
+                                    </React.Fragment>
                                 ))
                             )}
                         </div>

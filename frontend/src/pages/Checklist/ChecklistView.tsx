@@ -84,6 +84,7 @@ export default function ChecklistView() {
     const canManage = canPerformAction(userRole, 'checklist', 'update');
 
     const [selectedCategory, setSelectedCategory] = useState<'E' | 'S' | 'G' | 'ALL'>('ALL');
+    const [selectedFramework, setSelectedFramework] = useState<string>('ALL');
     const [modalConfig, setModalConfig] = useState<{
         isOpen: boolean;
         type: 'BULK' | 'SINGLE';
@@ -191,10 +192,19 @@ export default function ChecklistView() {
     }
 
     const items = checklist || [];
-    const envItems = items.filter(i => i.category === 'E');
-    const socItems = items.filter(i => i.category === 'S');
-    const govItems = items.filter(i => i.category === 'G');
-    const assignedCount = items.filter(i => i.assigned_to).length;
+    const availableFrameworks = Array.from(new Set(items.flatMap(i => (i.frameworks || '').split(',').map(f => f.trim().toUpperCase()).filter(f => f)))).sort();
+
+    const filteredItems = selectedFramework === 'ALL' 
+        ? items 
+        : items.filter(i => {
+            const fws = (i.frameworks || '').split(',').map(f => f.trim().toUpperCase());
+            return fws.includes(selectedFramework);
+        });
+
+    const envItems = filteredItems.filter(i => i.category === 'E');
+    const socItems = filteredItems.filter(i => i.category === 'S');
+    const govItems = filteredItems.filter(i => i.category === 'G');
+    const assignedCount = filteredItems.filter(i => i.assigned_to).length;
 
     const renderItems = (categoryItems: ChecklistItem[], cat: 'E' | 'S' | 'G') => {
         if (!categoryItems.length) return null;
@@ -254,9 +264,7 @@ export default function ChecklistView() {
                                             </span>
                                         );
                                     })}
-                                    {item.is_required && (
-                                        <span className="badge badge-red" style={{ fontSize: 10 }}>Required</span>
-                                    )}
+                                    {/* Required badge removed */}
                                 </div>
                             </div>
 
@@ -336,7 +344,7 @@ export default function ChecklistView() {
                 </div>
 
                 {/* Stat Cards */}
-                <div className="stat-card-grid stat-card-grid-4" style={{ marginBottom: 24 }}>
+                <div className="stat-card-grid stat-card-grid-3" style={{ marginBottom: 24 }}>
                     <div className="stat-card blue">
                         <div className="stat-card-header">
                             <span className="stat-card-label">Total Elements</span>
@@ -346,7 +354,7 @@ export default function ChecklistView() {
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{items.length}</div>
+                        <div className="stat-card-value">{filteredItems.length}</div>
                     </div>
                     <div className="stat-card green">
                         <div className="stat-card-header">
@@ -357,7 +365,14 @@ export default function ChecklistView() {
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{assignedCount}</div>
+                        <div className="stat-card-value" style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                            {assignedCount}
+                            {filteredItems.length > 0 && (
+                                <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    ({Math.round((assignedCount / filteredItems.length) * 100)}%)
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="stat-card amber">
                         <div className="stat-card-header">
@@ -368,34 +383,31 @@ export default function ChecklistView() {
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{items.length - assignedCount}</div>
-                    </div>
-                    <div className="stat-card purple">
-                        <div className="stat-card-header">
-                            <span className="stat-card-label">Team Coverage</span>
-                            <div className="stat-card-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
-                                </svg>
-                            </div>
+                        <div className="stat-card-value" style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                            {filteredItems.length - assignedCount}
+                            {filteredItems.length > 0 && (
+                                <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    ({Math.round(((filteredItems.length - assignedCount) / filteredItems.length) * 100)}%)
+                                </span>
+                            )}
                         </div>
-                        <div className="stat-card-value">{items.length ? Math.round((assignedCount / items.length) * 100) : 0}%</div>
                     </div>
                 </div>
 
-                {/* Category Tabs */}
-                <div style={{
-                    display: 'flex',
-                    gap: 8,
-                    marginBottom: 24,
-                    padding: '4px',
-                    background: 'var(--bg-card)',
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px solid var(--border-subtle)',
-                    width: 'fit-content',
-                }}>
+                {/* Filters Row */}
+                <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+                    {/* Category Tabs */}
+                    <div style={{
+                        display: 'flex',
+                        gap: 8,
+                        padding: '4px',
+                        background: 'var(--bg-card)',
+                        borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--border-subtle)',
+                        width: 'fit-content',
+                    }}>
                     {[
-                        { key: 'ALL', label: 'All', count: items.length, icon: null },
+                        { key: 'ALL', label: 'All', count: filteredItems.length, icon: null },
                         { key: 'E', label: 'Env', count: envItems.length, icon: CATEGORY_CONFIG.E.icon },
                         { key: 'S', label: 'Social', count: socItems.length, icon: CATEGORY_CONFIG.S.icon },
                         { key: 'G', label: 'Gov', count: govItems.length, icon: CATEGORY_CONFIG.G.icon },
@@ -432,6 +444,61 @@ export default function ChecklistView() {
                             </span>
                         </button>
                     ))}
+                    </div>
+
+                    {/* Framework Filter */}
+                    {availableFrameworks.length > 0 && (
+                        <div style={{
+                            display: 'flex',
+                            gap: 8,
+                            padding: '4px',
+                            background: 'var(--bg-card)',
+                            borderRadius: 'var(--radius-lg)',
+                            border: '1px solid var(--border-subtle)',
+                            width: 'fit-content',
+                            alignItems: 'center'
+                        }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', paddingLeft: 8, paddingRight: 4 }}>Framework:</span>
+                            <button
+                                onClick={() => setSelectedFramework('ALL')}
+                                style={{
+                                    padding: '8px 16px',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    transition: 'all var(--transition-fast)',
+                                    background: selectedFramework === 'ALL' ? 'var(--bg-elevated)' : 'transparent',
+                                    color: selectedFramework === 'ALL' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                }}
+                            >
+                                All
+                            </button>
+                            {availableFrameworks.map(fw => {
+                                const style = FRAMEWORK_CONFIG[fw] || FRAMEWORK_CONFIG['DEFAULT'];
+                                return (
+                                    <button
+                                        key={fw}
+                                        onClick={() => setSelectedFramework(fw)}
+                                        style={{
+                                            padding: '8px 16px',
+                                            borderRadius: 'var(--radius-md)',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                            transition: 'all var(--transition-fast)',
+                                            background: selectedFramework === fw ? style.bg : 'transparent',
+                                            color: selectedFramework === fw ? style.color : 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        {fw}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {renderItems(envItems, 'E')}

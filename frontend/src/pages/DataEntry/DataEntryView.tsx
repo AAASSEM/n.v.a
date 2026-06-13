@@ -114,6 +114,9 @@ export default function DataEntryView() {
         rowName: string;
     }>({ isOpen: false, checklistId: null, assignedUserId: '', rowName: '' });
 
+    const [pendingUpload, setPendingUpload] = useState<{ row_id: string; file: File; previewUrl: string | null } | null>(null);
+    const [viewingEvidence, setViewingEvidence] = useState<string | null>(null);
+
     const [modalMode, setModalMode] = useState<'ASSIGN' | 'INVITE'>('ASSIGN');
     const [inviteForm, setInviteForm] = useState({
         email: '',
@@ -153,7 +156,7 @@ export default function DataEntryView() {
     const { data: gridData, isLoading, error } = useQuery<GridRow[]>({
         queryKey: ['submissions', year, month, currentSiteId],
         queryFn: async () => {
-            const res = await api.get(`/submissions/grid/${year}/${month}`);
+            const res = await api.get(`/submissions/grid/${year}/${month}?site_id=${currentSiteId}`);
             return res.data;
         }
     });
@@ -217,7 +220,7 @@ export default function DataEntryView() {
                 };
             });
 
-            const res = await api.post('/submissions/bulk', { year, month, entries });
+            const res = await api.post(`/submissions/bulk?site_id=${currentSiteId}`, { year, month, entries });
             return { data: res.data, isAutoSave };
         },
         onSuccess: (result: any) => {
@@ -241,7 +244,7 @@ export default function DataEntryView() {
         const formData = new FormData();
         formData.append('file', file);
         try {
-            const res = await api.post('/submissions/evidence', formData, {
+            const res = await api.post(`/submissions/evidence?site_id=${currentSiteId}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             const fileUrl = toEvidenceStr(res.data.url);
@@ -789,14 +792,12 @@ export default function DataEntryView() {
                                                                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
                                                                 <polyline points="14 2 14 8 20 8" />
                                                             </svg>
-                                                            <a
-                                                                href={`${BASE_URL}${local.evidence_files}`}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                style={{ fontSize: 12, fontWeight: 600, color: 'var(--status-complete)', textDecoration: 'none', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                            <button
+                                                                onClick={(e) => { e.preventDefault(); setViewingEvidence(`${BASE_URL}${local.evidence_files}`); }}
+                                                                style={{ fontSize: 12, fontWeight: 600, color: 'var(--status-complete)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                                                             >
                                                                 {toEvidenceStr(local.evidence_files).split('/').pop()}
-                                                            </a>
+                                                            </button>
                                                             {canUpdate && (
                                                                 <button
                                                                     className="btn-delete-file"
@@ -820,8 +821,16 @@ export default function DataEntryView() {
                                                                 <input
                                                                     type="file"
                                                                     style={{ display: 'none' }}
+                                                                    value=""
                                                                     onChange={e => {
-                                                                        if (e.target.files?.[0]) handleFileUpload(row.row_id, e.target.files[0]);
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) {
+                                                                            let previewUrl = null;
+                                                                            if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+                                                                                previewUrl = URL.createObjectURL(file);
+                                                                            }
+                                                                            setPendingUpload({ row_id: row.row_id, file, previewUrl });
+                                                                        }
                                                                     }}
                                                                 />
                                                             )}
@@ -1200,7 +1209,97 @@ export default function DataEntryView() {
                         )}
                     </div>
                 </div>
-            )}
+                )}
+                {/* Upload Confirmation Modal */}
+                {pendingUpload && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }} onClick={() => {
+                            if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
+                            setPendingUpload(null);
+                        }} />
+                        <div style={{ position: 'relative', width: '100%', maxWidth: 500, background: '#13152a', borderRadius: 20, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }} className="animate-slide-up">
+                            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f0f2ff', marginBottom: 16 }}>Confirm Evidence Upload</h3>
+                            <p style={{ color: '#8b90b8', fontSize: 14, marginBottom: 20 }}>You selected <strong>{pendingUpload.file.name}</strong>. Is this the correct file?</p>
+                            
+                            {pendingUpload.previewUrl ? (
+                                <div style={{ marginBottom: 24, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                    {pendingUpload.file.type === 'application/pdf' ? (
+                                        <iframe src={pendingUpload.previewUrl} style={{ width: '100%', height: 300, border: 'none', background: '#fff' }} />
+                                    ) : (
+                                        <img src={pendingUpload.previewUrl} alt="Preview" style={{ width: '100%', maxHeight: 300, objectFit: 'contain', background: 'rgba(0,0,0,0.2)' }} />
+                                    )}
+                                </div>
+                            ) : (
+                                <div style={{ marginBottom: 24, padding: 32, background: 'rgba(255,255,255,0.02)', borderRadius: 12, textAlign: 'center', color: '#8b90b8', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 8, opacity: 0.5 }}>
+                                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
+                                    </svg>
+                                    <div style={{ fontSize: 14 }}>Preview not available for this file type.</div>
+                                </div>
+                            )}
+                            
+                            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                                <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', color: '#f0f2ff' }} onClick={() => {
+                                    if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
+                                    setPendingUpload(null);
+                                }}>
+                                    Cancel
+                                </button>
+                                <button className="btn btn-primary" onClick={() => {
+                                    handleFileUpload(pendingUpload.row_id, pendingUpload.file);
+                                    if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
+                                    setPendingUpload(null);
+                                }}>
+                                    Upload File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Evidence Viewer Modal */}
+                {viewingEvidence && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(12px)' }} onClick={() => setViewingEvidence(null)} />
+                        <div style={{ position: 'relative', width: '100%', maxWidth: 900, height: '85vh', background: '#13152a', borderRadius: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }} className="animate-slide-up">
+                            <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f0f2ff', margin: 0 }}>View Evidence</h3>
+                                    <span style={{ fontSize: 13, color: '#8b90b8', fontFamily: 'monospace' }}>{viewingEvidence.split('/').pop()}</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: 12 }}>
+                                    <a href={viewingEvidence} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.05)', color: '#f0f2ff', textDecoration: 'none' }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                                        </svg>
+                                        Open in New Tab
+                                    </a>
+                                    <button onClick={() => setViewingEvidence(null)} className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.05)', color: '#f0f2ff', border: 'none', padding: '0 12px' }}>
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                            <div style={{ flex: 1, background: '#0a0b14', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: 24 }}>
+                                {viewingEvidence.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i) ? (
+                                    <img src={viewingEvidence} alt="Evidence" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                ) : viewingEvidence.match(/\.(pdf)(\?.*)?$/i) ? (
+                                    <iframe src={viewingEvidence} style={{ width: '100%', height: '100%', border: 'none', background: '#fff', borderRadius: 8 }} />
+                                ) : (
+                                    <div style={{ textAlign: 'center', color: '#8b90b8' }}>
+                                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16, opacity: 0.5, margin: '0 auto' }}>
+                                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
+                                        </svg>
+                                        <div style={{ fontSize: 16, marginBottom: 8, fontWeight: 500, color: '#f0f2ff' }}>Preview not supported</div>
+                                        <div style={{ fontSize: 14 }}>This file type cannot be previewed in the browser.</div>
+                                        <a href={viewingEvidence} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 16, color: '#38bdf8', textDecoration: 'none', fontWeight: 600, background: 'rgba(56,189,248,0.1)', padding: '8px 16px', borderRadius: 8 }}>
+                                            Download File
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
         </AppLayout>
     );
 }

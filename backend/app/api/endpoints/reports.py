@@ -53,6 +53,7 @@ async def check_report_completion(
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
     framework: str = Query('ESG'),
+    period: str = Query('Full Year'),
 ) -> Any:
     company_id = current_user.profile.company_id
     if not company_id:
@@ -108,12 +109,28 @@ async def check_report_completion(
     total_expected = 0
     total_filled = 0
 
+    def get_period_months(p: str) -> list[int]:
+        p = p.upper()
+        if p == "Q1": return [1, 2, 3]
+        if p == "Q2": return [4, 5, 6]
+        if p == "Q3": return [7, 8, 9]
+        if p == "Q4": return [10, 11, 12]
+        if p == "H1": return [1, 2, 3, 4, 5, 6]
+        if p == "H2": return [7, 8, 9, 10, 11, 12]
+        return list(range(1, 13))
+
+    target_months = get_period_months(period)
+
     for item in checklist_records:
         element = item.data_element
         if not element: continue
         
         freq = element.collection_frequency.lower()
-        months_to_check = range(1, 13) if freq in ["monthly", "daily"] else [12]
+        if freq in ["monthly", "daily"]:
+            months_to_check = target_months
+        else:
+            months_to_check = [12] if 12 in target_months else []
+        
         element_meters = meters_by_element.get(element.id, [])
         
         if element_meters and element.is_metered:
@@ -149,11 +166,12 @@ async def generate_report(
     allow_incomplete: bool = False,
     format: str = 'PDF',
     framework: str = Query('ESG'),
+    period: str = Query('Full Year'),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
 ) -> Any:
-    status = await check_report_completion(year, db, current_user, site_id, framework)
+    status = await check_report_completion(year, db, current_user, site_id, framework, period)
     if not status["is_complete"] and not allow_incomplete:
         raise HTTPException(
             status_code=400, 
@@ -164,24 +182,28 @@ async def generate_report(
         )
     
     # Create persistent record
-    report_name = f"Full {framework.upper()} Report {year}"
+    period_str = f" - {period}" if period and period.upper() != "FULL YEAR" else ""
+    report_name = f"{framework.upper()} Report {year}{period_str}"
+    
+    # We will pass the period in the download URL so it knows which months to include!
+    dl_url = f"/reports/download/REPORT_ID_PLACEHOLDER?period={period}"
+
     new_report = GeneratedReport(
         company_id=current_user.profile.company_id,
         user_id=current_user.id,
         name=report_name,
         year=year,
         category=framework.upper(),
-        format=format.upper(),
         size='1.2 MB' if format.upper() == 'PDF' else '850 KB',
         status='Completed',
-        download_url=f"/reports/download/REPORT_ID_PLACEHOLDER"
+        download_url=dl_url
     )
     db.add(new_report)
     await db.commit()
     await db.refresh(new_report)
     
     # Update download URL with real ID
-    new_report.download_url = f"/reports/download/{new_report.id}"
+    new_report.download_url = dl_url.replace("REPORT_ID_PLACEHOLDER", str(new_report.id))
     await db.commit()
 
     return {
@@ -302,6 +324,7 @@ async def generate_excel_report(report, company_name: str, submissions: List[Dat
 @router.get("/download/{report_id}")
 async def download_report(
     report_id: int,
+    period: str = Query('Full Year'),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
@@ -331,6 +354,18 @@ async def download_report(
     else:
         framework_filter = DataElement.frameworks.ilike(f"%{report.category}%")
 
+    def get_period_months(p: str) -> list[int]:
+        p = p.upper()
+        if p == "Q1": return [1, 2, 3]
+        if p == "Q2": return [4, 5, 6]
+        if p == "Q3": return [7, 8, 9]
+        if p == "Q4": return [10, 11, 12]
+        if p == "H1": return [1, 2, 3, 4, 5, 6]
+        if p == "H2": return [7, 8, 9, 10, 11, 12]
+        return list(range(1, 13))
+
+    target_months = get_period_months(period)
+
     stmt_subs = (
         select(DataSubmission)
         .join(DataElement, DataSubmission.data_element_id == DataElement.id)
@@ -338,6 +373,7 @@ async def download_report(
         .where(
             DataSubmission.company_id == company_id,
             DataSubmission.year == report.year,
+            DataSubmission.month.in_(target_months),
             framework_filter
         )
     )
