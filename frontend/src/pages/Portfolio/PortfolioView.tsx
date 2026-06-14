@@ -1,9 +1,6 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import AppLayout from '../../components/layout/AppLayout';
-import { useAuthStore } from '../../stores/authStore';
-import { useSiteStore } from '../../stores/siteStore';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface SiteData {
@@ -42,8 +39,6 @@ interface PortfolioData {
 }
 
 export default function PortfolioView() {
-    const user = useAuthStore(s => s.user);
-    const sites = useSiteStore(s => s.sites);
     
     // We only need to fetch this if user has > 1 site, but we'll fetch anyway.
     const { data, isLoading } = useQuery<PortfolioData>({
@@ -135,7 +130,7 @@ export default function PortfolioView() {
                                         </div>
                                         
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                            {metric.sites.sort((a, b) => b.value - a.value).map((s, i) => {
+                                            {metric.sites.sort((a, b) => b.value - a.value).map((s) => {
                                                 const color = SITE_COLORS[data.sites.findIndex(xs => xs.id === s.site_id) % SITE_COLORS.length] || '#8b90b8';
                                                 return (
                                                     <div key={s.site_id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 16 }}>

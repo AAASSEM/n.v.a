@@ -435,12 +435,6 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
         );
     };
 
-    const renderElementBreakdownSection = () => {
-        if (stat.scope) return null; // GHG has its own breakdown
-        if (!stat.contributing_elements || stat.contributing_elements.length === 0) return null;
-        return <ElementBreakdownPanel elements={stat.contributing_elements} color={color} primaryUnit={unit.trim()} />;
-    };
-
     const renderWaterBenchmark = () => {
         if (dataKey !== 'Water') return null;
         

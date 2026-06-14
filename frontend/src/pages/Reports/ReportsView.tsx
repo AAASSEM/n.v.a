@@ -188,7 +188,7 @@ export default function ReportsView() {
                     {canCreate && (
                         <div style={{ display: 'flex', gap: 12 }}>
                             <div className="status-chip-group" style={{ background: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 10 }}>
-                                {activeFrameworks.map(fw => (
+                                {activeFrameworks.map((fw: string) => (
                                     <button 
                                         key={fw}
                                         className={`status-chip ${selectedFramework === fw ? 'active' : ''}`} 
