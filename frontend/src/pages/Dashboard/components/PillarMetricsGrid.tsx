@@ -20,6 +20,9 @@ interface ElementCardData {
     unit: string;
     year?: number;
     month?: number;
+    sites_reported?: number;
+    total_sites?: number;
+    is_equal_weighted?: boolean;
 }
 
 interface Props {
@@ -81,16 +84,23 @@ export const PillarMetricsGrid: React.FC<Props> = ({ pillar, elements }) => {
                                         {el.code}
                                     </span>
                                     {el.year && el.month && (
-                                        <span style={{
-                                            fontSize: 10, fontWeight: 600,
-                                            color: 'var(--text-muted)',
-                                            background: 'rgba(255,255,255,0.05)',
-                                            border: '1px solid rgba(255,255,255,0.08)',
-                                            borderRadius: 999,
-                                            padding: '2px 8px',
-                                        }}>
-                                            {asOfLabel(el.year, el.month)}
-                                        </span>
+                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                            {el.is_equal_weighted && (
+                                                <span style={{ fontSize: 9, fontWeight: 700, color: '#fbbf24', background: 'rgba(251,191,36,0.15)', borderRadius: 999, padding: '2px 6px' }}>
+                                                    EQUAL-WEIGHTED
+                                                </span>
+                                            )}
+                                            <span style={{
+                                                fontSize: 10, fontWeight: 600,
+                                                color: 'var(--text-muted)',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                borderRadius: 999,
+                                                padding: '2px 8px',
+                                            }}>
+                                                {asOfLabel(el.year, el.month)}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                                 <div style={{ fontSize: 13, color: '#8b90b8', marginBottom: 12, lineHeight: 1.4, minHeight: 36 }}>{el.name}</div>
@@ -131,16 +141,38 @@ export const PillarMetricsGrid: React.FC<Props> = ({ pillar, elements }) => {
                             let icon = <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />;
                             let text = 'Pending';
                             
-                            if (isYes) {
-                                badgeBg = 'rgba(16,185,129,0.1)';
-                                badgeColor = '#10b981';
-                                icon = <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />;
-                                text = 'Implemented';
-                            } else if (isNo) {
-                                badgeBg = 'rgba(244,63,94,0.1)';
-                                badgeColor = '#f43f5e';
-                                icon = <><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>;
-                                text = 'Not Implemented';
+                            const isMultiSite = (el.total_sites || 1) > 1;
+
+                            if (isMultiSite) {
+                                const yesCount = el.value || 0;
+                                const total = el.total_sites || 1;
+                                text = `${yesCount}/${total} Sites`;
+                                
+                                if (yesCount === total && total > 0) {
+                                    badgeBg = 'rgba(16,185,129,0.1)';
+                                    badgeColor = '#10b981';
+                                    icon = <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />;
+                                } else if (yesCount > 0) {
+                                    badgeBg = 'rgba(251,191,36,0.1)';
+                                    badgeColor = '#fbbf24';
+                                    icon = <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />;
+                                } else {
+                                    badgeBg = 'rgba(244,63,94,0.1)';
+                                    badgeColor = '#f43f5e';
+                                    icon = <><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>;
+                                }
+                            } else {
+                                if (isYes) {
+                                    badgeBg = 'rgba(16,185,129,0.1)';
+                                    badgeColor = '#10b981';
+                                    icon = <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />;
+                                    text = 'Implemented';
+                                } else if (isNo) {
+                                    badgeBg = 'rgba(244,63,94,0.1)';
+                                    badgeColor = '#f43f5e';
+                                    icon = <><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" /><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>;
+                                    text = 'Not Implemented';
+                                }
                             }
 
                             return (

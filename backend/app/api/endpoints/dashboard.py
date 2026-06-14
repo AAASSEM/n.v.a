@@ -27,9 +27,11 @@ from app.api.deps import get_db, get_current_active_user, resolve_site_id
 from app.models.user import User
 from app.models.submission import DataSubmission
 from app.models.data_element import DataElement
+from app.models.checklist import CompanyChecklist
 from app.models.company import Company, Site
 from app.services.carbon_accounting import (
     build_emissions_breakdown,
+    build_multi_site_emissions_breakdown,
     ELEMENT_EF_MAP,
     get_electricity_ef,
     get_electricity_ef_source,
@@ -259,12 +261,32 @@ async def get_dashboard_metrics(
             DataElement.name,
             DataElement.element_code,
             DataElement.unit,
+            DataSubmission.site_id,
         )
         .join(DataElement, DataSubmission.data_element_id == DataElement.id)
         .where(*filters)
     )
     result = await db.execute(query)
     rows = result.all()
+
+    # ── Build site_emirate_map for multi-site GHG calculations ────────────
+    site_emirate_map = {}
+    if not effective_site_id and company_id:
+        sites_res = await db.execute(select(Site).where(Site.company_id == company_id))
+        company_obj = await db.get(Company, company_id)
+        company_em = company_obj.emirate if company_obj else None
+        
+        for site_obj in sites_res.scalars().all():
+            em = None
+            search_str = f"{site_obj.location or ''} {site_obj.name or ''}".lower()
+            emirates = ["abu dhabi", "dubai", "sharjah", "ajman", "ras al khaimah", "fujairah", "umm al quwain"]
+            for e in emirates:
+                if e in search_str:
+                    em = e
+                    break
+            if not em and site_obj.location:
+                em = site_obj.location
+            site_emirate_map[site_obj.id] = em or company_em
 
     is_specific_period = target_year is not None and target_month is not None
     if not is_specific_period:
@@ -284,7 +306,7 @@ async def get_dashboard_metrics(
     carbon_inputs: list[tuple] = []
     found_categories: set[str] = set()
 
-    for year, month, value, db_cat, el_name, el_code, el_unit in rows:
+    for year, month, value, db_cat, el_name, el_code, el_unit, sub_site_id in rows:
         if value is None:
             continue
         fval = float(value)
@@ -310,7 +332,7 @@ async def get_dashboard_metrics(
                 global_stats[(year, month)] = {}
             global_stats[(year, month)][disp] = global_stats[(year, month)].get(disp, 0) + fval
 
-        carbon_inputs.append((el_code, fval, year, month))
+        carbon_inputs.append((el_code, fval, year, month, sub_site_id))
 
     # Fallback to previous month if no specific period was requested and current month is empty
     if not is_specific_period and not stats_map:
@@ -323,7 +345,7 @@ async def get_dashboard_metrics(
             months_series.append({"year": target_year, "month": m, "name": calendar.month_abbr[m]})
         month_index = {(m["year"], m["month"]): m for m in months_series}
         # Re-run slot mapping for new skeleton
-        for year, month, value, db_cat, el_name, el_code, el_unit in rows:
+        for year, month, value, db_cat, el_name, el_code, el_unit, sub_site_id in rows:
             if value is None:
                 continue
             fval = float(value)
@@ -333,7 +355,7 @@ async def get_dashboard_metrics(
                     slot = month_index[(year, month)]
                     slot[disp] = slot.get(disp, 0) + fval
 
-        for year, month, value, db_cat, el_name, el_code, el_unit in rows:
+        for year, month, value, db_cat, el_name, el_code, el_unit, sub_site_id in rows:
             if value is None:
                 continue
             if year == prev.year and month == prev.month:
@@ -356,8 +378,17 @@ async def get_dashboard_metrics(
     
     ghg = None
     if show_ghg:
-        # All-time for charts
-        ghg_all = build_emissions_breakdown(carbon_inputs, emirate=emirate)
+        if effective_site_id is None:
+            # All sites
+            ghg_all = build_multi_site_emissions_breakdown(carbon_inputs, site_emirate_map)
+            target_carbon_inputs = [c for c in carbon_inputs if c[2] == target_year and c[3] == target_month]
+            ghg = build_multi_site_emissions_breakdown(target_carbon_inputs, site_emirate_map)
+        else:
+            # Single site
+            ghg_all = build_emissions_breakdown(carbon_inputs, emirate=emirate)
+            target_carbon_inputs = [c for c in carbon_inputs if c[2] == target_year and c[3] == target_month]
+            ghg = build_emissions_breakdown(target_carbon_inputs, emirate=emirate)
+            
         for em in ghg_all["monthly_emissions"]:
             key = (em["year"], em["month"])
             if key in month_index:
@@ -365,10 +396,6 @@ async def get_dashboard_metrics(
                 slot["Scope 1"] = round(em["scope1"], 3)
                 slot["Scope 2"] = round(em["scope2"], 3)
                 slot["Emissions"] = round(em["total"], 3)
-
-        # Target period only for the stat cards
-        target_carbon_inputs = [c for c in carbon_inputs if c[2] == target_year and c[3] == target_month]
-        ghg = build_emissions_breakdown(target_carbon_inputs, emirate=emirate)
 
     # ── Month-over-month trend helpers ────────────────────────────────────
     this_m  = (target_year, target_month)
@@ -408,8 +435,13 @@ async def get_dashboard_metrics(
     if ghg and show_ghg:
         target_carbon_this = [c for c in carbon_inputs if c[2] == this_m[0] and c[3] == this_m[1]]
         target_carbon_prev = [c for c in carbon_inputs if c[2] == prev_m[0] and c[3] == prev_m[1]]
-        em_this = build_emissions_breakdown(target_carbon_this, emirate=emirate)["total_tco2e"]
-        em_prev = build_emissions_breakdown(target_carbon_prev, emirate=emirate)["total_tco2e"]
+        
+        if effective_site_id is None:
+            em_this = build_multi_site_emissions_breakdown(target_carbon_this, site_emirate_map)["total_tco2e"]
+            em_prev = build_multi_site_emissions_breakdown(target_carbon_prev, site_emirate_map)["total_tco2e"]
+        else:
+            em_this = build_emissions_breakdown(target_carbon_this, emirate=emirate)["total_tco2e"]
+            em_prev = build_emissions_breakdown(target_carbon_prev, emirate=emirate)["total_tco2e"]
         
         em_trend, em_change = _trend(em_this, em_prev)
 
@@ -538,23 +570,25 @@ async def get_pillar_elements(
         sub = (
             select(
                 DataSubmission.data_element_id,
+                DataSubmission.site_id,
                 sqlfunc.max(DataSubmission.year * 100 + DataSubmission.month).label("latest_ym"),
             )
             .join(DataElement, DataSubmission.data_element_id == DataElement.id)
             .where(*filters)
             .where(DataSubmission.year == target_year)
-            .group_by(DataSubmission.data_element_id)
+            .group_by(DataSubmission.data_element_id, DataSubmission.site_id)
             .subquery()
         )
     else:
         sub = (
             select(
                 DataSubmission.data_element_id,
+                DataSubmission.site_id,
                 sqlfunc.max(DataSubmission.year * 100 + DataSubmission.month).label("latest_ym"),
             )
             .join(DataElement, DataSubmission.data_element_id == DataElement.id)
             .where(*filters)
-            .group_by(DataSubmission.data_element_id)
+            .group_by(DataSubmission.data_element_id, DataSubmission.site_id)
             .subquery()
         )
 
@@ -572,6 +606,7 @@ async def get_pillar_elements(
         .join(
             sub,
             (DataSubmission.data_element_id == sub.c.data_element_id) &
+            (DataSubmission.site_id == sub.c.site_id) &
             (DataSubmission.year * 100 + DataSubmission.month == sub.c.latest_ym),
         )
         .where(*filters)
@@ -580,16 +615,60 @@ async def get_pillar_elements(
 
     result = await db.execute(query)
     rows = result.all()
+    
+    # We also need to know the total number of active sites to report "X/Y sites"
+    # only if effective_site_id is None
+    total_sites = 1
+    if effective_site_id is None and company_id:
+        sites_res = await db.execute(select(sqlfunc.count(Site.id)).where(Site.company_id == company_id, Site.is_active == True))
+        total_sites = sites_res.scalar() or 1
+
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for code, name, unit, category, value, year, month in rows:
+        if value is not None:
+            grouped[code].append({
+                "code": code,
+                "name": name,
+                "unit": unit,
+                "category": category,
+                "value": float(value),
+                "year": year,
+                "month": month,
+            })
 
     elements = []
-    for code, name, unit, category, value, year, month in rows:
+    for code, items in grouped.items():
+        base = items[0]
+        # Check if additive
+        unit = base["unit"] or ""
+        u = unit.lower().strip()
+        
+        # Boolean metrics
+        is_boolean = u in ("boolean", "bool")
+        # Rate metrics
+        is_rate = u == "%" or "rate" in base["name"].lower()
+        
+        if is_boolean:
+            # For boolean, value is the number of sites that said Yes (1)
+            agg_val = sum(i["value"] for i in items)
+        elif is_rate:
+            # Equal-weight average
+            agg_val = sum(i["value"] for i in items) / len(items)
+        else:
+            # Additive
+            agg_val = sum(i["value"] for i in items)
+
         elements.append({
             "code": code,
-            "name": name,
-            "unit": unit,
-            "value": float(value) if value is not None else None,
-            "year": year,
-            "month": month,
+            "name": base["name"],
+            "unit": base["unit"],
+            "value": agg_val,
+            "year": base["year"],  # latest year/month among sites could be used, just using first
+            "month": base["month"],
+            "sites_reported": len(items),
+            "total_sites": total_sites,
+            "is_equal_weighted": is_rate and len(items) > 1,
         })
 
     history_query = (
@@ -675,6 +754,7 @@ async def get_month_comparison(
             DataSubmission.year,
             DataSubmission.month,
             DataSubmission.value,
+            DataSubmission.site_id,
         )
         .join(DataElement, DataSubmission.data_element_id == DataElement.id)
         .where(*filters)
@@ -682,38 +762,85 @@ async def get_month_comparison(
     )
     result = await db.execute(query)
     rows = result.all()
+    
+    # ── Build site_emirate_map for multi-site GHG calculations ────────────
+    site_emirate_map = {}
+    if not effective_site_id and company_id:
+        sites_res = await db.execute(select(Site).where(Site.company_id == company_id))
+        company_obj = await db.get(Company, company_id)
+        company_em = company_obj.emirate if company_obj else None
+        
+        for site_obj in sites_res.scalars().all():
+            em = None
+            search_str = f"{site_obj.location or ''} {site_obj.name or ''}".lower()
+            emirates = ["abu dhabi", "dubai", "sharjah", "ajman", "ras al khaimah", "fujairah", "umm al quwain"]
+            for e in emirates:
+                if e in search_str:
+                    em = e
+                    break
+            if not em and site_obj.location:
+                em = site_obj.location
+            site_emirate_map[site_obj.id] = em or company_em
 
     # ── Index values by (code, year, month) ──────────────────────────────
-    data_a: dict[str, dict] = {}   # code → {name, category, unit, value}
-    data_b: dict[str, dict] = {}
+    from collections import defaultdict
+    data_a: dict[str, list] = defaultdict(list)
+    data_b: dict[str, list] = defaultdict(list)
+    ghg_inputs_a: list[tuple] = []
+    ghg_inputs_b: list[tuple] = []
 
-    for code, name, category, unit, year, month, value in rows:
-        entry = {"name": name, "category": category, "unit": unit, "value": float(value) if value is not None else None}
+    for code, name, category, unit, year, month, value, sub_site_id in rows:
+        if value is None:
+            continue
+        entry = {"name": name, "category": category, "unit": unit, "value": float(value), "site_id": sub_site_id}
         if year == month_a_year and month == month_a_month:
-            data_a[code] = entry
+            data_a[code].append(entry)
+            ghg_inputs_a.append((code, float(value), year, month, sub_site_id))
         else:
-            data_b[code] = entry
+            data_b[code].append(entry)
+            ghg_inputs_b.append((code, float(value), year, month, sub_site_id))
 
     # ── Build comparison rows ─────────────────────────────────────────────
     all_codes = sorted(set(data_a.keys()) | set(data_b.keys()))
     compare_rows = []
-    ghg_inputs_a: list[tuple] = []
-    ghg_inputs_b: list[tuple] = []
 
     improvements = regressions = no_change = 0
 
     for code in all_codes:
-        a_entry = data_a.get(code)
-        b_entry = data_b.get(code)
+        a_items = data_a.get(code, [])
+        b_items = data_b.get(code, [])
 
-        meta = a_entry or b_entry
-        val_a = a_entry["value"] if a_entry else None
-        val_b = b_entry["value"] if b_entry else None
+        if not a_items and not b_items:
+            continue
+
+        meta = a_items[0] if a_items else b_items[0]
+        
+        # Check if additive
+        u = (meta["unit"] or "").lower().strip()
+        is_boolean = u in ("boolean", "bool")
+        is_rate = u == "%" or "rate" in meta["name"].lower()
+        
+        val_a = None
+        if a_items:
+            if is_rate and not is_boolean:
+                val_a = sum(i["value"] for i in a_items) / len(a_items)
+            else:
+                val_a = sum(i["value"] for i in a_items)
+                
+        val_b = None
+        if b_items:
+            if is_rate and not is_boolean:
+                val_b = sum(i["value"] for i in b_items) / len(b_items)
+            else:
+                val_b = sum(i["value"] for i in b_items)
 
         # Compute delta
         if val_a is not None and val_b is not None:
             delta = val_b - val_a
-            delta_pct = (delta / val_a * 100) if val_a != 0 else None
+            if is_boolean:
+                delta_pct = None
+            else:
+                delta_pct = (delta / val_a * 100) if val_a != 0 else None
             if delta > 0:
                 direction = "up"
             elif delta < 0:
@@ -748,18 +875,20 @@ async def get_month_comparison(
             "is_improvement": is_good,
         })
 
-        # Feed GHG engine
-        if code in ELEMENT_EF_MAP:
-            if val_a is not None:
-                ghg_inputs_a.append((code, val_a, month_a_year, month_a_month))
-            if val_b is not None:
-                ghg_inputs_b.append((code, val_b, month_b_year, month_b_month))
-
     # ── GHG comparison ────────────────────────────────────────────────────
     ghg_result = None
+    # Filter GHG inputs
+    ghg_inputs_a = [i for i in ghg_inputs_a if i[0] in ELEMENT_EF_MAP]
+    ghg_inputs_b = [i for i in ghg_inputs_b if i[0] in ELEMENT_EF_MAP]
+    
     if ghg_inputs_a or ghg_inputs_b:
-        ghg_a = build_emissions_breakdown(ghg_inputs_a, emirate=emirate)
-        ghg_b = build_emissions_breakdown(ghg_inputs_b, emirate=emirate)
+        if effective_site_id is None:
+            ghg_a = build_multi_site_emissions_breakdown(ghg_inputs_a, site_emirate_map)
+            ghg_b = build_multi_site_emissions_breakdown(ghg_inputs_b, site_emirate_map)
+        else:
+            ghg_a = build_emissions_breakdown(ghg_inputs_a, emirate=emirate)
+            ghg_b = build_emissions_breakdown(ghg_inputs_b, emirate=emirate)
+            
         a_total = ghg_a["total_tco2e"]
         b_total = ghg_b["total_tco2e"]
         delta_ghg = b_total - a_total
@@ -820,10 +949,21 @@ async def get_completeness(
         raise HTTPException(status_code=400, detail="User not assigned to a company.")
     effective_site_id = await resolve_site_id(current_user, site_id, db, required=False)
 
-    el_query = select(DataElement.category, sqlfunc.count(DataElement.id)).group_by(DataElement.category)
+    # Count expected elements accurately based on CompanyChecklist assignments
+    el_filters = [CompanyChecklist.company_id == company_id, CompanyChecklist.is_required == True]
+    if effective_site_id is not None:
+        el_filters.append(CompanyChecklist.site_id == effective_site_id)
+
+    el_query = (
+        select(DataElement.category, sqlfunc.count(CompanyChecklist.id))
+        .join(DataElement, CompanyChecklist.data_element_id == DataElement.id)
+        .where(*el_filters)
+        .group_by(DataElement.category)
+    )
     if framework:
         fw_abbr = _resolve_framework(framework)
         el_query = el_query.where(DataElement.frameworks.ilike(f"%{fw_abbr}%"))
+        
     el_res = await db.execute(el_query)
     total_by_cat = dict(el_res.all())
     
@@ -839,11 +979,21 @@ async def get_completeness(
         fw_abbr = _resolve_framework(framework)
         sub_filters.append(DataElement.frameworks.ilike(f"%{fw_abbr}%"))
         
-    sub_query = (
-        select(DataElement.category, sqlfunc.count(DataSubmission.data_element_id.distinct()))
+    unique_subs_subq = (
+        select(DataSubmission.site_id, DataSubmission.data_element_id, DataElement.category)
         .join(DataElement, DataSubmission.data_element_id == DataElement.id)
-        .where(*sub_filters)
-        .group_by(DataElement.category)
+        .join(CompanyChecklist, 
+              (CompanyChecklist.data_element_id == DataSubmission.data_element_id) & 
+              (CompanyChecklist.site_id == DataSubmission.site_id) &
+              (CompanyChecklist.company_id == DataSubmission.company_id))
+        .where(*sub_filters, CompanyChecklist.is_required == True)
+        .distinct()
+        .subquery()
+    )
+    
+    sub_query = (
+        select(unique_subs_subq.c.category, sqlfunc.count(unique_subs_subq.c.data_element_id))
+        .group_by(unique_subs_subq.c.category)
     )
     sub_res = await db.execute(sub_query)
     sub_by_cat = dict(sub_res.all())
@@ -949,4 +1099,189 @@ async def get_esg_score(
         "g_score": round(g_score),
         "trend": "neutral",
         "delta": 0.0
+    }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /dashboard/portfolio
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/portfolio")
+async def get_portfolio_breakdown(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    pillar: Optional[str] = Query("E"),
+    framework: Optional[str] = Query(None),
+    target_year: Optional[int] = Query(None),
+    target_month: Optional[int] = Query(None),
+) -> Any:
+    """
+    Returns per-site breakdown for all metrics in the specified pillar.
+    """
+    company_id, _, filters = await _base_filters(
+        current_user, None, db, pillar, framework
+    )
+    
+    today = datetime.date.today()
+    if target_year is None or target_month is None:
+        target_year = today.year
+        target_month = today.month
+
+    # Get all active sites
+    sites_res = await db.execute(select(Site).where(Site.company_id == company_id, Site.is_active == True))
+    sites = sites_res.scalars().all()
+    
+    if not sites:
+        return {"metrics": [], "timeseries": [], "sites": []}
+        
+    company_obj = await db.get(Company, company_id)
+    company_em = company_obj.emirate if company_obj else None
+    
+    site_map = {}
+    for s in sites:
+        em = None
+        search_str = f"{s.location or ''} {s.name or ''}".lower()
+        emirates = ["abu dhabi", "dubai", "sharjah", "ajman", "ras al khaimah", "fujairah", "umm al quwain"]
+        for e in emirates:
+            if e in search_str:
+                em = e
+                break
+        if not em and s.location:
+            em = s.location
+        site_map[s.id] = {
+            "id": s.id,
+            "name": s.name,
+            "emirate": em or company_em,
+            "grid_ef": get_electricity_ef(em or company_em)
+        }
+
+    query = (
+        select(
+            DataSubmission.year,
+            DataSubmission.month,
+            DataSubmission.value,
+            DataElement.category,
+            DataElement.name,
+            DataElement.element_code,
+            DataElement.unit,
+            DataSubmission.site_id,
+        )
+        .join(DataElement, DataSubmission.data_element_id == DataElement.id)
+        .where(*filters)
+    )
+    result = await db.execute(query)
+    rows = result.all()
+    
+    # Process rows
+    import calendar
+    from collections import defaultdict
+    
+    months_series = []
+    for m in range(1, target_month + 1):
+        months_series.append({"year": target_year, "month": m, "name": calendar.month_abbr[m]})
+    
+    stats_map = defaultdict(lambda: defaultdict(float))
+    carbon_inputs = defaultdict(list)
+    found_categories = set()
+    
+    for year, month, value, db_cat, el_name, el_code, el_unit, site_id in rows:
+        if value is None or site_id not in site_map:
+            continue
+        fval = float(value)
+        disp = _display_category(el_name, db_cat)
+        found_categories.add(disp)
+        
+        if year == target_year and month == target_month:
+            if _is_additive(db_cat, el_unit, disp):
+                stats_map[disp][site_id] += fval
+                
+        carbon_inputs[site_id].append((el_code, fval, year, month, el_name, db_cat))
+        
+    # Build E metrics
+    metrics = []
+    UNIT_MAP = {
+        "Energy": " kWh", "Water": " m³", "Waste": " kg", "Fuel": " L",
+        "Recycling Rate": "%", "Renewable Energy %": "%"
+    }
+    
+    for cat, site_values in stats_map.items():
+        if cat in ("Environment Other", "Other"):
+            continue
+            
+        combined = sum(site_values.values())
+        site_breakdown = []
+        for s in sites:
+            val = site_values.get(s.id, 0)
+            site_breakdown.append({
+                "site_id": s.id,
+                "site_name": s.name,
+                "value": val,
+                "pct_share": (val / combined * 100) if combined > 0 else 0,
+            })
+            
+        metrics.append({
+            "name": cat,
+            "unit": UNIT_MAP.get(cat, ""),
+            "combined_total": combined,
+            "sites": site_breakdown
+        })
+        
+    # Build GHG
+    show_ghg = pillar in (None, "E") and (_resolve_framework(framework) != "G")
+    if show_ghg:
+        combined_ghg = 0
+        ghg_breakdown = []
+        
+        for s in sites:
+            s_inputs = [c for c in carbon_inputs[s.id] if c[2] == target_year and c[3] == target_month]
+            ghg_res = build_emissions_breakdown(s_inputs, emirate=site_map[s.id]["emirate"])
+            val = ghg_res["total_tco2e"]
+            combined_ghg += val
+            ghg_breakdown.append({
+                "site_id": s.id,
+                "site_name": s.name,
+                "value": val,
+                "emirate": site_map[s.id]["emirate"],
+                "grid_ef": site_map[s.id]["grid_ef"],
+            })
+            
+        for b in ghg_breakdown:
+            b["pct_share"] = (b["value"] / combined_ghg * 100) if combined_ghg > 0 else 0
+            
+        metrics.append({
+            "name": "Total GHG Emissions",
+            "unit": " tCO₂e",
+            "combined_total": combined_ghg,
+            "sites": ghg_breakdown
+        })
+        
+    # Timeseries (Chart Data)
+    timeseries = []
+    ORDER = ["Energy", "Water", "Waste", "Fuel", "Recycling Rate", "Renewable Energy %", "Total GHG Emissions"]
+    chart_categories = sorted(
+        [c for c in found_categories if c not in ("Other", "Environment Other")] + (["Total GHG Emissions"] if show_ghg else []),
+        key=lambda x: ORDER.index(x) if x in ORDER else 99,
+    )
+    
+    for cat in chart_categories:
+        cat_series = []
+        for m_info in months_series:
+            y, m = m_info["year"], m_info["month"]
+            month_data = {"name": m_info["name"]}
+            for s in sites:
+                if cat == "Total GHG Emissions":
+                    s_inputs = [c for c in carbon_inputs[s.id] if c[2] == y and c[3] == m]
+                    val = build_emissions_breakdown(s_inputs, emirate=site_map[s.id]["emirate"])["total_tco2e"]
+                else:
+                    val = sum(c[1] for c in carbon_inputs[s.id] if c[2] == y and c[3] == m and len(c) >= 6 and _display_category(c[4], c[5]) == cat)
+                month_data[str(s.id)] = val
+            cat_series.append(month_data)
+        timeseries.append({
+            "metric": cat,
+            "data": cat_series
+        })
+
+    return {
+        "metrics": metrics,
+        "timeseries": timeseries,
+        "sites": list(site_map.values())
     }

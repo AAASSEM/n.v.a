@@ -263,7 +263,11 @@ def build_emissions_breakdown(
     breakdown: Dict[str, Dict] = {}
     monthly: Dict[tuple, Dict] = {}
 
-    for element_code, quantity, year, month in submissions:
+    for row in submissions:
+        if len(row) >= 4:
+            element_code, quantity, year, month = row[:4]
+        else:
+            continue
         if quantity is None or quantity == 0:
             continue
 
@@ -325,6 +329,112 @@ def build_emissions_breakdown(
         f"Scope 2: location-based grid factor for {emirate_label} = "
         f"{elec_ef} kgCO2e/kWh ({elec_ef_source}); "
         f"district cooling = {DISTRICT_COOLING_EF} kgCO2e/RT-h (Tabreed benchmark). "
+        f"On-site renewable generation offsets Scope 2 at the same grid factor."
+    )
+
+    return {
+        "scope1_tco2e": round(scope1, 3),
+        "scope2_tco2e": round(scope2, 3),
+        "total_tco2e": round(scope1 + scope2, 3),
+        "methodology": methodology,
+        "breakdown_by_source": breakdown,
+        "monthly_emissions": sorted(monthly.values(), key=lambda x: (x["year"], x["month"])),
+    }
+
+def build_multi_site_emissions_breakdown(
+    submissions: list,   # list of (element_code, quantity, year, month, site_id)
+    site_emirate_map: Dict[int, str],
+) -> Dict:
+    """
+    Build a full Scope 1 / Scope 2 breakdown from a list of submissions across multiple sites.
+    Applies the correct emirate grid factor per site.
+    """
+    scope1 = 0.0
+    scope2 = 0.0
+    breakdown: Dict[str, Dict] = {}
+    monthly: Dict[tuple, Dict] = {}
+    
+    # Track which emirates we actually used for Scope 2
+    used_emirates = set()
+
+    for row in submissions:
+        if len(row) == 5:
+            element_code, quantity, year, month, site_id = row
+        else:
+            element_code, quantity, year, month = row
+            site_id = None
+            
+        if quantity is None or quantity == 0:
+            continue
+
+        mapping = ELEMENT_EF_MAP.get(element_code)
+        if mapping is None:
+            continue
+
+        emirate = site_emirate_map.get(site_id) if site_id else None
+        
+        tco2e = calculate_emissions_tco2e(element_code, float(quantity), emirate)
+        if tco2e is None:
+            continue
+
+        # Accumulate by source
+        if element_code not in breakdown:
+            if "factor_key" in mapping and mapping["factor_key"] == "electricity":
+                # For multi-site, the 'ef_used' on the summary level might be mixed, 
+                # but we'll store the first one or None, the UI will rely on methodology note.
+                ef_used = get_electricity_ef(emirate)
+            else:
+                ef_used = mapping.get("factor_value", 0.0)
+
+            breakdown[element_code] = {
+                "label": mapping["label"],
+                "scope": mapping["scope"],
+                "tco2e": 0.0,
+                "ef_used": ef_used,
+                "unit": mapping["unit"],
+                "is_offset": mapping.get("is_offset", False),
+            }
+        breakdown[element_code]["tco2e"] += tco2e
+        
+        if mapping["scope"] == 2 and "factor_key" in mapping and mapping["factor_key"] == "electricity":
+            used_emirates.add(emirate or "default")
+
+        # Scope totals
+        if mapping["scope"] == 1:
+            scope1 += tco2e
+        elif mapping["scope"] == 2:
+            scope2 += tco2e
+
+        # Monthly timeseries
+        key = (year, month)
+        if key not in monthly:
+            monthly[key] = {"year": year, "month": month, "scope1": 0.0, "scope2": 0.0}
+        if mapping["scope"] == 1:
+            monthly[key]["scope1"] += tco2e
+        elif mapping["scope"] == 2:
+            monthly[key]["scope2"] += tco2e
+
+    # Add totals to monthly entries
+    for entry in monthly.values():
+        entry["total"] = entry["scope1"] + entry["scope2"]
+
+    # Build multi-site methodology string
+    ef_strings = []
+    for em in sorted(list(used_emirates)):
+        e_label = "UAE" if em == "default" else em.title()
+        ef = get_electricity_ef(em)
+        src = get_electricity_ef_source(em)
+        ef_strings.append(f"{e_label}: {ef} kgCO2e/kWh ({src})")
+        
+    ef_note = "; ".join(ef_strings) if ef_strings else "Location-based grid factors applied per site."
+
+    methodology = (
+        f"GHG Protocol Corporate Standard (Multi-Site). "
+        f"Scope 1: direct combustion (diesel {DIESEL_EF_PER_LITER} kgCO2e/L, "
+        f"petrol {PETROL_EF_PER_LITER} kgCO2e/L, LPG {LPG_EF_PER_KG} kgCO2e/kg) "
+        f"and fugitive refrigerant (R-410A GWP {int(REFRIGERANT_EF_DEFAULT)}). "
+        f"Scope 2 Electricity: {ef_note} "
+        f"District cooling: {DISTRICT_COOLING_EF} kgCO2e/RT-h (Tabreed benchmark). "
         f"On-site renewable generation offsets Scope 2 at the same grid factor."
     )
 

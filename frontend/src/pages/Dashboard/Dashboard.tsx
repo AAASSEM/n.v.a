@@ -752,8 +752,25 @@ export default function Dashboard() {
 
                 <AnomalyAlerts />
 
-                {/* ── Compare toggle ────────────────────────────────────────── */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+                {/* ── Action Buttons ────────────────────────────────────────── */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 24 }}>
+                    <button
+                        onClick={() => navigate('/portfolio')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '7px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700,
+                            cursor: 'pointer', transition: 'all 0.2s ease',
+                            border: '1.5px solid rgba(255,255,255,0.1)',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                        }}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                        </svg>
+                        Portfolio
+                    </button>
                     <button
                         onClick={() => setCompareMode(v => !v)}
                         style={{
@@ -1034,7 +1051,38 @@ export default function Dashboard() {
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
                                         <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} />
-                                        <Tooltip {...CustomTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                                        <Tooltip 
+                                            cursor={{ fill: 'rgba(255,255,255,0.03)' }} 
+                                            content={({ active, payload, label }: any) => {
+                                                if (!active || !payload || payload.length === 0) return null;
+                                                return (
+                                                    <div style={{
+                                                        background: '#1c1e30',
+                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                        borderRadius: 12,
+                                                        padding: '12px 16px',
+                                                        boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+                                                    }}>
+                                                        <div style={{ fontSize: 13, fontWeight: 700, color: '#8b90b8', marginBottom: 8 }}>
+                                                            {label}
+                                                        </div>
+                                                        {payload.map((entry: any, i: number) => (
+                                                            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
+                                                                    <span style={{ fontSize: 13, color: '#f0f2ff' }}>
+                                                                        {entry.name}
+                                                                    </span>
+                                                                </div>
+                                                                <span style={{ fontSize: 13, fontWeight: 700, color: entry.color }}>
+                                                                    {Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            }}
+                                        />
                                         <Bar dataKey="Scope 1" fill="#f87171" radius={[4, 4, 0, 0]} stackId="ghg" animationDuration={1500} />
                                         <Bar dataKey="Scope 2" fill="#f43f5e" radius={[4, 4, 0, 0]} stackId="ghg" animationDuration={1800} />
                                     </BarChart>

@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
             </svg>
         ),
     },
+
     {
         label: 'Onboarding',
         path: '/onboarding',

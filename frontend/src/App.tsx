@@ -15,6 +15,7 @@ import UserManagementView from './pages/Users/UserManagementView';
 import SiteManagementView from './pages/Sites/SiteManagementView';
 import DeveloperAdminView from './pages/DeveloperAdmin/DeveloperAdminView';
 import MagicLinkVerify from './pages/Authentication/MagicLinkVerify';
+import PortfolioView from './pages/Portfolio/PortfolioView';
 
 import SettingsView from './pages/Settings/SettingsView';
 import ReportsView from './pages/Reports/ReportsView';
@@ -146,6 +147,16 @@ function App() {
               <RequireAuth>
                 <RequireRole>
                   <Dashboard />
+                </RequireRole>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/portfolio"
+            element={
+              <RequireAuth>
+                <RequireRole>
+                  <PortfolioView />
                 </RequireRole>
               </RequireAuth>
             }

@@ -12,6 +12,7 @@ export const PAGE_ACCESS: Record<string, Role[]> = {
   '/settings':    ['super_user', 'admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],
   '/help':        ['super_user', 'admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],
   '/developer-admin': ['super_user'],
+  '/portfolio':   ['super_user', 'admin', 'site_manager'],
 };
 
 export function canAccessPage(role: string | undefined, path: string): boolean {

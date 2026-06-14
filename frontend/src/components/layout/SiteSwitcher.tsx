@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useSiteStore } from '../../stores/siteStore';
@@ -12,6 +13,9 @@ export default function SiteSwitcher() {
 
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const location = useLocation();
+    
+    const isDashboardOrPortfolio = location.pathname === '/' || location.pathname === '/dashboard' || location.pathname === '/portfolio';
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -25,31 +29,42 @@ export default function SiteSwitcher() {
 
     const sites = rawSites.filter((s) => s.is_active);
 
+    useEffect(() => {
+        if (!isDashboardOrPortfolio && currentSiteId === null && sites.length > 0) {
+            setCurrentSiteId(sites[0].id);
+            // Optionally invalidate queries if necessary, though navigating usually triggers fetches anyway
+            queryClient.invalidateQueries();
+        }
+    }, [isDashboardOrPortfolio, currentSiteId, sites, setCurrentSiteId, queryClient]);
+
     if (!user?.profile?.company_id) return null;
     if (!sites.length) return null;
 
-    const current = sites.find((s) => s.id === currentSiteId) || sites[0];
     const isPinned = user.profile.site_id != null;
+    // currentSiteId === null means "All Sites"
+    const current = currentSiteId ? sites.find((s) => s.id === currentSiteId) : null;
 
     if (isPinned || sites.length < 2) {
+        // If they only have one site, and current is null, show the first site.
+        const displaySite = current || sites[0];
         return (
             <div
                 className="nav-user-pill"
                 style={{ padding: '6px 14px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}
-                title={current?.location || ''}
+                title={displaySite?.location || ''}
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />
                 </svg>
                 <span style={{ fontSize: 13, fontWeight: 600, maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {current?.name || 'No site'}
+                    {displaySite?.name || 'No site'}
                 </span>
             </div>
         );
     }
 
-    const handleChange = (nextId: number) => {
+    const handleChange = (nextId: number | null) => {
         if (nextId === currentSiteId) return;
         setCurrentSiteId(nextId);
         queryClient.invalidateQueries();
@@ -74,13 +89,19 @@ export default function SiteSwitcher() {
                     outline: 'none'
                 }}
             >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                </svg>
+                {current ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                    </svg>
+                ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line>
+                    </svg>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'inherit', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {current?.name || 'Select site'}
+                        {current ? current.name : 'All Sites'}
                     </span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                         <polyline points="6 9 12 15 18 9"></polyline>
@@ -101,6 +122,30 @@ export default function SiteSwitcher() {
                     zIndex: 100,
                     padding: '6px'
                 }}>
+                    {isDashboardOrPortfolio && (
+                        <button 
+                            className="nav-dropdown-item" 
+                            onClick={() => handleChange(null)}
+                            style={{ 
+                                justifyContent: 'space-between',
+                                background: currentSiteId === null ? 'rgba(16,185,129,0.1)' : 'transparent',
+                                color: currentSiteId === null ? '#10b981' : 'var(--text-secondary)',
+                                fontWeight: 600,
+                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                paddingBottom: '8px',
+                                marginBottom: '4px'
+                            }}
+                        >
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                All Sites (Company-wide)
+                            </span>
+                            {currentSiteId === null && (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            )}
+                        </button>
+                    )}
                     {sites.map((s) => (
                         <button 
                             key={s.id} 
