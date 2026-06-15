@@ -447,7 +447,7 @@ export default function Dashboard() {
 
     // NEW: Period Range Filter (From → To)
     const allMonths = useMemo(() => getAllMonthsSince(2019), []);
-    const months = useMemo(() => getLast24Months(), []);
+
     const [fromPeriod, setFromPeriod] = useState<{ year: number, month: number } | null>(null);
     const [toPeriod, setToPeriod] = useState<{ year: number, month: number } | null>(null);
 
