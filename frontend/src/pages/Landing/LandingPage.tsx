@@ -429,7 +429,7 @@ export default function LandingPage() {
                                     {[
                                         { l: 'Carbon Score', v: '98.2', d: '↑ 4.1', c: '#10b981' },
                                         { l: 'Scope 1 (tCO₂)', v: '144', d: '↓ 8%', c: '#10b981' },
-                                        { l: 'GRI Rating', v: 'AAA', d: 'STABLE', c: '#6366f1' },
+                                        { l: 'Data Completeness', v: '98%', d: '↑ 2%', c: '#6366f1' },
                                     ].map((k, i) => (
                                         <div className="lp-kpi" key={i}>
                                             <div className="lp-kpi-lbl">{k.l}</div>

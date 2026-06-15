@@ -165,6 +165,23 @@ function getStatConfig(name: string) {
     return STAT_CONFIG.default;
 }
 
+function getAllMonthsSince(startYear: number): { label: string; year: number; month: number }[] {
+    const results = [];
+    const now = new Date();
+    for (let y = now.getFullYear(); y >= startYear; y--) {
+        const endMonth = y === now.getFullYear() ? now.getMonth() + 1 : 12;
+        for (let m = endMonth; m >= 1; m--) {
+            const d = new Date(y, m - 1, 1);
+            results.push({
+                label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                year: y,
+                month: m,
+            });
+        }
+    }
+    return results;
+}
+
 function getLast24Months(): { label: string; year: number; month: number }[] {
     const results = [];
     const now = new Date();
@@ -428,9 +445,11 @@ export default function Dashboard() {
     const [frameworkFilter, setFrameworkFilter] = useState<string | null>(null);
     const [chartMode, setChartMode] = useState<'indexed' | 'actual' | 'logarithmic'>('indexed');
 
-    // NEW: Period Filter
+    // NEW: Period Range Filter (From → To)
+    const allMonths = useMemo(() => getAllMonthsSince(2019), []);
     const months = useMemo(() => getLast24Months(), []);
-    const [selectedPeriod, setSelectedPeriod] = useState<{ year: number, month: number } | null>(null);
+    const [fromPeriod, setFromPeriod] = useState<{ year: number, month: number } | null>(null);
+    const [toPeriod, setToPeriod] = useState<{ year: number, month: number } | null>(null);
 
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const availableYears = useMemo(() => {
@@ -475,11 +494,12 @@ export default function Dashboard() {
     }, [companyData, currentSiteId, sites]);
 
     const { data: dashboardData, isLoading } = useQuery({
-        queryKey: ['dashboard', 'metrics', currentSiteId, activePillar, frameworkFilter, selectedPeriod],
+        queryKey: ['dashboard', 'metrics', currentSiteId, activePillar, frameworkFilter, fromPeriod, toPeriod],
         queryFn: async () => {
             let url = `/dashboard/metrics?pillar=${activePillar}`;
             if (frameworkFilter) url += `&framework=${frameworkFilter}`;
-            if (selectedPeriod) url += `&target_year=${selectedPeriod.year}&target_month=${selectedPeriod.month}`;
+            if (toPeriod) url += `&target_year=${toPeriod.year}&target_month=${toPeriod.month}`;
+            if (fromPeriod) url += `&from_year=${fromPeriod.year}&from_month=${fromPeriod.month}`;
             return (await api.get(url)).data;
         },
     });
@@ -646,62 +666,69 @@ export default function Dashboard() {
                         display: 'flex', alignItems: 'center', gap: 8,
                         background: 'rgba(255,255,255,0.03)',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 100, padding: '4px 6px', marginBottom: 8
+                        borderRadius: 100, padding: '4px 10px', marginBottom: 8
                     }}>
                         {activePillar === 'E' ? (
                             <>
-                                <button 
-                                    onClick={() => {
-                                        const current = selectedPeriod || { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
-                                        const idx = months.findIndex(m => m.year === current.year && m.month === current.month);
-                                        if (idx < months.length - 1) {
-                                            setSelectedPeriod({ year: months[idx+1].year, month: months[idx+1].month });
-                                        }
-                                    }}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
-                                    title="Previous Month"
-                                >
-                                    ◀
-                                </button>
-                                
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>From</span>
                                 <select
-                                    value={selectedPeriod ? `${selectedPeriod.year}-${selectedPeriod.month}` : ""}
+                                    value={fromPeriod ? `${fromPeriod.year}-${fromPeriod.month}` : ""}
                                     onChange={(e) => {
                                         if (e.target.value === "") {
-                                            setSelectedPeriod(null);
+                                            setFromPeriod(null);
                                         } else {
                                             const [y, m] = e.target.value.split('-');
-                                            setSelectedPeriod({ year: Number(y), month: Number(m) });
+                                            setFromPeriod({ year: Number(y), month: Number(m) });
                                         }
                                     }}
                                     style={{ 
                                         background: 'transparent', border: 'none', color: '#f0f2ff', fontSize: 13, fontWeight: 700, 
-                                        cursor: 'pointer', appearance: 'none', padding: '4px 12px', textAlign: 'center', minWidth: 100, outline: 'none'
+                                        cursor: 'pointer', appearance: 'none', padding: '4px 8px', textAlign: 'center', minWidth: 90, outline: 'none'
                                     }}
                                 >
-                                    <option value="" style={{ background: '#1c1e30' }}>Current Period</option>
-                                    {months.map((m, i) => (
+                                    <option value="" style={{ background: '#1c1e30' }}>Jan {toPeriod?.year || new Date().getFullYear()}</option>
+                                    {allMonths.map((m, i) => (
                                         <option key={i} value={`${m.year}-${m.month}`} style={{ background: '#1c1e30' }}>
                                             {m.label}
                                         </option>
                                     ))}
                                 </select>
-                                
-                                <button 
-                                    onClick={() => {
-                                        const current = selectedPeriod || { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
-                                        const idx = months.findIndex(m => m.year === current.year && m.month === current.month);
-                                        if (idx > 0) {
-                                            setSelectedPeriod({ year: months[idx-1].year, month: months[idx-1].month });
-                                        } else if (idx === 0) {
-                                            setSelectedPeriod(null);
+
+                                <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>→</span>
+
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>To</span>
+                                <select
+                                    value={toPeriod ? `${toPeriod.year}-${toPeriod.month}` : ""}
+                                    onChange={(e) => {
+                                        if (e.target.value === "") {
+                                            setToPeriod(null);
+                                        } else {
+                                            const [y, m] = e.target.value.split('-');
+                                            setToPeriod({ year: Number(y), month: Number(m) });
                                         }
                                     }}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
-                                    title="Next Month"
+                                    style={{ 
+                                        background: 'transparent', border: 'none', color: '#f0f2ff', fontSize: 13, fontWeight: 700, 
+                                        cursor: 'pointer', appearance: 'none', padding: '4px 8px', textAlign: 'center', minWidth: 90, outline: 'none'
+                                    }}
                                 >
-                                    ▶
-                                </button>
+                                    <option value="" style={{ background: '#1c1e30' }}>Current</option>
+                                    {allMonths.map((m, i) => (
+                                        <option key={i} value={`${m.year}-${m.month}`} style={{ background: '#1c1e30' }}>
+                                            {m.label}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {(fromPeriod || toPeriod) && (
+                                    <button
+                                        onClick={() => { setFromPeriod(null); setToPeriod(null); }}
+                                        style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 13, fontWeight: 700, padding: '2px 8px' }}
+                                        title="Reset to default"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
                             </>
                         ) : (
                             <>
@@ -894,8 +921,13 @@ export default function Dashboard() {
                                         ))}
                                     </div>
 
-                                    {/* Existing badge */}
-                                    <div className="badge badge-gray">YTD ({selectedPeriod?.year || new Date().getFullYear()})</div>
+                                    {/* Range badge */}
+                                    <div className="badge badge-gray">
+                                        {fromPeriod 
+                                            ? `${new Date(fromPeriod.year, fromPeriod.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} → ${toPeriod ? new Date(toPeriod.year, toPeriod.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Current'}`
+                                            : `YTD (${toPeriod?.year || new Date().getFullYear()})`
+                                        }
+                                    </div>
                                 </div>
                             </div>
                             {pillarHasSeries ? (
@@ -904,7 +936,7 @@ export default function Dashboard() {
                                         <AreaChart data={activeChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} onClick={(e: any) => {
                                             if (e && e.activePayload && e.activePayload.length > 0) {
                                                 const pd = e.activePayload[0].payload;
-                                                setSelectedPeriod({ year: pd.year, month: pd.month });
+                                                setToPeriod({ year: pd.year, month: pd.month });
                                             }
                                         }}>
                                             <defs>
@@ -1045,7 +1077,7 @@ export default function Dashboard() {
                                     <BarChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }} barSize={16} onClick={(e: any) => {
                                         if (e && e.activePayload && e.activePayload.length > 0) {
                                             const pd = e.activePayload[0].payload;
-                                            setSelectedPeriod({ year: pd.year, month: pd.month });
+                                            setToPeriod({ year: pd.year, month: pd.month });
                                         }
                                     }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />

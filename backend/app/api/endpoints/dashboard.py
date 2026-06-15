@@ -237,6 +237,8 @@ async def get_dashboard_metrics(
     framework: Optional[str] = Query(None),
     target_year: Optional[int] = Query(None),
     target_month: Optional[int] = Query(None),
+    from_year: Optional[int] = Query(None),
+    from_month: Optional[int] = Query(None),
 ) -> Any:
     """
     Main dashboard KPI cards and 7-month chart data.
@@ -293,11 +295,20 @@ async def get_dashboard_metrics(
         target_year = today.year
         target_month = today.month
 
-    # ── YTD skeleton (Jan to target_month) ──────────────────────────
+    # ── Chart skeleton (from→to range or Jan→target_month) ─────────
     import calendar
     months_series = []
-    for m in range(1, target_month + 1):
-        months_series.append({"year": target_year, "month": m, "name": calendar.month_abbr[m]})
+    if from_year is not None and from_month is not None:
+        # Build a range from (from_year, from_month) to (target_year, target_month)
+        cur = datetime.date(from_year, from_month, 1)
+        end = datetime.date(target_year, target_month, 1)
+        while cur <= end:
+            lbl = f"{calendar.month_abbr[cur.month]}" if cur.year == target_year and from_year == target_year else f"{calendar.month_abbr[cur.month]} '{str(cur.year)[2:]}"
+            months_series.append({"year": cur.year, "month": cur.month, "name": lbl})
+            cur = (cur + relativedelta(months=1))
+    else:
+        for m in range(1, target_month + 1):
+            months_series.append({"year": target_year, "month": m, "name": calendar.month_abbr[m]})
     month_index = {(m["year"], m["month"]): m for m in months_series}
 
     stats_map: dict[str, float] = {}
@@ -1046,7 +1057,7 @@ async def get_esg_score(
     s_score = (s_sub / s_total * 100) if s_total > 0 else 0
     
     # Get E trends for E score
-    metrics_res = await get_dashboard_metrics(db, current_user, site_id, pillar="E", framework=None, target_year=None, target_month=None)
+    metrics_res = await get_dashboard_metrics(db, current_user, site_id, pillar="E", framework=None, target_year=None, target_month=None, from_year=None, from_month=None)
     e_stats = metrics_res.get("stats", [])
     
     e_cats_count = 0

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
+import { useSiteStore } from '../../../stores/siteStore';
 
 interface StatDetailModalProps {
     stat: {
@@ -160,7 +161,13 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
     } else if (nameLower.includes("waste")) {
         subtitle = "Disposal, recycling & diversion rate analysis";
     } else if (nameLower.includes("emission") || nameLower.includes("ghg") || nameLower.includes("scope")) {
-        subtitle = "GHG Protocol Scope 1 & 2 — location-based method";
+        if (nameLower.includes("scope 1")) {
+            subtitle = "GHG Protocol Scope 1 — direct emissions";
+        } else if (nameLower.includes("scope 2")) {
+            subtitle = "GHG Protocol Scope 2 — location-based method";
+        } else {
+            subtitle = "GHG Protocol Scope 1 & 2 — location-based method";
+        }
     }
 
     // ── Icons ──────────────────────────────────────────────────────────────────
@@ -428,6 +435,9 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                         </div>
                         <div style={{ fontSize: 12, color: '#bae6fd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                             {stat.methodology}
+                            <div style={{ marginTop: 8 }}>
+                                <a href="https://ghgprotocol.org/corporate-standard" target="_blank" rel="noreferrer" style={{ color: '#38bdf8', textDecoration: 'underline' }}>Read the GHG Protocol Corporate Standard</a>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -435,10 +445,14 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
         );
     };
 
+    const { currentSiteId, sites } = useSiteStore();
+    const currentSite = sites.find(s => s.id === currentSiteId);
+    const isAbuDhabi = currentSite?.name.toLowerCase().includes('abu dhabi');
+    const rooms = currentSiteId ? (isAbuDhabi ? 240 : 300) : 540;
+
     const renderWaterBenchmark = () => {
         if (dataKey !== 'Water') return null;
         
-        const rooms = 300;
         // Let's assume currentVal is m3 based on the app logic, so * 1000
         const isM3 = unit.includes('m³');
         const intensityL = isM3 ? (currentVal * 1000) / (rooms * 30) : currentVal / (rooms * 30);
@@ -451,7 +465,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
             <div style={{ marginTop: 24, padding: 20, background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <h4 style={{ fontSize: 14, fontWeight: 700, color: '#f0f2ff' }}>Dubai Hospitality Benchmark</h4>
-                    <div style={{ cursor: 'help', fontSize: 12, color: '#8b90b8' }} title="Room count used: 300 (default). Connect your occupancy data for accurate intensity.">
+                    <div style={{ cursor: 'help', fontSize: 12, color: '#8b90b8' }} title={`Room count used: ${rooms} (${currentSiteId ? currentSite?.name : 'All Sites'}). Connect your occupancy data for accurate intensity.`}>
                         ⓘ
                     </div>
                 </div>
@@ -479,10 +493,10 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 12, color: '#8b90b8', lineHeight: 1.6 }}>
                     <div style={{ color: '#f0f2ff', fontWeight: 600, marginBottom: 4 }}>Sources & Methodology</div>
                     <div style={{ marginBottom: 4 }}>
-                        <strong style={{ color: '#3b82f6' }}>Dubai Hospitality Avg:</strong> Sourced from Dubai Supreme Council of Energy (DSCE) and STR/HotStats. The benchmark is based on <em>occupied</em> rooms. The intensity above uses a generic 300 total room count.
+                        <strong style={{ color: '#3b82f6' }}>Dubai Hospitality Avg:</strong> Sourced from <a href="https://www.dubaisce.gov.ae/en/" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Dubai Supreme Council of Energy (DSCE)</a> and <a href="https://str.com/" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>STR/HotStats</a>. The benchmark is based on <em>occupied</em> rooms. The intensity above uses a generic {rooms} total room count.
                     </div>
                     <div>
-                        <strong style={{ color: '#3b82f6' }}>LEED EB Target:</strong> Approximated from LEED v4.1 O+M Indoor Water Use Reduction baseline for hot/dry climates.
+                        <strong style={{ color: '#3b82f6' }}>LEED EB Target:</strong> Approximated from <a href="https://www.usgbc.org/leed/v41" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>LEED v4.1 O+M</a> Indoor Water Use Reduction baseline for hot/dry climates.
                     </div>
                 </div>
             </div>
@@ -492,7 +506,6 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
     const renderEnergyBenchmark = () => {
         if (dataKey !== 'Energy') return null;
         
-        const rooms = 300;
         const intensity = currentVal / (rooms * 30); // kWh / room / day
         
         let statusPct = 90;
@@ -503,7 +516,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
             <div style={{ marginTop: 24, padding: 20, background: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <h4 style={{ fontSize: 14, fontWeight: 700, color: '#f0f2ff' }}>Energy Intensity</h4>
-                    <div style={{ cursor: 'help', fontSize: 12, color: '#8b90b8' }} title="Room count used: 300 (default). Connect your occupancy data for accurate intensity.">
+                    <div style={{ cursor: 'help', fontSize: 12, color: '#8b90b8' }} title={`Room count used: ${rooms} (${currentSiteId ? currentSite?.name : 'All Sites'}). Connect your occupancy data for accurate intensity.`}>
                         ⓘ
                     </div>
                 </div>
@@ -531,10 +544,10 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 12, color: '#8b90b8', lineHeight: 1.6 }}>
                     <div style={{ color: '#f0f2ff', fontWeight: 600, marginBottom: 4 }}>Sources & Methodology</div>
                     <div style={{ marginBottom: 4 }}>
-                        <strong style={{ color: '#10b981' }}>UAE Hotel Avg:</strong> Sourced from IFC EDGE tool (Climate Zone 1) and CBRE Hotels ME Benchmarking Report. This is a midpoint baseline; luxury properties may skew higher.
+                        <strong style={{ color: '#10b981' }}>UAE Hotel Avg:</strong> Sourced from <a href="https://edgebuildings.com/" target="_blank" rel="noreferrer" style={{ color: '#10b981', textDecoration: 'underline' }}>IFC EDGE tool</a> (Climate Zone 1) and <a href="https://www.cbre.ae/services/real-estate-types/hotels-and-hospitality" target="_blank" rel="noreferrer" style={{ color: '#10b981', textDecoration: 'underline' }}>CBRE Hotels ME</a> Benchmarking Report. This is a midpoint baseline; luxury properties may skew higher.
                     </div>
                     <div>
-                        <strong style={{ color: '#10b981' }}>Green Key Target:</strong> Industry-accepted "high performance" threshold for MENA climate zone. Green Key focuses on continuous improvement rather than hard limits.
+                        <strong style={{ color: '#10b981' }}>Green Key Target:</strong> Industry-accepted "high performance" threshold for MENA climate zone. <a href="https://www.greenkey.global/" target="_blank" rel="noreferrer" style={{ color: '#10b981', textDecoration: 'underline' }}>Green Key</a> focuses on continuous improvement rather than hard limits.
                     </div>
                 </div>
             </div>

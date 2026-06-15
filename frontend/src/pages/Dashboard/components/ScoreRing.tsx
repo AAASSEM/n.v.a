@@ -68,8 +68,9 @@ export const ScoreRing = () => {
                     <span style={{ fontSize: 20, fontWeight: 800, color: '#f0f2ff', lineHeight: 1 }}>
                         {overall}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: delta >= 0 ? '#10b981' : '#f87171' }}>
-                        {delta > 0 ? '+' : ''}{delta}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: delta >= 0 ? '#10b981' : '#f87171', display: 'flex', alignItems: 'center', gap: 4 }} title="Change in score vs last month">
+                        {delta > 0 ? '+' : ''}{delta} pts
+                        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-muted)' }}>vs last month</span>
                     </span>
                 </div>
             </div>
