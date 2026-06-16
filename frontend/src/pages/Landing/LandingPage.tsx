@@ -82,14 +82,6 @@ const LOGOS = ['Unilever', 'BlackRock', 'Nestlé', 'Siemens', 'Schneider', 'BASF
 export default function LandingPage() {
     const { isAuthenticated, user, logout } = useAuthStore();
     const [showDemoModal, setShowDemoModal] = useState(false);
-    const wasAuthenticatedOnMount = useRef(isAuthenticated);
-
-    useEffect(() => {
-        if (wasAuthenticatedOnMount.current && isAuthenticated && user?.email?.includes('demo')) {
-            wasAuthenticatedOnMount.current = false;
-            logout();
-        }
-    }, [isAuthenticated, user, logout]);
     const statsRef = useInView();
     const eff = useCountUp(94, 1800, statsRef.inView);
     const metrics = useCountUp(12, 2200, statsRef.inView);

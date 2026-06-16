@@ -1205,7 +1205,7 @@ async def get_portfolio_breakdown(
             if _is_additive(db_cat, el_unit, disp):
                 stats_map[disp][site_id] += fval
                 
-        carbon_inputs[site_id].append((el_code, fval, year, month, el_name, db_cat))
+        carbon_inputs[site_id].append((el_code, fval, year, month, el_name, db_cat, el_unit))
         
     # Build E metrics
     metrics = []
@@ -1283,7 +1283,7 @@ async def get_portfolio_breakdown(
                     s_inputs = [c for c in carbon_inputs[s.id] if c[2] == y and c[3] == m]
                     val = build_emissions_breakdown(s_inputs, emirate=site_map[s.id]["emirate"])["total_tco2e"]
                 else:
-                    val = sum(c[1] for c in carbon_inputs[s.id] if c[2] == y and c[3] == m and len(c) >= 6 and _display_category(c[4], c[5]) == cat)
+                    val = sum(c[1] for c in carbon_inputs[s.id] if c[2] == y and c[3] == m and len(c) >= 7 and _display_category(c[4], c[5]) == cat and _is_additive(c[5], c[6], cat))
                 month_data[str(s.id)] = val
             cat_series.append(month_data)
         timeseries.append({

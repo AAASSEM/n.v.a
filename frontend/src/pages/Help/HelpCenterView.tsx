@@ -133,6 +133,7 @@ export default function HelpCenterView() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
     const [activeArticle, setActiveArticle] = useState<number | null>(null);
+    const [copied, setCopied] = useState(false);
 
     const filtered = POPULAR.filter(a =>
         a.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -488,12 +489,34 @@ export default function HelpCenterView() {
                                         24 / 7 Support
                                     </div>
                                     <div className="hc-support-title">Need direct assistance?</div>
-                                    <div className="hc-support-sub">Our sustainability team is ready for technical and compliance support.</div>
-                                    <button className="hc-support-btn">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.128.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.572 2.81.7A2 2 0 0 1 22 16.92z" />
-                                        </svg>
-                                        Contact Support
+                                    <div className="hc-support-sub">
+                                        Our sustainability team is ready for technical and compliance support.
+                                        <div style={{ marginTop: 8, color: '#a5b4fc', fontFamily: 'monospace', fontSize: 11.5, letterSpacing: '0.05em' }}>
+                                            support@esgravity.com
+                                        </div>
+                                    </div>
+                                    <button 
+                                        className="hc-support-btn" 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText('support@esgravity.com');
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2500);
+                                            window.location.href = 'mailto:support@esgravity.com';
+                                        }}
+                                    >
+                                        {copied ? (
+                                            <>
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                Email Copied!
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.128.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.572 2.81.7A2 2 0 0 1 22 16.92z" />
+                                                </svg>
+                                                Contact Support
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                                 <div className="hc-support-footer">

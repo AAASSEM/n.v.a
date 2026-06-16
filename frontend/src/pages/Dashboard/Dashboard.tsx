@@ -232,24 +232,35 @@ function PillarTab({ pillar, active, onClick }: { pillar: Pillar; active: boolea
 
 function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void }) {
     const currentSiteId = useSiteStore(s => s.currentSiteId);
-    const months = useMemo(() => getLast24Months(), []);
-    const [monthAIdx, setMonthAIdx] = useState(1); // default: last month
-    const [monthBIdx, setMonthBIdx] = useState(0); // default: this month
+    const dateObj = new Date();
+    const currentYYYYMM = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+    dateObj.setMonth(dateObj.getMonth() - 1);
+    const prevYYYYMM = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+    
+    const [monthA, setMonthA] = useState(prevYYYYMM);
+    const [monthB, setMonthB] = useState(currentYYYYMM);
 
-    const monthA = months[monthAIdx];
-    const monthB = months[monthBIdx];
-    const sameMonth = monthA.year === monthB.year && monthA.month === monthB.month;
+    const [yearA, monthNumA] = monthA.split('-').map(Number);
+    const [yearB, monthNumB] = monthB.split('-').map(Number);
+    const sameMonth = yearA === yearB && monthNumA === monthNumB;
+
+    const formatMonth = (yyyymm: string) => {
+        if (!yyyymm) return '';
+        const [y, m] = yyyymm.split('-');
+        const date = new Date(Number(y), Number(m) - 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
 
     const { data: compareData, isLoading } = useQuery<CompareData>({
         queryKey: ['dashboard', 'compare', currentSiteId, monthA, monthB, pillar],
         queryFn: async () => {
             const res = await api.get(
-                `/dashboard/compare?month_a_year=${monthA.year}&month_a_month=${monthA.month}` +
-                `&month_b_year=${monthB.year}&month_b_month=${monthB.month}&pillar=${pillar}`
+                `/dashboard/compare?month_a_year=${yearA}&month_a_month=${monthNumA}` +
+                `&month_b_year=${yearB}&month_b_month=${monthNumB}&pillar=${pillar}`
             );
             return res.data;
         },
-        enabled: !sameMonth,
+        enabled: !sameMonth && Boolean(monthA) && Boolean(monthB),
     });
 
     const rows = compareData?.rows || [];
@@ -283,26 +294,24 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                     <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
                         Period A
                     </label>
-                    <select
-                        value={monthAIdx}
-                        onChange={e => setMonthAIdx(Number(e.target.value))}
-                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '10px 14px', cursor: 'pointer' }}
-                    >
-                        {months.map((m, i) => <option key={i} value={i} style={{ background: '#1c1e30' }}>{m.label}</option>)}
-                    </select>
+                    <input
+                        type="month"
+                        value={monthA}
+                        onChange={e => setMonthA(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '9px 14px', cursor: 'pointer', colorScheme: 'dark' }}
+                    />
                 </div>
                 <div style={{ paddingTop: 20, color: 'var(--text-muted)', fontWeight: 700, fontSize: 16 }}>vs</div>
                 <div style={{ flex: 1 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
                         Period B
                     </label>
-                    <select
-                        value={monthBIdx}
-                        onChange={e => setMonthBIdx(Number(e.target.value))}
-                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '10px 14px', cursor: 'pointer' }}
-                    >
-                        {months.map((m, i) => <option key={i} value={i} style={{ background: '#1c1e30' }}>{m.label}</option>)}
-                    </select>
+                    <input
+                        type="month"
+                        value={monthB}
+                        onChange={e => setMonthB(e.target.value)}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '9px 14px', cursor: 'pointer', colorScheme: 'dark' }}
+                    />
                 </div>
             </div>
 
@@ -334,7 +343,7 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                             border: '1px solid rgba(255,255,255,0.06)',
                         }}>
                             <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                {monthA.label} → {monthB.label}:
+                                {formatMonth(monthA)} → {formatMonth(monthB)}:
                             </span>
                             <span style={{ fontSize: 13, color: '#10b981', fontWeight: 700 }}>✅ {summary.improvements} improved</span>
                             <span style={{ fontSize: 13, color: '#f87171', fontWeight: 700 }}>⚠️ {summary.regressions} regressed</span>
@@ -353,7 +362,7 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                    {['Metric', monthA.label, monthB.label, 'Change', ''].map((h, i) => (
+                                    {['Metric', formatMonth(monthA), formatMonth(monthB), 'Change', ''].map((h, i) => (
                                         <th key={i} style={{
                                             textAlign: i === 0 ? 'left' : 'right', padding: '8px 12px',
                                             fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
@@ -401,7 +410,7 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                     {barData.length > 0 && (
                         <div>
                             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                                % Change per Metric ({monthA.label} → {monthB.label})
+                                % Change per Metric ({formatMonth(monthA)} → {formatMonth(monthB)})
                             </div>
                             <div style={{ height: Math.max(200, barData.length * 32) }}>
                                 <ResponsiveContainer width="100%" height="100%">

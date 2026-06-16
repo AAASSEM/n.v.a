@@ -1,0 +1,281 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\20100\\thefinal\\n.v.a\\backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [4616] using WatchFiles
+============================================================
+ESGravity Backend - Starting up...
+Python: 3.11.8 (tags/v3.11.8:db85d51, Feb  6 2024, 22:03:32) [MSC v.1937 64 bit (AMD64)]
+PORT: not set
+ENVIRONMENT: not set
+DATABASE_URL set: False
+============================================================
+INFO:app.services.email_service:EmailService: Using SMTP provider (smtp.purelymail.com)
+[CORS] Configured origins: ['http://localhost:5174', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174']
+INFO:app.main:CORS: Allowed origins: ['http://localhost:5174', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174']
+[FRONTEND] Serving static files from C:\Users\20100\thefinal\n.v.a\frontend\dist
+[OK] Application startup complete!
+INFO:     Started server process [12780]
+INFO:     Waiting for application startup.
+[MIGRATE] Running database migrations...
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.schemas
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.tables
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.types
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.constraints
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.defaults
+INFO:alembic.runtime.plugins:setup plugin alembic.autogenerate.comments
+[MIGRATE] Using sync URL: sqlite:///./esg_portal.db...
+[MIGRATE] Current version: a89fa218f4b5
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+[MIGRATE] Database migrations complete!
+[SEED] Checking if database needs seeding...
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT frameworks.id, frameworks.framework_id, frameworks.name, frameworks.type, frameworks.region, frameworks.version, frameworks.description, frameworks.created_at
+FROM frameworks
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00195s] (1, 0)
+[SEED] Database already has data. Skipping auto-seed.
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/diagnostics
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM companies
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00294s] ()
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM users
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01500s] ()
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM data_elements
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01429s] ()
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM users
+WHERE users.created_at >= ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01547s] ('2026-05-17 00:05:33.892472',)
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM data_submissions
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00668s] ()
+sys:1: SAWarning: TypeDecorator JSONEncodedDict() will not produce a cache key because the ``cache_ok`` attribute is not set to True.  This can have significant performance implications including some performance degradations in comparison to prior SQLAlchemy versions.  Set this attribute to True if this type object's state is safe to use in a cache key, or False to disable this warning. (Background on this warning at: https://sqlalche.me/e/20/cprf)
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM data_submissions
+WHERE data_submissions.evidence_files IS NOT NULL AND data_submissions.evidence_files != ?
+INFO  [sqlalchemy.engine.Engine] [no key 0.08143s] ('"[]"',)
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/frameworks
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT frameworks.id, frameworks.framework_id, frameworks.name, frameworks.type, frameworks.region, frameworks.version, frameworks.description, frameworks.created_at
+FROM frameworks
+INFO  [sqlalchemy.engine.Engine] [generated in 0.02038s] ()
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/diagnostics
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1
+FROM companies
+INFO  [sqlalchemy.engine.Engine] [cached since 1.11s ago] ()
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM users
+INFO  [sqlalchemy.engine.Engine] [cached since 1.082s ago] ()
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/settings
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT system_settings.id, system_settings."key", system_settings.value, system_settings.description, system_settings.updated_at
+FROM system_settings
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01246s] ()
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM data_elements
+INFO  [sqlalchemy.engine.Engine] [cached since 1.109s ago] ()
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM users
+WHERE users.created_at >= ?
+INFO  [sqlalchemy.engine.Engine] [cached since 1.087s ago] ('2026-05-17 00:05:34.977447',)
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/logs
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM data_submissions
+INFO  [sqlalchemy.engine.Engine] [cached since 0.8409s ago] ()
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT audit_logs.id, audit_logs.user_id, audit_logs.company_id, audit_logs.action, audit_logs.entity_type, audit_logs.entity_id, audit_logs.details, audit_logs.ip_address, audit_logs.user_agent, audit_logs.created_at
+FROM audit_logs ORDER BY audit_logs.created_at DESC, audit_logs.id DESC
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.02027s] (25, 0)
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/data-elements
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT data_elements.id, data_elements.element_code, data_elements.name, data_elements.category, data_elements.description, data_elements.unit, data_elements.collection_frequency, data_elements.condition_logic, data_elements.frameworks, data_elements.is_metered, data_elements.meter_type, data_elements.created_at
+FROM data_elements
+INFO  [sqlalchemy.engine.Engine] [generated in 0.02028s] ()
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/profiling-questions
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/companies
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/meter-types
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM data_submissions
+WHERE data_submissions.evidence_files IS NOT NULL AND data_submissions.evidence_files != ?
+INFO  [sqlalchemy.engine.Engine] [no key 0.00350s] ('"[]"',)
+INFO  [sqlalchemy.engine.Engine] SELECT companies.id AS companies_id, companies.owner_id AS companies_owner_id, companies.name AS companies_name, companies.registration_number AS companies_registration_number, companies.trade_license_number AS companies_trade_license_number, companies.company_code AS companies_company_code, companies.emirate AS companies_emirate, companies.sector AS companies_sector, companies.active_frameworks AS companies_active_frameworks, companies.has_green_key AS companies_has_green_key, companies.created_at AS companies_created_at, companies.updated_at AS companies_updated_at
+FROM companies
+WHERE companies.id IN (?)
+INFO  [sqlalchemy.engine.Engine] [generated in 0.14500s] (1,)
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT profiling_questions.id, profiling_questions.framework_id, profiling_questions.question_text, profiling_questions.question_order, profiling_questions.input_type, profiling_questions.is_required, profiling_questions.frameworks, profiling_questions.created_at
+FROM profiling_questions ORDER BY profiling_questions.question_order
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00641s] ()
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT companies.id, companies.owner_id, companies.name, companies.registration_number, companies.trade_license_number, companies.company_code, companies.emirate, companies.sector, companies.active_frameworks, companies.has_green_key, companies.created_at, companies.updated_at
+FROM companies
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01637s] ()
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT meter_types.id, meter_types.name, meter_types.unit, meter_types.category, meter_types.description, meter_types.created_at
+FROM meter_types
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00524s] ()
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.password_hash AS users_password_hash, users.first_name AS users_first_name, users.last_name AS users_last_name, users.is_active AS users_is_active, users.email_verified AS users_email_verified, users.is_developer AS users_is_developer, users.created_at AS users_created_at, users.updated_at AS users_updated_at
+FROM users
+WHERE users.id IN (?, ?)
+INFO  [sqlalchemy.engine.Engine] [generated in 0.05103s] (2, 16)
+DEBUG: RESPONSE SENT - STATUS: 200
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/users
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+DEBUG: RESPONSE SENT - STATUS: 200
+DEBUG: RESPONSE SENT - STATUS: 200
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/frameworks
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT frameworks.id, frameworks.framework_id, frameworks.name, frameworks.type, frameworks.region, frameworks.version, frameworks.description, frameworks.created_at
+FROM frameworks
+INFO  [sqlalchemy.engine.Engine] [cached since 1.507s ago] ()
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM audit_logs
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00707s] ()
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at      
+FROM users
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00460s] ()
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01854s] (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16)
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+DEBUG: REQUEST RECEIVED - METHOD: DELETE - PATH: /api/v1/developer-admin/users/16
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at      
+FROM users
+WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.04738s] (16,)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO audit_logs (user_id, company_id, action, entity_type, entity_id, details, ip_address, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+INFO  [sqlalchemy.engine.Engine] [generated in 0.05376s] (None, None, 'DELETE_USER', 'USER', '16', '{"email": "kirsy.pham@horizonspost.com"}', None, None, '2026-06-16 00:05:39.767117')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT audit_logs.id, audit_logs.user_id, audit_logs.company_id, audit_logs.action, audit_logs.entity_type, audit_logs.entity_id, audit_logs.details, audit_logs.ip_address, audit_logs.user_agent, audit_logs.created_at
+FROM audit_logs
+WHERE audit_logs.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01274s] (65,)
+INFO  [sqlalchemy.engine.Engine] SELECT user_profiles.id AS user_profiles_id, user_profiles.user_id AS user_profiles_user_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE ? = user_profiles.user_id
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01480s] (16,)
+INFO  [sqlalchemy.engine.Engine] SELECT email_verification_tokens.id AS email_verification_tokens_id, email_verification_tokens.user_id AS email_verification_tokens_user_id, email_verification_tokens.token AS email_verification_tokens_token, email_verification_tokens.token_type AS email_verification_tokens_token_type, email_verification_tokens.verification_code AS email_verification_tokens_verification_code, email_verification_tokens.created_at AS email_verification_tokens_created_at, email_verification_tokens.used_at AS email_verification_tokens_used_at
+FROM email_verification_tokens
+WHERE ? = email_verification_tokens.user_id
+INFO  [sqlalchemy.engine.Engine] [generated in 0.02519s] (16,)
+INFO  [sqlalchemy.engine.Engine] SELECT companies.id AS companies_id, companies.owner_id AS companies_owner_id, companies.name AS companies_name, companies.registration_number AS companies_registration_number, companies.trade_license_number AS companies_trade_license_number, companies.company_code AS companies_company_code, companies.emirate AS companies_emirate, companies.sector AS companies_sector, companies.active_frameworks AS companies_active_frameworks, companies.has_green_key AS companies_has_green_key, companies.created_at AS companies_created_at, companies.updated_at AS companies_updated_at
+FROM companies
+WHERE ? = companies.owner_id
+INFO  [sqlalchemy.engine.Engine] [generated in 0.03414s] (16,)
+INFO  [sqlalchemy.engine.Engine] DELETE FROM email_verification_tokens WHERE email_verification_tokens.id = ?INFO  [sqlalchemy.engine.Engine] [generated in 0.00871s] (9,)
+INFO  [sqlalchemy.engine.Engine] DELETE FROM user_profiles WHERE user_profiles.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00315s] (16,)
+INFO  [sqlalchemy.engine.Engine] DELETE FROM users WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00146s] (16,)
+INFO  [sqlalchemy.engine.Engine] COMMIT
+DEBUG: RESPONSE SENT - STATUS: 200
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/users
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at      
+FROM users
+INFO  [sqlalchemy.engine.Engine] [cached since 4.1s ago] ()
+DEBUG: REQUEST RECEIVED - METHOD: GET - PATH: /api/v1/developer-admin/diagnostics
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1
+FROM companies
+INFO  [sqlalchemy.engine.Engine] [cached since 6.778s ago] ()
+INFO  [sqlalchemy.engine.Engine] SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INFO  [sqlalchemy.engine.Engine] [cached since 3.982s ago] (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15)
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM users
+INFO  [sqlalchemy.engine.Engine] [cached since 6.777s ago] ()
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1
+FROM data_elements
+INFO  [sqlalchemy.engine.Engine] [cached since 6.759s ago] ()
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1
+FROM users
+WHERE users.created_at >= ?
+INFO  [sqlalchemy.engine.Engine] [cached since 6.738s ago] ('2026-05-17 00:05:40.633142',)
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1
+FROM data_submissions
+INFO  [sqlalchemy.engine.Engine] [cached since 6.454s ago] ()
+INFO  [sqlalchemy.engine.Engine] SELECT count(*) AS count_1 
+FROM data_submissions
+WHERE data_submissions.evidence_files IS NOT NULL AND data_submissions.evidence_files != ?
+INFO  [sqlalchemy.engine.Engine] [no key 0.13757s] ('"[]"',)
+DEBUG: RESPONSE SENT - STATUS: 200
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+DEBUG: REQUEST RECEIVED - METHOD: POST - PATH: /api/v1/auth/register
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT system_settings.id, system_settings."key", system_settings.value, system_settings.description, system_settings.updated_at
+FROM system_settings
+WHERE system_settings."key" = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00211s] ('disable_registration',)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at      
+FROM users
+WHERE users.email = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00760s] ('kirsy.pham@horizonspost.com',)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO users (email, password_hash, first_name, last_name, is_active, email_verified, is_developer, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00299s] ('kirsy.pham@horizonspost.com', '$2b$12$NvJ9TkjPcYcRf3en6FjmZ.VCmdYTyfQhaDRP43203pPAJFCumP1xa', 'kirsy', 'pham', 0, 0, 0, '2026-06-16 00:05:50.963073', '2026-06-16 00:05:50.963073')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at      
+FROM users
+WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01171s] (16,)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO email_verification_tokens (user_id, token, token_type, verification_code, created_at, used_at) VALUES (?, ?, ?, ?, ?, ?)
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00191s] (16, 'df7a8f92-5a1a-4c0b-80f9-63b4b4c9bf7b', 'email_verification', '678774', '2026-06-16 00:05:51.033254', None)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO user_profiles (user_id, company_id, role, site_id, must_reset_password, created_at) VALUES (?, ?, ?, ?, ?, ?)
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00556s] (16, None, 'super_user', None, 0, '2026-06-16 00:05:51.045213')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT email_verification_tokens.id, email_verification_tokens.user_id, email_verification_tokens.token, email_verification_tokens.token_type, email_verification_tokens.verification_code, email_verification_tokens.created_at, email_verification_tokens.used_at
+FROM email_verification_tokens
+WHERE email_verification_tokens.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.03063s] (9,)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO audit_logs (user_id, company_id, action, entity_type, entity_id, details, ip_address, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+INFO  [sqlalchemy.engine.Engine] [cached since 11.37s ago] (16, None, 'REGISTER', 'USER', '16', '{"email": "kirsy.pham@horizonspost.com"}', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 Edg/149.0.0.0', '2026-06-16 00:05:51.126981')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT audit_logs.id, audit_logs.user_id, audit_logs.company_id, audit_logs.action, audit_logs.entity_type, audit_logs.entity_id, audit_logs.details, audit_logs.ip_address, audit_logs.user_agent, audit_logs.created_at
+FROM audit_logs
+WHERE audit_logs.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 11.15s ago] (66,)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id, users.email, users.password_hash, users.first_name, users.last_name, users.is_active, users.email_verified, users.is_developer, users.created_at, users.updated_at      
+FROM users
+WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.01810s] (16,)
+INFO  [sqlalchemy.engine.Engine] SELECT user_profiles.user_id AS user_profiles_user_id, user_profiles.id AS user_profiles_id, user_profiles.company_id AS user_profiles_company_id, user_profiles.role AS user_profiles_role, user_profiles.site_id AS user_profiles_site_id, user_profiles.must_reset_password AS user_profiles_must_reset_password, user_profiles.created_at AS user_profiles_created_at
+FROM user_profiles
+WHERE user_profiles.user_id IN (?)
+INFO  [sqlalchemy.engine.Engine] [cached since 14.7s ago] (16,)
+DEBUG: RESPONSE SENT - STATUS: 201
+------------------------------
+To: kirsy.pham@horizonspost.com | Link: http://localhost:5173/magic-link/df7a8f92-5a1a-4c0b-80f9-63b4b4c9bf7b------------------------------
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
