@@ -80,7 +80,7 @@ const LOGOS = ['Unilever', 'BlackRock', 'Nestlé', 'Siemens', 'Schneider', 'BASF
 
 /* ─────────────────────────── component ─────────────────────────── */
 export default function LandingPage() {
-    const { isAuthenticated, user, logout } = useAuthStore();
+    const { isAuthenticated } = useAuthStore();
     const [showDemoModal, setShowDemoModal] = useState(false);
     const statsRef = useInView();
     const eff = useCountUp(94, 1800, statsRef.inView);

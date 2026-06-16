@@ -182,19 +182,6 @@ function getAllMonthsSince(startYear: number): { label: string; year: number; mo
     return results;
 }
 
-function getLast24Months(): { label: string; year: number; month: number }[] {
-    const results = [];
-    const now = new Date();
-    for (let i = 0; i < 24; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        results.push({
-            label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-            year: d.getFullYear(),
-            month: d.getMonth() + 1,
-        });
-    }
-    return results;
-}
 
 function formatVal(value: number | null | undefined, unit: string): string {
     if (value === null || value === undefined) return '—';
