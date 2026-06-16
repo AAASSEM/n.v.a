@@ -836,11 +836,13 @@ export default function Dashboard() {
                                     <div className="stat-card-header">
                                         <span className="stat-card-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                             {stat.name}
-                                            {stat.methodology && (
+                                            {/*
+                                            stat.methodology && (
                                                 <span style={{ color: '#38bdf8', fontSize: 14, display: 'inline-flex' }} title="Click to view Carbon Calculation Methodology">
                                                     ⓘ
                                                 </span>
-                                            )}
+                                            )
+                                            */}
                                         </span>
                                         <div className="stat-card-icon" style={{ background: config.color + '20', color: config.color }}>{config.icon}</div>
                                     </div>

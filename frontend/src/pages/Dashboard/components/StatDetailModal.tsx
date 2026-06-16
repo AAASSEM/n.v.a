@@ -425,7 +425,8 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                     <div style={{ fontSize: 15, color: '#f0f2ff' }}>{totalEmissions.toLocaleString(undefined, { maximumFractionDigits: 2 })} {unit}</div>
                 </div>
 
-                {stat.methodology && (
+                {/*
+                stat.methodology && (
                     <div style={{ marginTop: 20, background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 12, padding: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -440,7 +441,8 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                             </div>
                         </div>
                     </div>
-                )}
+                )
+                */}
             </div>
         );
     };
@@ -490,6 +492,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                     }} />
                 </div>
 
+                {/*
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 12, color: '#8b90b8', lineHeight: 1.6 }}>
                     <div style={{ color: '#f0f2ff', fontWeight: 600, marginBottom: 4 }}>Sources & Methodology</div>
                     <div style={{ marginBottom: 4 }}>
@@ -499,6 +502,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                         <strong style={{ color: '#3b82f6' }}>LEED EB Target:</strong> Approximated from <span style={{ color: '#3b82f6' }}>LEED v4.1 O+M</span> Indoor Water Use Reduction baseline for hot/dry climates.
                     </div>
                 </div>
+                */}
             </div>
         );
     };
@@ -541,6 +545,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                     }} />
                 </div>
 
+                {/*
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 12, color: '#8b90b8', lineHeight: 1.6 }}>
                     <div style={{ color: '#f0f2ff', fontWeight: 600, marginBottom: 4 }}>Sources & Methodology</div>
                     <div style={{ marginBottom: 4 }}>
@@ -550,6 +555,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                         <strong style={{ color: '#10b981' }}>Green Key Target:</strong> Industry-accepted "high performance" threshold for MENA climate zone. <span style={{ color: '#10b981' }}>Green Key</span> focuses on continuous improvement rather than hard limits.
                     </div>
                 </div>
+                */}
             </div>
         );
     };
