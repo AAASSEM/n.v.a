@@ -436,7 +436,7 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                         <div style={{ fontSize: 12, color: '#bae6fd', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                             {stat.methodology}
                             <div style={{ marginTop: 8 }}>
-                                <a href="https://ghgprotocol.org/corporate-standard" target="_blank" rel="noreferrer" style={{ color: '#38bdf8', textDecoration: 'underline' }}>Read the GHG Protocol Corporate Standard</a>
+                                <span style={{ color: '#38bdf8' }}>Read the GHG Protocol Corporate Standard</span>
                             </div>
                         </div>
                     </div>
@@ -493,10 +493,10 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 12, color: '#8b90b8', lineHeight: 1.6 }}>
                     <div style={{ color: '#f0f2ff', fontWeight: 600, marginBottom: 4 }}>Sources & Methodology</div>
                     <div style={{ marginBottom: 4 }}>
-                        <strong style={{ color: '#3b82f6' }}>Dubai Hospitality Avg:</strong> Sourced from <a href="https://www.dubaisce.gov.ae/en/" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Dubai Supreme Council of Energy (DSCE)</a> and <a href="https://str.com/" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>STR/HotStats</a>. The benchmark is based on <em>occupied</em> rooms. The intensity above uses a generic {rooms} total room count.
+                        <strong style={{ color: '#3b82f6' }}>Dubai Hospitality Avg:</strong> Sourced from <span style={{ color: '#3b82f6' }}>Dubai Supreme Council of Energy (DSCE)</span> and <span style={{ color: '#3b82f6' }}>STR/HotStats</span>. The benchmark is based on <em>occupied</em> rooms. The intensity above uses a generic {rooms} total room count.
                     </div>
                     <div>
-                        <strong style={{ color: '#3b82f6' }}>LEED EB Target:</strong> Approximated from <a href="https://www.usgbc.org/leed/v41" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>LEED v4.1 O+M</a> Indoor Water Use Reduction baseline for hot/dry climates.
+                        <strong style={{ color: '#3b82f6' }}>LEED EB Target:</strong> Approximated from <span style={{ color: '#3b82f6' }}>LEED v4.1 O+M</span> Indoor Water Use Reduction baseline for hot/dry climates.
                     </div>
                 </div>
             </div>
@@ -544,10 +544,10 @@ export default function StatDetailModal({ stat, chartData, color, dataKey, unit,
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: 12, color: '#8b90b8', lineHeight: 1.6 }}>
                     <div style={{ color: '#f0f2ff', fontWeight: 600, marginBottom: 4 }}>Sources & Methodology</div>
                     <div style={{ marginBottom: 4 }}>
-                        <strong style={{ color: '#10b981' }}>UAE Hotel Avg:</strong> Sourced from <a href="https://edgebuildings.com/" target="_blank" rel="noreferrer" style={{ color: '#10b981', textDecoration: 'underline' }}>IFC EDGE tool</a> (Climate Zone 1) and <a href="https://www.cbre.ae/services/real-estate-types/hotels-and-hospitality" target="_blank" rel="noreferrer" style={{ color: '#10b981', textDecoration: 'underline' }}>CBRE Hotels ME</a> Benchmarking Report. This is a midpoint baseline; luxury properties may skew higher.
+                        <strong style={{ color: '#10b981' }}>UAE Hotel Avg:</strong> Sourced from <span style={{ color: '#10b981' }}>IFC EDGE tool</span> (Climate Zone 1) and <span style={{ color: '#10b981' }}>CBRE Hotels ME</span> Benchmarking Report. This is a midpoint baseline; luxury properties may skew higher.
                     </div>
                     <div>
-                        <strong style={{ color: '#10b981' }}>Green Key Target:</strong> Industry-accepted "high performance" threshold for MENA climate zone. <a href="https://www.greenkey.global/" target="_blank" rel="noreferrer" style={{ color: '#10b981', textDecoration: 'underline' }}>Green Key</a> focuses on continuous improvement rather than hard limits.
+                        <strong style={{ color: '#10b981' }}>Green Key Target:</strong> Industry-accepted "high performance" threshold for MENA climate zone. <span style={{ color: '#10b981' }}>Green Key</span> focuses on continuous improvement rather than hard limits.
                     </div>
                 </div>
             </div>
