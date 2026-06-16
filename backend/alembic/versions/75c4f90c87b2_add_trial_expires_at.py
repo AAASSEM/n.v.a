@@ -34,7 +34,7 @@ def upgrade() -> None:
         batch_op.add_column(sa.Column('trial_expires_at', sa.DateTime(), nullable=True))
 
     with op.batch_alter_table('company_checklists', schema=None) as batch_op:
-        batch_op.create_foreign_key(None, 'users', ['assigned_to'], ['id'], ondelete='SET NULL')
+        batch_op.create_foreign_key('fk_company_checklists_users', 'users', ['assigned_to'], ['id'], ondelete='SET NULL')
 
     with op.batch_alter_table('data_elements', schema=None) as batch_op:
         batch_op.alter_column('condition_logic',
@@ -95,7 +95,7 @@ def downgrade() -> None:
                existing_nullable=True)
 
     with op.batch_alter_table('company_checklists', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')
+        batch_op.drop_constraint('fk_company_checklists_users', type_='foreignkey')
 
     with op.batch_alter_table('companies', schema=None) as batch_op:
         batch_op.drop_column('trial_expires_at')

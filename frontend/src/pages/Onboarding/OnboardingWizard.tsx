@@ -533,7 +533,7 @@ export default function OnboardingWizard() {
                                             }
                                             return true;
                                         }).map((fw: any) => {
-                                            const isActive = companyData.active_frameworks.includes(fw.framework_id) || (fw.framework_id === 'GREEN KEY' && companyData.has_green_key);
+                                            const isActive = fw.framework_id === 'GREEN KEY' ? companyData.has_green_key : companyData.active_frameworks.includes(fw.framework_id);
                                             return (
                                                 <div key={fw.id} style={{
                                                     padding: '14px 16px',
