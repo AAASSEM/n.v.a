@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from '../../i18n';
 import { api, sitesApi } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useSiteStore } from '../../stores/siteStore';
@@ -32,6 +33,7 @@ const STEPS = [
 ];
 
 export default function OnboardingWizard() {
+    const { t, lang, n } = useTranslation();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { fetchUser, user } = useAuthStore();
@@ -161,6 +163,7 @@ export default function OnboardingWizard() {
         },
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['profilingQuestions'] });
+            await queryClient.invalidateQueries({ queryKey: ['myCompany'] });
             setStep(3);
         },
     });
@@ -224,9 +227,9 @@ export default function OnboardingWizard() {
     const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
     const errorMessage = createCompanyMutation.error
-        ? (createCompanyMutation.error as any)?.response?.data?.detail || 'Failed to create company.'
+        ? (createCompanyMutation.error as any)?.response?.data?.detail || t('onboarding.failCreateCompany', 'Failed to create company.')
         : submitAnswersMutation.error
-            ? (submitAnswersMutation.error as any)?.response?.data?.detail || 'Failed to submit profiling.'
+            ? (submitAnswersMutation.error as any)?.response?.data?.detail || t('onboarding.failSubmitProfiling', 'Failed to submit profiling.')
             : null;
 
     return (
@@ -234,7 +237,7 @@ export default function OnboardingWizard() {
             <div className="onboarding-container animate-fade-in">
                 {/* Sidebar */}
                 <div className="onboarding-sidebar">
-                    <div className="onboarding-sidebar-title">Onboarding Setup</div>
+                    <div className="onboarding-sidebar-title">{t('onboarding.sidebarTitle')}</div>
 
                     {currentSite && user?.profile?.company_id && (
                         <div style={{ 
@@ -248,12 +251,12 @@ export default function OnboardingWizard() {
                             lineHeight: 1.5
                         }}>
                             <div style={{ color: 'var(--text-primary)', marginBottom: 4 }}>
-                                Onboarding for site:<br/>
+                                {t('onboarding.sidebarSiteOnboarding')}<br/>
                                 <strong style={{ color: '#818cf8', fontSize: 13 }}>{currentSite.name}</strong>
                             </div>
                             {sites.length > 1 && user?.profile?.site_id == null && (
                                 <div style={{ opacity: 0.8, marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(99,102,241,0.15)' }}>
-                                    Switch sites from the top bar to onboard another location.
+                                    {t('onboarding.sidebarSwitchSiteHint')}
                                 </div>
                             )}
                         </div>
@@ -270,9 +273,9 @@ export default function OnboardingWizard() {
                             </div>
                             <div className="onboarding-step-info">
                                 <div className="onboarding-step-name" style={{ color: step === s.num ? 'var(--accent-green)' : 'var(--text-primary)' }}>
-                                    {s.label}
+                                    {t(`onboarding.step${s.num}Label` as any, s.label)}
                                 </div>
-                                <div className="onboarding-step-sub">{s.sub}</div>
+                                <div className="onboarding-step-sub">{t(`onboarding.step${s.num}Sub` as any, s.sub)}</div>
                             </div>
                         </div>
                     ))}
@@ -281,8 +284,8 @@ export default function OnboardingWizard() {
                     {step === 3 && (
                         <div className="onboarding-progress-bar">
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Progress</span>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-green)' }}>{progress}%</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('onboarding.progress')}</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent-green)' }}>{n(progress)}%</span>
                             </div>
                             <div className="progress-bar-track">
                                 <div className="progress-bar-fill green" style={{ width: `${progress}%` }} />
@@ -311,8 +314,8 @@ export default function OnboardingWizard() {
                     {/* STEP 1: Company Info */}
                     {step === 1 && (
                         <form onSubmit={handleStep1Submit} className="animate-fade-in">
-                             <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>Business Information</h2>
-                             <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 28 }}>Tell us about your company and site</p>
+                             <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>{t('onboarding.step1Title')}</h2>
+                             <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('onboarding.step1Subtitle')}</p>
 
  
                              {/* Company & Site Info Section */}
@@ -325,17 +328,17 @@ export default function OnboardingWizard() {
                              }}>
                                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 8 }}>
                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 3v18" /><path d="M3 9h6" /><path d="M3 15h6" /></svg>
-                                     Company & Site Information
+                                     {t('onboarding.step1Header')}
                                  </div>
                                  <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                                      <div>
-                                         <label className="form-label">Company Name</label>
+                                         <label className="form-label">{t('onboarding.companyName')}</label>
                                          <input required type="text" className="form-input" placeholder="e.g. Acme Corp" disabled={!!companyId} style={{ opacity: companyId ? 0.7 : 1 }}
                                              value={companyData.name} onChange={e => setCompanyData({ ...companyData, name: e.target.value })} />
                                      </div>
                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                          <div>
-                                             <label className="form-label">Site Location (Emirate)</label>
+                                             <label className="form-label">{t('onboarding.siteLocation')}</label>
                                              <div
                                                  className="dropdown-trigger"
                                                  style={{ width: '100%', cursor: 'pointer' }}
@@ -344,14 +347,14 @@ export default function OnboardingWizard() {
                                                  <span style={{ color: 'var(--text-muted)', marginRight: 10, display: 'flex', alignItems: 'center' }}>
                                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
                                                  </span>
-                                                 <span style={{ flex: 1 }}>{companyData.emirate}</span>
+                                                 <span style={{ flex: 1 }}>{t('emirates.' + companyData.emirate.toLowerCase().replace(/\s+/g, ''), companyData.emirate)}</span>
                                                  <svg className="dropdown-chevron" viewBox="0 0 20 20" fill="currentColor">
                                                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                                  </svg>
                                              </div>
                                          </div>
                                          <div>
-                                             <label className="form-label">Site Sector</label>
+                                             <label className="form-label">{t('onboarding.siteSector')}</label>
                                              <div
                                                  className="dropdown-trigger"
                                                  style={{ width: '100%', cursor: 'pointer' }}
@@ -368,7 +371,7 @@ export default function OnboardingWizard() {
                                                                  companyData.sector.toLowerCase() === 'technology' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg> :
                                                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>}
                                                  </span>
-                                                 <span style={{ flex: 1 }}>{companyData.sector}</span>
+                                                 <span style={{ flex: 1 }}>{t('sectors.' + companyData.sector.toLowerCase().replace(/\s+/g, ''), companyData.sector)}</span>
                                                  <svg className="dropdown-chevron" viewBox="0 0 20 20" fill="currentColor">
                                                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                                  </svg>
@@ -377,12 +380,12 @@ export default function OnboardingWizard() {
                                      </div>
                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                          <div>
-                                             <label className="form-label">Registration Number</label>
+                                             <label className="form-label">{t('onboarding.registrationNumber')}</label>
                                              <input type="text" className="form-input" disabled={!!companyId} style={{ opacity: companyId ? 0.7 : 1 }}
                                                  value={companyData.registration_number} onChange={e => setCompanyData({ ...companyData, registration_number: e.target.value })} />
                                          </div>
                                          <div>
-                                             <label className="form-label">Trade License Number</label>
+                                             <label className="form-label">{t('onboarding.tradeLicenseNumber')}</label>
                                              <input type="text" className="form-input" disabled={!!companyId} style={{ opacity: companyId ? 0.7 : 1 }}
                                                  value={companyData.trade_license_number} onChange={e => setCompanyData({ ...companyData, trade_license_number: e.target.value })} />
                                          </div>
@@ -466,7 +469,7 @@ export default function OnboardingWizard() {
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                 <button type="submit" className="btn btn-primary btn-lg">
-                                    Continue to Frameworks →
+                                    {t('onboarding.continueToFrameworks')}
                                 </button>
                             </div>
                         </form>
@@ -475,14 +478,14 @@ export default function OnboardingWizard() {
                     {/* STEP 2: Frameworks */}
                     {step === 2 && (
                         <form onSubmit={handleStep2Submit} className="animate-fade-in">
-                            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>ESG Frameworks</h2>
-                            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 28 }}>Select the frameworks applicable to your organization</p>
+                            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>{t('onboarding.step2Title')}</h2>
+                            <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 28 }}>{t('onboarding.step2Subtitle')}</p>
 
                             {/* Mandatory */}
                             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 20 }}>
                                 <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                                    Mandatory Frameworks
+                                    {t('onboarding.mandatoryHeader')}
                                 </div>
                                 <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {loadingFrameworks ? (
@@ -508,7 +511,7 @@ export default function OnboardingWizard() {
                                                 <div>
                                                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{fw.name} ({fw.framework_id})</div>
                                                     <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 4, marginBottom: 8 }}>{fw.description}</div>
-                                                    <span className="badge badge-blue" style={{ fontSize: 11 }}>✓ Auto-assigned</span>
+                                                    <span className="badge badge-blue" style={{ fontSize: 11 }}>{t('onboarding.autoAssigned')}</span>
                                                 </div>
                                             </div>
                                         ))
@@ -520,7 +523,7 @@ export default function OnboardingWizard() {
                             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 24 }}>
                                 <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                                    Voluntary Frameworks
+                                    {t('onboarding.voluntaryHeader')}
                                 </div>
                                 <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {loadingFrameworks ? (
@@ -533,7 +536,7 @@ export default function OnboardingWizard() {
                                             }
                                             return true;
                                         }).map((fw: any) => {
-                                            const isActive = fw.framework_id === 'GREEN KEY' ? companyData.has_green_key : companyData.active_frameworks.includes(fw.framework_id);
+                                            const isActive = fw.framework_id.toUpperCase() === 'GREEN KEY' ? companyData.has_green_key : companyData.active_frameworks.includes(fw.framework_id);
                                             return (
                                                 <div key={fw.id} style={{
                                                     padding: '14px 16px',
@@ -556,7 +559,7 @@ export default function OnboardingWizard() {
                                                             </div>
                                                             <label className="toggle" style={{ marginLeft: 16, flexShrink: 0 }}>
                                                                 <input type="checkbox" checked={isActive} onChange={() => {
-                                                                    if (fw.framework_id === 'GREEN KEY') {
+                                                                    if (fw.framework_id.toUpperCase() === 'GREEN KEY') {
                                                                         setCompanyData(prev => ({ ...prev, has_green_key: !prev.has_green_key }));
                                                                     } else {
                                                                         setCompanyData(prev => ({
@@ -579,10 +582,10 @@ export default function OnboardingWizard() {
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(1)}>← Back</button>
+                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(1)}>{lang === 'ar' ? `${t('data.back')} →` : `← ${t('data.back')}`}</button>
                                 <button type="submit" className="btn btn-primary btn-lg"
                                     disabled={createCompanyMutation.isPending || updateCompanyMutation.isPending}>
-                                    {createCompanyMutation.isPending || updateCompanyMutation.isPending ? 'Saving...' : 'Save & Continue →'}
+                                    {createCompanyMutation.isPending || updateCompanyMutation.isPending ? t('data.saving') : t('onboarding.saveAndContinue')}
                                 </button>
                             </div>
                         </form>
@@ -592,11 +595,11 @@ export default function OnboardingWizard() {
                     {step === 3 && (
                         <form onSubmit={handleAnswersSubmit} className="animate-fade-in">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>ESG Assessment</h2>
-                                <span className="badge badge-green">{progress}% Complete</span>
+                                <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>{t('onboarding.step3Title')}</h2>
+                                <span className="badge badge-green">{t('onboarding.percentComplete').replace('{{progress}}', n(progress))}</span>
                             </div>
                             <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 24 }}>
-                                Answer the following questions to activate the right data elements.
+                                {t('onboarding.step3Subtitle')}
                             </p>
 
                             {/* Progress Bar */}
@@ -605,7 +608,7 @@ export default function OnboardingWizard() {
                                     <div className="progress-bar-fill green" style={{ width: `${progress}%` }} />
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{answeredCount}/{totalQuestions} answered</span>
+                                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{t('onboarding.questionsAnswered').replace('{{answered}}', n(answeredCount)).replace('{{total}}', n(totalQuestions))}</span>
                                 </div>
                             </div>
 
@@ -613,11 +616,11 @@ export default function OnboardingWizard() {
                             <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
                                 <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }}
                                     onClick={() => { const a: Record<number, boolean> = {}; questions?.forEach(q => a[q.id] = false); setAnswers(a); }}>
-                                    Answer All No
+                                    {t('onboarding.answerAllNo')}
                                 </button>
                                 <button type="button" className="btn btn-secondary btn-sm" style={{ flex: 1 }}
                                     onClick={() => { const a: Record<number, boolean> = {}; questions?.forEach(q => a[q.id] = true); setAnswers(a); }}>
-                                    Answer All Yes
+                                    {t('onboarding.answerAllYes')}
                                 </button>
                             </div>
 
@@ -635,7 +638,7 @@ export default function OnboardingWizard() {
                                             <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 4 }}>
                                                 {idx + 1}. {q.question_text}
                                             </p>
-                                            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>Activates specific data elements in your checklist.</p>
+                                            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>{t('onboarding.activatesDataElements')}</p>
                                             <div style={{ display: 'flex', gap: 10 }}>
                                                 <label style={{
                                                     flex: 1,
@@ -654,7 +657,7 @@ export default function OnboardingWizard() {
                                                 }}>
                                                     <input type="radio" name={`q_${q.id}`} style={{ display: 'none' }}
                                                         checked={answers[q.id] === false} onChange={() => setAnswers({ ...answers, [q.id]: false })} />
-                                                    NO
+                                                    {t('onboarding.no')}
                                                 </label>
                                                 <label style={{
                                                     flex: 1,
@@ -673,7 +676,7 @@ export default function OnboardingWizard() {
                                                 }}>
                                                     <input type="radio" name={`q_${q.id}`} style={{ display: 'none' }}
                                                         checked={answers[q.id] === true} onChange={() => setAnswers({ ...answers, [q.id]: true })} />
-                                                    YES
+                                                    {t('onboarding.yes')}
                                                 </label>
                                             </div>
                                         </div>
@@ -682,14 +685,14 @@ export default function OnboardingWizard() {
                             )}
 
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(2)}>← Back</button>
+                                <button type="button" className="btn btn-ghost btn-lg" onClick={() => setStep(2)}>{lang === 'ar' ? `${t('data.back')} →` : `← ${t('data.back')}`}</button>
                                 <button type="submit" className="btn btn-primary btn-lg"
                                     disabled={submitAnswersMutation.isPending || answeredCount < totalQuestions}>
                                     {submitAnswersMutation.isPending
-                                        ? 'Generating...'
+                                        ? t('onboarding.generating')
                                         : (myAnswers && myAnswers.length > 0)
-                                            ? 'Update & View Checklist →'
-                                            : 'Generate Checklist →'}
+                                            ? t('onboarding.updateChecklist')
+                                            : t('onboarding.generateChecklist')}
                                 </button>
                             </div>
                         </form>
@@ -703,18 +706,18 @@ export default function OnboardingWizard() {
                     <div className="modal animate-scale-in" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <span className="modal-title">
-                                {activeModal === 'emirate' ? 'Select Emirate' : 'Select Primary Sector'}
+                                {activeModal === 'emirate' ? t('onboarding.selectEmirate') : t('onboarding.selectSector')}
                             </span>
                             <button className="modal-close" onClick={() => setActiveModal(null)}>✕</button>
                         </div>
                         <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                             {activeModal === 'sector' && showCustomInput ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <label className="form-label" style={{ marginBottom: 4 }}>Specify Sector / Industry</label>
+                                    <label className="form-label" style={{ marginBottom: 4 }}>{t('onboarding.specifySector')}</label>
                                     <input 
                                         type="text" 
                                         className="form-input" 
-                                        placeholder="e.g. Healthcare, Education, Retail..."
+                                        placeholder={t('onboarding.customSectorPlaceholder')}
                                         value={customSector}
                                         onChange={e => setCustomSector(e.target.value)}
                                         autoFocus
@@ -727,7 +730,7 @@ export default function OnboardingWizard() {
                                             style={{ flex: 1 }}
                                             onClick={() => setShowCustomInput(false)}
                                         >
-                                            Back
+                                            {t('data.back')}
                                         </button>
                                         <button 
                                             type="button" 
@@ -741,7 +744,7 @@ export default function OnboardingWizard() {
                                                 setActiveModal(null);
                                             }}
                                         >
-                                            Confirm
+                                            {t('confirm.confirm')}
                                         </button>
                                     </div>
                                 </div>
@@ -791,9 +794,13 @@ export default function OnboardingWizard() {
                                             >
                                                 <div style={{ color: isSelected ? 'var(--accent-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>{icon}</div>
                                                 <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 700, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)', fontSize: 15 }}>{opt}</div>
+                                                    <div style={{ fontWeight: 700, color: isSelected ? 'var(--accent-green)' : 'var(--text-primary)', fontSize: 15 }}>
+                                                        {activeModal === 'emirate' 
+                                                            ? t('emirates.' + opt.toLowerCase().replace(/\s+/g, ''), opt) 
+                                                            : t('sectors.' + opt.toLowerCase().replace(/\s+/g, ''), opt)}
+                                                    </div>
                                                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                                        {activeModal === 'emirate' ? `Region in UAE` : `Business Sector`}
+                                                        {activeModal === 'emirate' ? t('onboarding.regionInUae') : t('onboarding.businessSector')}
                                                     </div>
                                                 </div>
                                                 {isSelected && (

@@ -7,6 +7,7 @@ import ConfirmModal from '../../components/ui/ConfirmModal';
 import { sitesApi } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import { useSiteStore } from '../../stores/siteStore';
+import { useTranslation } from '../../i18n';
 import type { Site } from '../../types/site';
 
 function isCompanyAdmin(role?: string) {
@@ -16,6 +17,7 @@ function isCompanyAdmin(role?: string) {
 const EMIRATE_OPTIONS = ['Dubai', 'AbuDhabi', 'Sharjah', 'Ajman', 'UmmAlQuwain', 'RasAlKhaimah', 'Fujairah'];
 
 export default function SiteManagementView() {
+    const { t, n } = useTranslation();
     const queryClient = useQueryClient();
     const user = useAuthStore((s) => s.user);
     const setSites = useSiteStore((s) => s.setSites);
@@ -103,8 +105,8 @@ export default function SiteManagementView() {
             <AppLayout>
                 <AccessDenied
                     showLayout
-                    title="Admin access only"
-                    message="Only company admins can manage sites. Your site manager can adjust site-level settings via the standard pages."
+                    title={t('sites.adminAccessOnly')}
+                    message={t('sites.adminAccessOnlyMsg')}
                 />
             </AppLayout>
         );
@@ -175,9 +177,9 @@ export default function SiteManagementView() {
                 {/* Header */}
                 <div className="page-header">
                     <div>
-                        <h1 className="page-title">Site Management</h1>
+                        <h1 className="page-title">{t('sites.title')}</h1>
                         <p className="page-subtitle">
-                            Each site is a fully independent environment with its own onboarding, meters, users, and submissions.
+                            {t('sites.subtitle')}
                         </p>
                     </div>
                     <button className="btn btn-primary" onClick={openCreate}>
@@ -185,7 +187,7 @@ export default function SiteManagementView() {
                             <line x1="12" y1="5" x2="12" y2="19" />
                             <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
-                        Add Site
+                        {t('sites.addSite')}
                     </button>
                 </div>
 
@@ -193,7 +195,7 @@ export default function SiteManagementView() {
                 <div className="stat-card-grid stat-card-grid-3" style={{ marginBottom: 24 }}>
                     <div className="stat-card blue">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Total Sites</span>
+                            <span className="stat-card-label">{t('sites.totalSites')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
@@ -201,22 +203,22 @@ export default function SiteManagementView() {
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{counts.all}</div>
+                        <div className="stat-card-value">{n(counts.all)}</div>
                     </div>
                     <div className="stat-card green">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Active</span>
+                            <span className="stat-card-label">{t('sites.active')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="20 6 9 17 4 12" />
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{counts.active}</div>
+                        <div className="stat-card-value">{n(counts.active)}</div>
                     </div>
                     <div className="stat-card amber">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Inactive</span>
+                            <span className="stat-card-label">{t('sites.inactive')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="12" cy="12" r="10" />
@@ -224,7 +226,7 @@ export default function SiteManagementView() {
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{counts.inactive}</div>
+                        <div className="stat-card-value">{n(counts.inactive)}</div>
                     </div>
                 </div>
 
@@ -255,19 +257,19 @@ export default function SiteManagementView() {
                                 className={`status-chip ${statusFilter === 'all' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('all')}
                             >
-                                All Sites <span className="s-count">{counts.all}</span>
+                                {t('sites.allSites')} <span className="s-count">{n(counts.all)}</span>
                             </button>
                             <button
                                 className={`status-chip green ${statusFilter === 'active' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('active')}
                             >
-                                <div className="dot green" /> Active <span className="s-count">{counts.active}</span>
+                                <div className="dot green" /> {t('sites.active')} <span className="s-count">{n(counts.active)}</span>
                             </button>
                             <button
                                 className={`status-chip gray ${statusFilter === 'inactive' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('inactive')}
                             >
-                                <div className="dot red" /> Inactive <span className="s-count">{counts.inactive}</span>
+                                <div className="dot red" /> {t('sites.inactive')} <span className="s-count">{n(counts.inactive)}</span>
                             </button>
                         </div>
 
@@ -277,7 +279,7 @@ export default function SiteManagementView() {
                             </svg>
                             <input
                                 type="text"
-                                placeholder="Find site..."
+                                placeholder={t('sites.findSite')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -290,10 +292,10 @@ export default function SiteManagementView() {
                     <table className="dark-table">
                         <thead>
                             <tr>
-                                <th>Site</th>
-                                <th>Location</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th>{t('sites.siteTableHead')}</th>
+                                <th>{t('sites.locationTableHead')}</th>
+                                <th>{t('sites.statusTableHead')}</th>
+                                <th>{t('sites.actionsTableHead')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -313,7 +315,7 @@ export default function SiteManagementView() {
                                                     <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         {s.name}
                                                         {isCurrent && (
-                                                            <span className="badge badge-gray" style={{ fontSize: 10 }}>Current</span>
+                                                            <span className="badge badge-gray" style={{ fontSize: 10 }}>{t('sites.currentBadge')}</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -321,14 +323,12 @@ export default function SiteManagementView() {
                                         </td>
                                         <td>
                                             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                                {s.location === 'AbuDhabi' ? 'Abu Dhabi' : 
-                                                 s.location === 'UmmAlQuwain' ? 'Umm Al Quwain' : 
-                                                 s.location === 'RasAlKhaimah' ? 'Ras Al Khaimah' : (s.location || '—')}
+                                                {s.location ? t(`emirates.${s.location.replace(/\s+/g, '').toLowerCase()}` as any, s.location) : '—'}
                                             </span>
                                         </td>
                                         <td>
                                             <span className={`badge ${s.is_active ? 'badge-green' : 'badge-gray'}`}>
-                                                {s.is_active ? 'Active' : 'Inactive'}
+                                                {s.is_active ? t('sites.active') : t('sites.inactive')}
                                             </span>
                                         </td>
                                         <td>
@@ -341,7 +341,7 @@ export default function SiteManagementView() {
                                                         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                                                         <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                     </svg>
-                                                    Edit
+                                                    {t('sites.edit')}
                                                 </button>
                                                 {s.is_active ? (
                                                     <button
@@ -352,7 +352,7 @@ export default function SiteManagementView() {
                                                             <circle cx="12" cy="12" r="10" />
                                                             <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
                                                         </svg>
-                                                        Deactivate
+                                                        {t('sites.deactivate')}
                                                     </button>
                                                 ) : (
                                                     <button
@@ -362,7 +362,7 @@ export default function SiteManagementView() {
                                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                             <polyline points="20 6 9 17 4 12" />
                                                         </svg>
-                                                        Reactivate
+                                                        {t('sites.reactivate')}
                                                     </button>
                                                 )}
                                             </div>
@@ -374,7 +374,7 @@ export default function SiteManagementView() {
                     </table>
                     {!filteredSites.length && (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-                            {sites.length ? 'No sites match your filters.' : 'No sites yet. Click “Add Site” to create your first location.'}
+                            {sites.length ? t('sites.noSitesMatch') : t('sites.noSitesYet')}
                         </div>
                     )}
                 </div>
@@ -385,7 +385,7 @@ export default function SiteManagementView() {
                 <div className="modal-backdrop" onClick={() => { setCreateOpen(false); setEditing(null); }}>
                     <div className="modal modal-sm animate-scale-in" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <span className="modal-title">{editing ? 'Edit Site' : 'Add Site'}</span>
+                            <span className="modal-title">{editing ? t('sites.editSiteTitle') : t('sites.addSiteTitle')}</span>
                             <button className="modal-close" onClick={() => { setCreateOpen(false); setEditing(null); }}>✕</button>
                         </div>
                         <form onSubmit={submit}>
@@ -396,19 +396,19 @@ export default function SiteManagementView() {
                                     </div>
                                 )}
                                 <div style={{ marginBottom: 16 }}>
-                                    <label className="form-label">Site Name</label>
+                                    <label className="form-label">{t('sites.siteNameLabel')}</label>
                                     <input
                                         required
                                         autoFocus
                                         type="text"
                                         className="form-input"
-                                        placeholder="e.g. Dubai Marina Resort"
+                                        placeholder={t('sites.siteNamePlaceholder')}
                                         value={formName}
                                         onChange={(e) => setFormName(e.target.value)}
                                     />
                                 </div>
                                 <div>
-                                    <label className="form-label">Location / Emirate</label>
+                                    <label className="form-label">{t('sites.locationLabel')}</label>
                                     <select
                                         className="form-input"
                                         value={formLocation}
@@ -426,20 +426,18 @@ export default function SiteManagementView() {
                                     >
                                         {EMIRATE_OPTIONS.map(opt => (
                                             <option key={opt} value={opt} style={{ background: '#1c1e30', color: '#fff' }}>
-                                                {opt === 'AbuDhabi' ? 'Abu Dhabi' : 
-                                                 opt === 'UmmAlQuwain' ? 'Umm Al Quwain' : 
-                                                 opt === 'RasAlKhaimah' ? 'Ras Al Khaimah' : opt}
+                                                {t(`emirates.${opt.toLowerCase()}` as any, opt)}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn btn-ghost" onClick={() => { setCreateOpen(false); setEditing(null); }}>Cancel</button>
+                                <button type="button" className="btn btn-ghost" onClick={() => { setCreateOpen(false); setEditing(null); }}>{t('sites.cancel')}</button>
                                 <button type="submit" className="btn btn-primary" disabled={createMut.isPending || updateMut.isPending}>
                                     {editing
-                                        ? (updateMut.isPending ? 'Saving...' : 'Save Changes')
-                                        : (createMut.isPending ? 'Creating...' : 'Create Site')}
+                                        ? (updateMut.isPending ? t('sites.saving') : t('sites.saveChanges'))
+                                        : (createMut.isPending ? t('sites.creating') : t('sites.createSite'))}
                                 </button>
                             </div>
                         </form>
@@ -451,9 +449,10 @@ export default function SiteManagementView() {
             <ConfirmModal
                 isOpen={!!deactivateTarget}
                 type="danger"
-                title="Deactivate site?"
-                message={`"${deactivateTarget?.name}" will be hidden from the site switcher and new data entry will be blocked. Existing data is preserved and the site can be reactivated at any time.`}
-                confirmLabel="Deactivate"
+                title={t('sites.deactivateTitle')}
+                message={t('sites.deactivateConfirmMsg').replace('{{name}}', deactivateTarget?.name || '')}
+                confirmLabel={t('sites.deactivate')}
+                cancelLabel={t('sites.cancel')}
                 danger
                 onCancel={() => setDeactivateTarget(null)}
                 onConfirm={() => deactivateTarget && deactivateMut.mutate(deactivateTarget.id)}

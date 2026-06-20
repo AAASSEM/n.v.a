@@ -1,10 +1,11 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../../services/api';
 import { useSiteStore } from '../../../stores/siteStore';
+import { useTranslation } from '../../../i18n';
 
 export const CompletenessTracker = ({ framework }: { framework: string | null }) => {
+    const { t, lang, n } = useTranslation();
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const navigate = useNavigate();
 
@@ -32,6 +33,23 @@ export const CompletenessTracker = ({ framework }: { framework: string | null })
     const sPct = total_elements > 0 ? (by_pillar.S.submitted / total_elements) * 100 : 0;
     const gPct = total_elements > 0 ? (by_pillar.G.submitted / total_elements) * 100 : 0;
 
+    const isRtl = lang === 'ar';
+
+    const translatePeriod = (periodStr: string) => {
+        if (!periodStr) return '';
+        const parts = periodStr.split(' ');
+        if (parts.length === 2) {
+            const [monthName, year] = parts;
+            const monthLower = monthName.toLowerCase().slice(0, 3);
+            const monthKey = `months.short.${monthLower}`;
+            const translatedMonth = t(monthKey);
+            if (translatedMonth !== monthKey) {
+                return `${translatedMonth} ${n(year)}`;
+            }
+        }
+        return n(periodStr);
+    };
+
     return (
         <div style={{
             background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
@@ -40,10 +58,10 @@ export const CompletenessTracker = ({ framework }: { framework: string | null })
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {period} Reporting Progress
+                    {translatePeriod(period)} {t('dash.reportingProgress')}
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#f0f2ff' }}>
-                    {submitted}/{total_elements} ({pct}%)
+                    {n(submitted)}/{n(total_elements)} ({n(pct)}%)
                 </span>
             </div>
             
@@ -56,17 +74,17 @@ export const CompletenessTracker = ({ framework }: { framework: string | null })
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
                 <div style={{ display: 'flex', gap: 20 }}>
-                    <div style={{ color: '#10b981', fontWeight: 600 }}>E: {by_pillar.E.submitted}/{by_pillar.E.total} {by_pillar.E.submitted === by_pillar.E.total && by_pillar.E.total > 0 ? '✓' : '⚠'}</div>
-                    <div style={{ color: '#6366f1', fontWeight: 600 }}>S: {by_pillar.S.submitted}/{by_pillar.S.total} {by_pillar.S.submitted === by_pillar.S.total && by_pillar.S.total > 0 ? '✓' : '⚠'}</div>
-                    <div style={{ color: '#f59e0b', fontWeight: 600 }}>G: {by_pillar.G.submitted}/{by_pillar.G.total} {by_pillar.G.submitted === by_pillar.G.total && by_pillar.G.total > 0 ? '✓' : '⚠'}</div>
+                    <div style={{ color: '#10b981', fontWeight: 600 }}>E: {n(by_pillar.E.submitted)}/{n(by_pillar.E.total)} {by_pillar.E.submitted === by_pillar.E.total && by_pillar.E.total > 0 ? '✓' : '⚠'}</div>
+                    <div style={{ color: '#6366f1', fontWeight: 600 }}>S: {n(by_pillar.S.submitted)}/{n(by_pillar.S.total)} {by_pillar.S.submitted === by_pillar.S.total && by_pillar.S.total > 0 ? '✓' : '⚠'}</div>
+                    <div style={{ color: '#f59e0b', fontWeight: 600 }}>G: {n(by_pillar.G.submitted)}/{n(by_pillar.G.total)} {by_pillar.G.submitted === by_pillar.G.total && by_pillar.G.total > 0 ? '✓' : '⚠'}</div>
                 </div>
                 {pct < 100 && (
                     <button 
                         onClick={() => navigate('/checklist')}
                         style={{ background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
                     >
-                        Go to Data Entry 
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        {t('dash.goToDataEntry')}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isRtl ? 'rotate(180deg)' : 'none' }}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                     </button>
                 )}
             </div>

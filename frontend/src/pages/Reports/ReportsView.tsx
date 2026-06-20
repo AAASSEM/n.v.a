@@ -7,8 +7,10 @@ import { useAuthStore } from '../../stores/authStore';
 import { useSiteStore } from '../../stores/siteStore';
 import { canPerformAction } from '../../config/rbac';
 import AccessDenied from '../../components/ui/AccessDenied';
+import { useTranslation } from '../../i18n';
 
 export default function ReportsView() {
+    const { t, lang, n } = useTranslation();
     const { user } = useAuthStore();
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const currentYear = new Date().getFullYear();
@@ -71,9 +73,9 @@ export default function ReportsView() {
         onSuccess: (data) => {
             setAlertModal({
                 isOpen: true,
-                title: 'Report Generated',
-                message: `Success! "${data.name}" has been added to your company archive.`,
-                confirmLabel: 'Great',
+                title: t('reports.successTitle'),
+                message: t('reports.successMsg').replace('{{name}}', data.name),
+                confirmLabel: t('reports.great'),
                 type: 'success'
             });
             setIsGenerating(false);
@@ -83,9 +85,9 @@ export default function ReportsView() {
         onError: (err: any) => {
             setAlertModal({
                 isOpen: true,
-                title: 'Generation Failed',
-                message: err.response?.data?.detail?.msg || "We encountered an unexpected error while generating your report.",
-                confirmLabel: 'Try Again',
+                title: t('reports.failTitle'),
+                message: err.response?.data?.detail?.msg || t('reports.failMsg'),
+                confirmLabel: t('reports.tryAgain'),
                 type: 'error'
             });
             setIsGenerating(false);
@@ -136,9 +138,9 @@ export default function ReportsView() {
             console.error('Download error:', err);
             setAlertModal({
                 isOpen: true,
-                title: 'Download Failed',
-                message: `Failed to download report: ${err.message || 'Please try again.'}`,
-                confirmLabel: 'Close',
+                title: t('reports.downloadFailed'),
+                message: t('reports.downloadFailedMsg'),
+                confirmLabel: t('users.close'),
                 type: 'error'
             });
         }
@@ -161,17 +163,17 @@ export default function ReportsView() {
 
     const displayStats = [
         { 
-            label: 'Data Completion', 
-            value: loadingStatus ? '...' : `${completionStatus?.completion_percentage || 0}%`, 
+            label: t('reports.dataCompletion'), 
+            value: loadingStatus ? '...' : `${n(completionStatus?.completion_percentage || 0)}%`, 
             color: (completionStatus?.completion_percentage || 0) > 90 ? 'green' : 'amber', 
-            sub: `${completionStatus?.total_filled || 0}/${completionStatus?.total_expected || 0} items filled` 
+            sub: `${n(completionStatus?.total_filled || 0)}/${n(completionStatus?.total_expected || 0)} ${t('reports.itemsFilled')}` 
         },
-        { label: 'Generated Reports', value: String(reportsList?.length || 0), color: 'blue', sub: 'total documents' },
+        { label: t('reports.generated'), value: n(reportsList?.length || 0), color: 'blue', sub: t('reports.totalDocuments') },
         { 
-            label: 'Pending Tasks', 
-            value: loadingStatus ? '...' : String(completionStatus?.missing_count || 0), 
+            label: t('reports.pendingTasks'), 
+            value: loadingStatus ? '...' : n(completionStatus?.missing_count || 0), 
             color: (completionStatus?.missing_count || 0) > 0 ? 'rose' : 'gray', 
-            sub: 'submissions required' 
+            sub: t('reports.submissionsRequired') 
         },
     ];
 
@@ -182,8 +184,8 @@ export default function ReportsView() {
             <div className="animate-fade-in">
                 <div className="page-header">
                     <div>
-                        <h1 className="page-title">Reports & Disclosures</h1>
-                        <p className="page-subtitle">Generate and download official {selectedFramework.toUpperCase()} performance documents for {selectedPeriod}.</p>
+                        <h1 className="page-title">{t('reports.title')}</h1>
+                        <p className="page-subtitle">{t('reports.subtitle')} - {selectedFramework.toUpperCase()} ({selectedPeriod}).</p>
                     </div>
                     {canCreate && (
                         <div style={{ display: 'flex', gap: 12 }}>
@@ -200,8 +202,8 @@ export default function ReportsView() {
                                 ))}
                             </div>
                             <div className="status-chip-group" style={{ background: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 10 }}>
-                                <button className={`status-chip ${selectedFormat === 'PDF' ? 'active' : ''}`} onClick={() => setSelectedFormat('PDF')} style={{ fontSize: 11, padding: '4px 12px' }}>PDF</button>
-                                <button className={`status-chip ${selectedFormat === 'XLSX' ? 'active' : ''}`} onClick={() => setSelectedFormat('XLSX')} style={{ fontSize: 11, padding: '4px 12px' }}>Excel</button>
+                                <button className={`status-chip ${selectedFormat === 'PDF' ? 'active' : ''}`} onClick={() => setSelectedFormat('PDF')} style={{ fontSize: 11, padding: '4px 12px' }}>{t('reports.pdf')}</button>
+                                <button className={`status-chip ${selectedFormat === 'XLSX' ? 'active' : ''}`} onClick={() => setSelectedFormat('XLSX')} style={{ fontSize: 11, padding: '4px 12px' }}>{t('reports.excel')}</button>
                             </div>
                             <button 
                                 className={`btn btn-primary shadow-lg ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -213,7 +215,7 @@ export default function ReportsView() {
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><polyline points="9 15 12 18 15 15" />
                                     </svg>
                                 )}
-                                {isGenerating ? 'Generating...' : `Generate ${selectedFormat}`}
+                                {isGenerating ? t('reports.generating') : `${t('reports.generate')} ${selectedFormat}`}
                             </button>
                         </div>
                     )}
@@ -242,14 +244,14 @@ export default function ReportsView() {
                             {[0, 1, 2, 3, 4].map(offset => {
                                 const year = String(currentYear - offset);
                                 return (
-                                    <button key={year} className={`status-chip ${selectedPeriod === year ? 'active' : ''}`} onClick={() => setSelectedPeriod(year)}>FY {year}</button>
+                                    <button key={year} className={`status-chip ${selectedPeriod === year ? 'active' : ''}`} onClick={() => setSelectedPeriod(year)}>{t('reports.fy')} {n(year)}</button>
                                 );
                             })}
                         </div>
                         <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }} />
                         <div className="status-chip-group">
                             {['Full Year', 'H1', 'H2', 'Q1', 'Q2', 'Q3', 'Q4'].map(p => (
-                                <button key={p} className={`status-chip ${selectedSubPeriod === p ? 'active' : ''}`} onClick={() => setSelectedSubPeriod(p)}>{p}</button>
+                                <button key={p} className={`status-chip ${selectedSubPeriod === p ? 'active' : ''}`} onClick={() => setSelectedSubPeriod(p)}>{t(`reports.${p.toLowerCase().replace(' ', '')}` as any)}</button>
                             ))}
                         </div>
                     </div>
@@ -259,32 +261,34 @@ export default function ReportsView() {
                     <table className="dark-table">
                         <thead>
                             <tr>
-                                <th>Document Name</th>
-                                <th>Category</th>
-                                <th>Format</th>
-                                <th>Generated</th>
-                                <th>Size</th>
-                                <th style={{ textAlign: 'right' }}>Action</th>
+                                <th>{t('reports.docName')}</th>
+                                <th>{t('reports.category')}</th>
+                                <th>{t('reports.format')}</th>
+                                <th>{t('reports.generatedDate')}</th>
+                                <th>{t('reports.size')}</th>
+                                <th style={{ textAlign: 'end' }}>{t('reports.action')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {!loadingReports && filteredReports.map((r: any) => (
                                 <tr key={r.id}>
                                     <td>
-                                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{r.name}</div>
-                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Official Archive · FY {r.year}</div>
+                                        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>
+                                            {lang === 'ar' ? `تقرير ${r.category} ${n(r.year)}${r.name.includes(' - ') ? ' - ' + t(`reports.${r.name.split(' - ')[1].toLowerCase().replace(' ', '')}` as any) : ''}` : r.name}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t('reports.officialArchive')} · {t('reports.fy')} {n(r.year)}</div>
                                     </td>
                                     <td><span className="badge badge-gray">{r.category}</span></td>
                                     <td><span className={`badge ${r.format === 'PDF' ? 'badge-red' : 'badge-green'}`}>{r.format}</span></td>
-                                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{r.date}</td>
-                                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{r.size}</td>
-                                    <td style={{ textAlign: 'right' }}>
+                                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{n(r.date)}</td>
+                                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{n(r.size)}</td>
+                                    <td style={{ textAlign: 'end' }}>
                                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                             <button className="btn btn-secondary btn-sm" onClick={() => handleDownload(r.download_url, r.name, r.format)}>
                                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
                                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
                                                 </svg>
-                                                Download
+                                                {t('reports.download')}
                                             </button>
                                             {canDelete && (
                                                 <button 
@@ -293,9 +297,9 @@ export default function ReportsView() {
                                                     onClick={() => {
                                                         setAlertModal({
                                                             isOpen: true,
-                                                            title: 'Delete Report?',
-                                                            message: 'This action cannot be undone. The report will be permanently removed from your historical archive.',
-                                                            confirmLabel: 'Delete Permanently',
+                                                            title: t('reports.deleteTitle'),
+                                                            message: t('reports.deleteMsg'),
+                                                            confirmLabel: t('reports.deletePermanently'),
                                                             type: 'danger',
                                                             onConfirm: () => {
                                                                 deleteMutation.mutate(r.id);
@@ -316,7 +320,7 @@ export default function ReportsView() {
                             ))}
                             {!loadingReports && filteredReports.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No reports for FY {selectedPeriod} have been generated yet.</td>
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>{t('reports.noReports')} {n(selectedPeriod)}</td>
                                 </tr>
                             )}
                         </tbody>
@@ -328,20 +332,20 @@ export default function ReportsView() {
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                     </div>
                     <div>
-                        <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: 14 }}>Auditable Compliance</div>
-                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>All reports contain cryptographic signatures. Data is aligned with GRI 2024 and CSRD standards.</p>
+                        <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: 14 }}>{t('reports.auditable')}</div>
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t('reports.auditableDesc')}</p>
                     </div>
                 </div>
             </div>
 
             <ConfirmModal
                 isOpen={showMissingModal}
-                title="Partial Data Warning"
+                title={t('reports.partialWarningTitle')}
                 type="warning"
-                message={`Your reporting data for ${selectedPeriod} is only ${missingData?.completion_percentage || 0}% complete. Generating a report now will result in missing disclosures. Would you like to fix the data or proceed anyway?`}
-                confirmLabel="Fix Data"
-                secondaryConfirmLabel="Generate Partial"
-                cancelLabel="Cancel"
+                message={t('reports.partialWarningMsg').replace('{{period}}', n(selectedPeriod)).replace('{{pct}}', n(missingData?.completion_percentage || 0))}
+                confirmLabel={t('reports.fixData')}
+                secondaryConfirmLabel={t('reports.generatePartial')}
+                cancelLabel={t('settings.cancel')}
                 onConfirm={() => {
                     setShowMissingModal(false);
                     window.location.href = '/data-entry';

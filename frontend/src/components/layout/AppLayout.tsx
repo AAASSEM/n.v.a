@@ -2,17 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { canAccessPage } from '../../config/rbac';
+import { useTranslation } from '../../i18n';
 import SiteSwitcher from './SiteSwitcher';
 
 interface NavItem {
-    label: string;
+    labelKey: string;
     path: string;
     icon: React.ReactNode;
 }
 
 const NAV_ITEMS: NavItem[] = [
     {
-        label: 'Dashboard',
+        labelKey: 'nav.dashboard',
         path: '/dashboard',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -21,7 +22,7 @@ const NAV_ITEMS: NavItem[] = [
         ),
     },
     {
-        label: 'Sites',
+        labelKey: 'nav.sites',
         path: '/sites',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -32,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
     },
 
     {
-        label: 'Onboarding',
+        labelKey: 'nav.onboarding',
         path: '/onboarding',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -41,7 +42,7 @@ const NAV_ITEMS: NavItem[] = [
         ),
     },
     {
-        label: 'Checklist',
+        labelKey: 'nav.checklist',
         path: '/checklist',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -50,7 +51,7 @@ const NAV_ITEMS: NavItem[] = [
         ),
     },
     {
-        label: 'Meters',
+        labelKey: 'nav.meters',
         path: '/meters',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -59,7 +60,7 @@ const NAV_ITEMS: NavItem[] = [
         ),
     },
     {
-        label: 'Data Entry',
+        labelKey: 'nav.dataEntry',
         path: '/data-entry',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -68,7 +69,7 @@ const NAV_ITEMS: NavItem[] = [
         ),
     },
     {
-        label: 'Users',
+        labelKey: 'nav.users',
         path: '/users',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -77,7 +78,7 @@ const NAV_ITEMS: NavItem[] = [
         ),
     },
     {
-        label: 'Reports',
+        labelKey: 'nav.reports',
         path: '/reports',
         icon: (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -91,6 +92,8 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout } = useAuthStore();
+    const { t, lang, setLang } = useTranslation();
+    const isRtl = lang === 'ar';
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -119,10 +122,10 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
             {/* Navbar */}
             {!hideNav && (
                 <nav className="nav-container-floating">
-                <div className="app-navbar-inner">
+                <div className="app-navbar-inner" style={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                     {/* Logo Section */}
                     <div className="nav-logo-section">
-                        <Link className="nav-logo" to="/" style={{ cursor: 'pointer', textDecoration: 'none' }}>
+                        <Link className="nav-logo" to="/" style={{ cursor: 'pointer', textDecoration: 'none', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                             <div className="nav-logo-badge">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="12" cy="12" r="10" opacity="0.25" />
@@ -132,13 +135,13 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                                     <path d="M18.5 11c0-2-1.5-3.5-3.5-3.5S11.5 9 11.5 11s1.5 3.5 3.5 3.5s3.5-1.5 3.5-3.5Z" fill="white" stroke="none" />
                                 </svg>
                             </div>
-                            <span className="nav-logo-text" style={{ fontSize: 18, letterSpacing: '-0.5px' }}>ESG<span style={{ color: 'var(--accent-green)' }}>ravity</span></span>
+                            <span className="nav-logo-text" style={{ fontSize: 18, letterSpacing: '-0.5px' }}>{t('nav.logoText')}</span>
                         </Link>
                     </div>
 
                     {/* Nav Section (Centered Container) */}
                     <div className="nav-main-pill">
-                        <div className="nav-links">
+                        <div className="nav-links" style={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                             {filteredNavItems.map(item => (
                                 <button
                                     key={item.path}
@@ -146,16 +149,16 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                                     onClick={() => navigate(item.path)}
                                 >
                                     <div className="nav-item-icon">{item.icon}</div>
-                                    <span className="nav-item-label">{item.label}</span>
+                                    <span className="nav-item-label">{t(item.labelKey)}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
 
                     {/* User Section */}
-                    <div className="nav-user-section" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="nav-user-section" style={{ display: 'flex', alignItems: 'center', gap: 10, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                         <SiteSwitcher />
-                        <div className="nav-user-pill">
+                        <div className="nav-user-pill" style={{ flexDirection: isRtl ? 'row-reverse' : 'row', display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div className="nav-avatar">
                                 {initials}
                             </div>
@@ -168,7 +171,7 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                                     title="Menu"
                                     style={{ background: isMenuOpen ? 'rgba(99, 102, 241, 0.1)' : 'transparent', color: isMenuOpen ? 'var(--accent-green)' : 'currentColor' }}
-                                >
+                                    >
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                         <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                                     </svg>
@@ -178,7 +181,8 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                                     <div className="nav-dropdown-menu animate-fade-in" style={{
                                         position: 'absolute',
                                         top: 'calc(100% + 8px)',
-                                        right: 0,
+                                        right: isRtl ? 'auto' : 0,
+                                        left: isRtl ? 0 : 'auto',
                                         width: 180,
                                         background: 'var(--bg-elevated)',
                                         border: '1px solid var(--border-subtle)',
@@ -190,19 +194,27 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
                                         {canAccessPage(user?.profile?.role, '/settings') && (
                                             <button className="nav-dropdown-item" onClick={() => { setIsMenuOpen(false); navigate('/settings'); }}>
                                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                                                Settings
+                                                {t('nav.settings')}
                                             </button>
                                         )}
                                         {canAccessPage(user?.profile?.role, '/help') && (
                                             <button className="nav-dropdown-item" onClick={() => { setIsMenuOpen(false); navigate('/help'); }}>
                                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                                Help Center
+                                                {t('nav.helpCenter')}
                                             </button>
                                         )}
+                                        <button className="nav-dropdown-item" onClick={() => { setIsMenuOpen(false); setLang(lang === 'en' ? 'ar' : 'en'); }}>
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <line x1="2" y1="12" x2="22" y2="12"/>
+                                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                            </svg>
+                                            {lang === 'en' ? 'العربية (AR)' : 'English (EN)'}
+                                        </button>
                                         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '6px 0' }} />
                                         <button className="nav-dropdown-item logout" onClick={logout}>
                                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                                            Sign out
+                                            {t('nav.signOut')}
                                         </button>
                                     </div>
                                 )}

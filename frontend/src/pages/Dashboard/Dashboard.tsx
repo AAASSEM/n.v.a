@@ -14,6 +14,7 @@ import { CompletenessTracker } from './components/CompletenessTracker';
 import { ScoreRing } from './components/ScoreRing';
 import { AnomalyAlerts } from './components/AnomalyAlerts';
 import { PillarMetricsGrid } from './components/PillarMetricsGrid';
+import { useTranslation } from '../../i18n';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -165,15 +166,135 @@ function getStatConfig(name: string) {
     return STAT_CONFIG.default;
 }
 
-function getAllMonthsSince(startYear: number): { label: string; year: number; month: number }[] {
+function getStatName(name: string, t: (key: string) => string): string {
+    const translated = t(name);
+    if (translated !== name) return translated;
+
+    const clean = name.toLowerCase().replace(/\s+/g, '').replace(/%/g, 'pct');
+    if (clean === 'fuel' || clean === 'totalfuel') return t('dash.fuel');
+    if (clean === 'energy' || clean === 'totalenergy') return t('dash.energy');
+    if (clean === 'water' || clean === 'totalwater') return t('dash.water');
+    if (clean === 'waste' || clean === 'totalwaste') return t('dash.waste');
+    if (clean === 'scope1' || clean === 'scope1emissions') return t('dash.scope1');
+    if (clean === 'scope2' || clean === 'scope2emissions') return t('dash.scope2');
+    if (clean === 'totalghg' || clean === 'totalghgemissions') return t('dash.totalGhg');
+    if (clean === 'recyclingrate') return t('dash.recyclingRate');
+    if (clean === 'renewableenergypct') return t('dash.renewableEnergyPct');
+    return name;
+}
+
+function getStatChangeLabel(change: string, isRtl: boolean, t: (key: string) => string, n: (val: number | string) => string): string {
+    if (!change) return '';
+    if (change.endsWith('vs last month')) {
+        const pctPart = change.replace('vs last month', '').trim().replace('%', '');
+        const numVal = parseFloat(pctPart);
+        if (!isNaN(numVal)) {
+            const formattedPct = n(numVal);
+            const vsLastMonthText = t('dash.vsLastMonth');
+            if (isRtl) {
+                return `%${formattedPct} ${vsLastMonthText}`;
+            } else {
+                return `${formattedPct}% ${vsLastMonthText}`;
+            }
+        }
+    }
+    if (change === 'Direct combustion + fugitive') {
+        return t('dash.scope1Change');
+    }
+    if (change.startsWith('Grid:') && change.endsWith('location-based')) {
+        const emirateRaw = change.replace('Grid:', '').replace('location-based', '').trim().toLowerCase();
+        let emirateName = emirateRaw;
+        if (emirateRaw === 'uae') {
+            emirateName = t('emirates.uae') || 'الإمارات';
+        } else {
+            const key = `emirates.${emirateRaw.replace(/\s+/g, '')}`;
+            const translatedEmirate = t(key);
+            if (translatedEmirate && !translatedEmirate.startsWith('emirates.')) {
+                emirateName = translatedEmirate;
+            } else {
+                emirateName = emirateRaw.charAt(0).toUpperCase() + emirateRaw.slice(1);
+            }
+        }
+        return t('dash.scope2Change').replace('{{emirate}}', emirateName);
+    }
+    if (change === 'No prior data') return t('dash.noPriorData') || change;
+    if (change === 'Insufficient prior data') return t('dash.insufficientPriorData') || change;
+    if (change === 'Large variance — check data') return t('dash.largeVariance') || change;
+    if (change === 'No change') return t('dash.noChange') || change;
+    return change;
+}
+
+function getCategoryUnit(cat: string, t: (key: string) => string): string {
+    const clean = cat.toLowerCase().replace(/\s+/g, '').replace(/%/g, 'pct');
+    if (clean === 'fuel' || clean === 'totalfuel') return t('unit.l');
+    if (clean === 'energy' || clean === 'totalenergy') return t('unit.kwh');
+    if (clean === 'water' || clean === 'totalwater') return t('unit.m3');
+    if (clean === 'waste' || clean === 'totalwaste') return t('unit.kg');
+    if (clean === 'recyclingrate' || clean === 'renewableenergypct') return '%';
+    return '';
+}
+
+function translateUnitStr(u: string, t: (key: string) => string): string {
+    if (!u) return '';
+    const ul = u.toLowerCase().trim().replace(/₂/g, '2');
+    if (ul === 'tco2e' || ul === 'tco₂e') return t('unit.tco2e');
+    if (ul === 'kwh') return t('unit.kwh');
+    if (ul === 'm3' || ul === 'm³') return t('unit.m3');
+    if (ul === 'l' || ul === 'liters' || ul === 'litres') return t('unit.l');
+    if (ul === 'kg') return t('unit.kg');
+    if (ul === 'rth') return t('unit.rth');
+    if (ul === 'people') return t('unit.people');
+    if (ul === 'hours') return t('unit.hours');
+    if (ul === 'status') return t('unit.status');
+    return u;
+}
+
+function translateMonthName(monthAbbrev: string, t: (key: string) => string): string {
+    if (!monthAbbrev) return '';
+    const clean = monthAbbrev.toLowerCase().slice(0, 3);
+    const key = `months.short.${clean}`;
+    const val = t(key);
+    return val === key ? monthAbbrev : val;
+}
+
+function translateValueString(valStr: string, t: (key: string) => string, n: (val: number | string | null | undefined, options?: any) => string): string {
+    if (!valStr) return '';
+    const match = valStr.match(/^([0-9,.]+)\s*(.*)$/);
+    if (!match) return n(valStr);
+    
+    const numPartStr = match[1];
+    const unitPartRaw = match[2].trim();
+    const numVal = parseFloat(numPartStr.replace(/,/g, ''));
+    
+    const dotIdx = numPartStr.indexOf('.');
+    const fractionDigits = dotIdx === -1 ? 0 : numPartStr.length - dotIdx - 1;
+    const formattedNum = n(numVal, { 
+        minimumFractionDigits: fractionDigits, 
+        maximumFractionDigits: fractionDigits 
+    });
+    
+    let translatedUnit = translateUnitStr(unitPartRaw, t);
+    
+    if (translatedUnit === '%') {
+        return `${formattedNum}%`;
+    }
+    if (translatedUnit) {
+        return `${formattedNum} ${translatedUnit}`;
+    }
+    return formattedNum;
+}
+
+function getAllMonthsSince(startYear: number, lang?: string, n?: (val: any) => string): { label: string; year: number; month: number }[] {
     const results = [];
     const now = new Date();
+    const locale = lang === 'ar' ? 'ar-AE' : 'en-US';
     for (let y = now.getFullYear(); y >= startYear; y--) {
         const endMonth = y === now.getFullYear() ? now.getMonth() + 1 : 12;
         for (let m = endMonth; m >= 1; m--) {
             const d = new Date(y, m - 1, 1);
+            const str = d.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
             results.push({
-                label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                label: n ? n(str) : str,
                 year: y,
                 month: m,
             });
@@ -183,18 +304,25 @@ function getAllMonthsSince(startYear: number): { label: string; year: number; mo
 }
 
 
-function formatVal(value: number | null | undefined, unit: string): string {
+function formatVal(value: number | null | undefined, unit: string, t: (key: string) => string, n: (val: number | string | null | undefined, options?: any) => string): string {
     if (value === null || value === undefined) return '—';
-    if (unit === 'boolean' || BOOLEAN_CODES.has(unit)) return value === 1 ? 'Yes' : 'No';
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
-    return value % 1 === 0 ? String(value) : value.toFixed(2);
+    if (unit === 'boolean' || BOOLEAN_CODES.has(unit)) return value === 1 ? t('stat.yes') : t('stat.no');
+    if (value >= 1_000_000) return `${n((value / 1_000_000), { maximumFractionDigits: 1 })}M`;
+    if (value >= 1_000) return `${n((value / 1_000), { maximumFractionDigits: 1 })}k`;
+    return value % 1 === 0 ? n(value) : n(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function PillarTab({ pillar, active, onClick }: { pillar: Pillar; active: boolean; onClick: () => void }) {
+    const { t } = useTranslation();
     const meta = PILLAR_META[pillar];
+    const getLabel = () => {
+        if (pillar === 'E') return t('dash.env');
+        if (pillar === 'S') return t('dash.social');
+        if (pillar === 'G') return t('dash.gov');
+        return meta.label;
+    };
     return (
         <button
             onClick={onClick}
@@ -209,7 +337,7 @@ function PillarTab({ pillar, active, onClick }: { pillar: Pillar; active: boolea
             }}
         >
             {meta.icon && <span style={{ fontSize: 14 }}>{meta.icon}</span>}
-            {meta.label}
+            {getLabel()}
         </button>
     );
 }
@@ -218,6 +346,8 @@ function PillarTab({ pillar, active, onClick }: { pillar: Pillar; active: boolea
 // ─── Compare Panel ────────────────────────────────────────────────────────────
 
 function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void }) {
+    const { t, lang, n } = useTranslation();
+    const isRtl = lang === 'ar';
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const dateObj = new Date();
     const currentYYYYMM = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
@@ -235,7 +365,7 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
         if (!yyyymm) return '';
         const [y, m] = yyyymm.split('-');
         const date = new Date(Number(y), Number(m) - 1);
-        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        return n(date.toLocaleDateString(lang === 'ar' ? 'ar-AE' : 'en-US', { month: 'short', year: 'numeric' }));
     };
 
     const { data: compareData, isLoading } = useQuery<CompareData>({
@@ -257,7 +387,10 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
     // Delta bar chart data
     const barData = rows
         .filter(r => r.delta_pct !== null)
-        .map(r => ({ name: r.name.length > 20 ? r.name.slice(0, 18) + '…' : r.name, pct: r.delta_pct, good: r.is_improvement }));
+        .map(r => {
+            const rowName = getStatName(r.name, t);
+            return { name: rowName.length > 20 ? rowName.slice(0, 18) + '…' : rowName, pct: r.delta_pct, good: r.is_improvement };
+        });
 
     return (
         <div style={{
@@ -265,58 +398,58 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
             borderRadius: 20, padding: 28, marginBottom: 24, backdropFilter: 'blur(20px)',
         }}>
             {/* Header row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
                     </svg>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Month Comparison</span>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{t('dash.monthCompare')}</span>
                 </div>
                 <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
 
             {/* Month pickers */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                 <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
-                        Period A
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6, textAlign: isRtl ? 'right' : 'left' }}>
+                        {t('dash.from')}
                     </label>
                     <input
                         type="month"
                         value={monthA}
                         onChange={e => setMonthA(e.target.value)}
-                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '9px 14px', cursor: 'pointer', colorScheme: 'dark' }}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '9px 14px', cursor: 'pointer', colorScheme: 'dark', textAlign: isRtl ? 'right' : 'left' }}
                     />
                 </div>
-                <div style={{ paddingTop: 20, color: 'var(--text-muted)', fontWeight: 700, fontSize: 16 }}>vs</div>
+                <div style={{ paddingTop: 20, color: 'var(--text-muted)', fontWeight: 700, fontSize: 16 }}>{t('dash.vs')}</div>
                 <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
-                        Period B
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6, textAlign: isRtl ? 'right' : 'left' }}>
+                        {t('dash.to')}
                     </label>
                     <input
                         type="month"
                         value={monthB}
                         onChange={e => setMonthB(e.target.value)}
-                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '9px 14px', cursor: 'pointer', colorScheme: 'dark' }}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f2ff', fontSize: 14, padding: '9px 14px', cursor: 'pointer', colorScheme: 'dark', textAlign: isRtl ? 'right' : 'left' }}
                     />
                 </div>
             </div>
 
             {sameMonth && (
                 <div style={{ textAlign: 'center', padding: 20, color: '#f87171', fontSize: 14, fontWeight: 600 }}>
-                    ⚠ Select two different months to compare
+                    ⚠ {t('dash.selectDifferentMonths')}
                 </div>
             )}
 
             {isLoading && (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14, gap: 10 }}>
-                    <div className="spinner" style={{ width: 18, height: 18 }} /> Loading comparison...
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14, gap: 10, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                    <div className="spinner" style={{ width: 18, height: 18 }} /> {t('dash.comparisonLoading')}
                 </div>
             )}
 
             {!isLoading && !sameMonth && rows.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 14 }}>
-                    No data found for one or both selected months. Submit data in the Data Entry section first.
+                    {t('dash.noDataFoundForMonths')}
                 </div>
             )}
 
@@ -328,17 +461,18 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                             display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap',
                             background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '12px 18px',
                             border: '1px solid rgba(255,255,255,0.06)',
+                            flexDirection: isRtl ? 'row-reverse' : 'row',
                         }}>
                             <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                {formatMonth(monthA)} → {formatMonth(monthB)}:
+                                {formatMonth(monthA)} {isRtl ? '←' : '→'} {formatMonth(monthB)}:
                             </span>
-                            <span style={{ fontSize: 13, color: '#10b981', fontWeight: 700 }}>✅ {summary.improvements} improved</span>
-                            <span style={{ fontSize: 13, color: '#f87171', fontWeight: 700 }}>⚠️ {summary.regressions} regressed</span>
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>→ {summary.no_change} flat</span>
+                            <span style={{ fontSize: 13, color: '#10b981', fontWeight: 700 }}>✅ {n(summary.improvements)} {t('dash.improved')}</span>
+                            <span style={{ fontSize: 13, color: '#f87171', fontWeight: 700 }}>⚠️ {n(summary.regressions)} {t('dash.regressed')}</span>
+                            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>{isRtl ? '←' : '→'} {n(summary.no_change)} {t('dash.flat')}</span>
                             {ghg && (
-                                <span style={{ fontSize: 13, color: ghg.delta_tco2e < 0 ? '#10b981' : '#f87171', fontWeight: 700, marginLeft: 'auto' }}>
-                                    GHG: {ghg.month_a_tco2e.toFixed(1)} → {ghg.month_b_tco2e.toFixed(1)} tCO2e
-                                    ({ghg.delta_pct > 0 ? '+' : ''}{ghg.delta_pct.toFixed(1)}%)
+                                <span style={{ fontSize: 13, color: ghg.delta_tco2e < 0 ? '#10b981' : '#f87171', fontWeight: 700, [isRtl ? 'marginRight' : 'marginLeft']: 'auto' }}>
+                                    {t('dash.totalGhg') || 'GHG'}: {n(ghg.month_a_tco2e.toFixed(1))} {isRtl ? '←' : '→'} {n(ghg.month_b_tco2e.toFixed(1))} {t('unit.tco2e')}
+                                    ({ghg.delta_pct > 0 ? '+' : ''}{n(ghg.delta_pct.toFixed(1))}%)
                                 </span>
                             )}
                         </div>
@@ -349,9 +483,9 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                    {['Metric', formatMonth(monthA), formatMonth(monthB), 'Change', ''].map((h, i) => (
+                                    {[t('dash.metricHeader'), formatMonth(monthA), formatMonth(monthB), t('dash.changeHeader'), ''].map((h, i) => (
                                         <th key={i} style={{
-                                            textAlign: i === 0 ? 'left' : 'right', padding: '8px 12px',
+                                            textAlign: i === 0 ? (isRtl ? 'right' : 'left') : (isRtl ? 'left' : 'right'), padding: '8px 12px',
                                             fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
                                             textTransform: 'uppercase', letterSpacing: '0.06em',
                                             whiteSpace: 'nowrap',
@@ -364,24 +498,24 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                                     const showDelta = row.delta_pct !== null;
                                     const good = row.is_improvement;
                                     const deltaColor = row.direction === 'neutral' ? 'var(--text-muted)' : good ? '#10b981' : '#f87171';
-                                    const arrow = row.direction === 'up' ? '▲' : row.direction === 'down' ? '▼' : '→';
+                                    const arrow = row.direction === 'up' ? '▲' : row.direction === 'down' ? '▼' : (isRtl ? '←' : '→');
 
                                     return (
                                         <tr key={row.element_code} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                            <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                                                <div>{row.name}</div>
-                                                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, marginTop: 1 }}>{row.element_code} · {row.unit}</div>
+                                            <td style={{ padding: '10px 12px', color: 'var(--text-primary)', fontWeight: 600, textAlign: isRtl ? 'right' : 'left' }}>
+                                                <div>{getStatName(row.name, t)}</div>
+                                                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, marginTop: 1 }}>{row.element_code} · {translateUnitStr(row.unit, t)}</div>
                                             </td>
-                                            <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                                                {row.value_a !== null ? `${formatVal(row.value_a, row.unit)} ${row.unit}` : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                            <td style={{ padding: '10px 12px', textAlign: isRtl ? 'left' : 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                                                {row.value_a !== null ? `${formatVal(row.value_a, row.unit, t, n)} ${translateUnitStr(row.unit, t)}` : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                                             </td>
-                                            <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                                                {row.value_b !== null ? `${formatVal(row.value_b, row.unit)} ${row.unit}` : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                            <td style={{ padding: '10px 12px', textAlign: isRtl ? 'left' : 'right', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                                                {row.value_b !== null ? `${formatVal(row.value_b, row.unit, t, n)} ${translateUnitStr(row.unit, t)}` : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                                             </td>
-                                            <td style={{ padding: '10px 12px', textAlign: 'right', color: deltaColor, fontWeight: 700, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                                                {showDelta ? `${arrow} ${Math.abs(row.delta_pct!).toFixed(1)}%` : '—'}
+                                            <td style={{ padding: '10px 12px', textAlign: isRtl ? 'left' : 'right', color: deltaColor, fontWeight: 700, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                                                {showDelta ? `${arrow} ${n(Math.abs(row.delta_pct!).toFixed(1))}%` : '—'}
                                             </td>
-                                            <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                                            <td style={{ padding: '10px 12px', textAlign: isRtl ? 'left' : 'right' }}>
                                                 {showDelta ? (
                                                     <span style={{ fontSize: 16 }}>{good ? '✅' : '⚠️'}</span>
                                                 ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
@@ -396,8 +530,8 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                     {/* Delta bar chart */}
                     {barData.length > 0 && (
                         <div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                                % Change per Metric ({formatMonth(monthA)} → {formatMonth(monthB)})
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textAlign: isRtl ? 'right' : 'left' }}>
+                                {t('dash.pctChangePerMetric')} ({formatMonth(monthA)} {isRtl ? '←' : '→'} {formatMonth(monthB)})
                             </div>
                             <div style={{ height: Math.max(200, barData.length * 32) }}>
                                 <ResponsiveContainer width="100%" height="100%">
@@ -407,7 +541,7 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
                                         <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 11 }} width={120} />
                                         <Tooltip
                                             {...CustomTooltipStyle}
-                                            formatter={(val: number | string | undefined) => [`${Number(val) > 0 ? '+' : ''}${Number(val).toFixed(1)}%`, 'Change']}
+                                            formatter={(val: number | string | undefined) => [`${Number(val) > 0 ? '+' : ''}${Number(val).toFixed(1)}%`, t('dash.changeHeader')]}
                                         />
                                         <ReferenceLine x={0} stroke="rgba(255,255,255,0.15)" strokeWidth={1} />
                                         <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
@@ -429,6 +563,9 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+    const { t, lang, n } = useTranslation();
+    const isRtl = lang === 'ar';
+    const locale = lang === 'ar' ? 'ar-AE' : 'en-US';
     const { user } = useAuthStore();
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const sites = useSiteStore(s => s.sites);
@@ -442,7 +579,7 @@ export default function Dashboard() {
     const [chartMode, setChartMode] = useState<'indexed' | 'actual' | 'logarithmic'>('indexed');
 
     // NEW: Period Range Filter (From → To)
-    const allMonths = useMemo(() => getAllMonthsSince(2019), []);
+    const allMonths = useMemo(() => getAllMonthsSince(2019, lang, n), [lang, n]);
 
     const [fromPeriod, setFromPeriod] = useState<{ year: number, month: number } | null>(null);
     const [toPeriod, setToPeriod] = useState<{ year: number, month: number } | null>(null);
@@ -605,10 +742,24 @@ export default function Dashboard() {
             <div className="animate-fade-in">
                 {/* ── Header ───────────────────────────────────────────────── */}
                 <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                    <div style={{ flex: 1 }}>
-                        <h1 className="page-title">ESG Overview</h1>
-                        <p className="page-subtitle">
-                            Welcome back, <strong style={{ color: 'var(--accent-green)' }}>{user?.first_name || user?.email}</strong> — here's your sustainability performance summary.
+                    <div style={{ flex: 1, textAlign: 'start' }}>
+                        <h1 className="page-title">{t('dash.title')}</h1>
+                        <p className="page-subtitle" style={{ textAlign: 'start' }}>
+                            {(() => {
+                                const welcomeText = t('dash.welcomeBack') || "Welcome back, {{name}} — here's your sustainability performance summary.";
+                                const namePart = user?.first_name || user?.email || '';
+                                const parts = welcomeText.split('{{name}}');
+                                if (parts.length > 1) {
+                                    return (
+                                        <>
+                                            {parts[0]}
+                                            <strong style={{ color: 'var(--accent-green)' }}>{namePart}</strong>
+                                            {parts[1]}
+                                        </>
+                                    );
+                                }
+                                return welcomeText;
+                            })()}
                         </p>
                     </div>
                     
@@ -638,7 +789,7 @@ export default function Dashboard() {
                                 boxShadow: frameworkFilter === null ? '0 0 10px rgba(16,185,129,0.2)' : 'none',
                             }}
                         >
-                            All Frameworks
+                            {t('dash.allFrameworks') || 'All Frameworks'}
                         </button>
                         {activeFrameworks.map(fw => (
                             <button
@@ -652,7 +803,7 @@ export default function Dashboard() {
                                     boxShadow: frameworkFilter === fw ? '0 0 10px rgba(99,102,241,0.2)' : 'none',
                                 }}
                             >
-                                {fw === 'GREEN KEY' ? 'Green Key' : fw}
+                                {fw === 'GREEN KEY' ? (t('dash.greenKey') || 'Green Key') : fw}
                             </button>
                         ))}
                     </div>
@@ -666,7 +817,7 @@ export default function Dashboard() {
                     }}>
                         {activePillar === 'E' ? (
                             <>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>From</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('dash.from')}</span>
                                 <select
                                     value={fromPeriod ? `${fromPeriod.year}-${fromPeriod.month}` : ""}
                                     onChange={(e) => {
@@ -682,7 +833,7 @@ export default function Dashboard() {
                                         cursor: 'pointer', appearance: 'none', padding: '4px 8px', textAlign: 'center', minWidth: 90, outline: 'none'
                                     }}
                                 >
-                                    <option value="" style={{ background: '#1c1e30' }}>Jan {toPeriod?.year || new Date().getFullYear()}</option>
+                                    <option value="" style={{ background: '#1c1e30' }}>{n(new Date(toPeriod?.year || new Date().getFullYear(), 0, 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' }))}</option>
                                     {allMonths.map((m, i) => (
                                         <option key={i} value={`${m.year}-${m.month}`} style={{ background: '#1c1e30' }}>
                                             {m.label}
@@ -690,9 +841,9 @@ export default function Dashboard() {
                                     ))}
                                 </select>
 
-                                <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>→</span>
+                                <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>{isRtl ? '←' : '→'}</span>
 
-                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>To</span>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('dash.to')}</span>
                                 <select
                                     value={toPeriod ? `${toPeriod.year}-${toPeriod.month}` : ""}
                                     onChange={(e) => {
@@ -708,7 +859,7 @@ export default function Dashboard() {
                                         cursor: 'pointer', appearance: 'none', padding: '4px 8px', textAlign: 'center', minWidth: 90, outline: 'none'
                                     }}
                                 >
-                                    <option value="" style={{ background: '#1c1e30' }}>Current</option>
+                                    <option value="" style={{ background: '#1c1e30' }}>{t('dash.current')}</option>
                                     {allMonths.map((m, i) => (
                                         <option key={i} value={`${m.year}-${m.month}`} style={{ background: '#1c1e30' }}>
                                             {m.label}
@@ -720,7 +871,7 @@ export default function Dashboard() {
                                     <button
                                         onClick={() => { setFromPeriod(null); setToPeriod(null); }}
                                         style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 13, fontWeight: 700, padding: '2px 8px' }}
-                                        title="Reset to default"
+                                        title={t('dash.resetToDefault')}
                                     >
                                         ✕
                                     </button>
@@ -731,8 +882,8 @@ export default function Dashboard() {
                                 <button
                                     onClick={() => setSelectedYear(y => Math.min(new Date().getFullYear(), y + 1))}
                                     style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
-                                    title="Next Year"
-                                >◀</button>
+                                    title={t('dash.nextYear')}
+                                >{isRtl ? '▶' : '◀'}</button>
                                 <select
                                     value={selectedYear}
                                     onChange={e => setSelectedYear(Number(e.target.value))}
@@ -744,14 +895,14 @@ export default function Dashboard() {
                                     }}
                                 >
                                     {availableYears.map(y => (
-                                        <option key={y} value={y} style={{ background: '#1c1e30' }}>{y}</option>
+                                        <option key={y} value={y} style={{ background: '#1c1e30' }}>{n(y)}</option>
                                     ))}
                                 </select>
                                 <button
                                     onClick={() => setSelectedYear(y => Math.max(2019, y - 1))}
                                     style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px 8px', fontSize: 16 }}
-                                    title="Previous Year"
-                                >▶</button>
+                                    title={t('dash.prevYear')}
+                                >{isRtl ? '◀' : '▶'}</button>
                             </>
                         )}
                     </div>
@@ -761,15 +912,15 @@ export default function Dashboard() {
                 {(activePillar === 'S' || activePillar === 'G') && (
                     <div style={{
                         fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic',
-                        marginTop: -16, marginBottom: 24, paddingLeft: 4,
+                        marginTop: -16, marginBottom: 24, [isRtl ? 'paddingRight' : 'paddingLeft']: 4,
                         display: 'flex', alignItems: 'center', gap: 6,
+                        flexDirection: isRtl ? 'row-reverse' : 'row',
                     }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <circle cx="12" cy="12" r="10"/>
                             <path d="M12 16v-4M12 8h.01"/>
                         </svg>
-                        {activePillar === 'S' ? 'Social' : 'Governance'} metrics are reported annually.
-                        Showing the most recent annual submission.
+                        {t('dash.metricsReportedAnnually').replace('{{pillar}}', activePillar === 'S' ? t('dash.social') : t('dash.gov'))} {t('dash.showingMostRecent')}
                     </div>
                 )}
 
@@ -792,7 +943,7 @@ export default function Dashboard() {
                             <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
                             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                         </svg>
-                        Portfolio
+                        {t('dash.portfolio')}
                     </button>
                     <button
                         onClick={() => setCompareMode(v => !v)}
@@ -809,7 +960,7 @@ export default function Dashboard() {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
                         </svg>
-                        {compareMode ? 'Hide Comparison' : 'Compare Months'}
+                        {compareMode ? t('dash.hideComparison') : t('dash.compareMonths')}
                     </button>
                 </div>
                 
@@ -833,29 +984,22 @@ export default function Dashboard() {
                                     onClick={() => setSelectedStat(stat)}
                                     style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
                                 >
-                                    <div className="stat-card-header">
-                                        <span className="stat-card-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            {stat.name}
-                                            {/*
-                                            stat.methodology && (
-                                                <span style={{ color: '#38bdf8', fontSize: 14, display: 'inline-flex' }} title="Click to view Carbon Calculation Methodology">
-                                                    ⓘ
-                                                </span>
-                                            )
-                                            */}
+                                    <div className="stat-card-header" style={{ flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                                        <span className="stat-card-label" style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: isRtl ? 'row-reverse' : 'row', textAlign: isRtl ? 'right' : 'left' }}>
+                                            {getStatName(stat.name, t)}
                                         </span>
                                         <div className="stat-card-icon" style={{ background: config.color + '20', color: config.color }}>{config.icon}</div>
                                     </div>
-                                    <div className="stat-card-value" style={{ color: config.color }}>{stat.value}</div>
-                                    <div className="stat-card-meta">
+                                    <div className="stat-card-value" style={{ color: config.color, textAlign: isRtl ? 'right' : 'left' }} dir={isRtl ? 'rtl' : 'ltr'}>{translateValueString(stat.value, t, n)}</div>
+                                    <div className="stat-card-meta" style={{ textAlign: isRtl ? 'right' : 'left' }}>
                                         <span style={{
                                             color: stat.trend === 'up' ? '#f87171' : stat.trend === 'down' ? 'var(--accent-green)' : 'var(--text-muted)',
                                             fontWeight: 700,
                                         }}>
-                                            {stat.trend === 'up' ? '▲' : stat.trend === 'down' ? '▼' : '→'} {stat.change}
+                                            {stat.trend === 'up' ? '▲' : stat.trend === 'down' ? '▼' : (isRtl ? '←' : '→')} {getStatChangeLabel(stat.change, isRtl, t, n)}
                                         </span>
                                     </div>
-                                    <div className="stat-card-action-hint">Click for details →</div>
+                                    <div className="stat-card-action-hint" style={{ textAlign: isRtl ? 'left' : 'right' }}>{t('dash.clickForDetails')} {isRtl ? '←' : '→'}</div>
                                 </div>
                             );
                         })}
@@ -872,19 +1016,19 @@ export default function Dashboard() {
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
                         {/* Area chart */}
                         <div className="surface" style={{ padding: 24 }}>
-                            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div>
-                                    <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Sustainability Dynamics</h3>
+                            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                                <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                                    <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{t('dash.sustainabilityDynamics')}</h3>
                                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
                                         {chartMode === 'indexed'
-                                            ? 'Indexed to peak — 100% = each series\' highest recorded value'
+                                            ? t('dash.indexedToPeak')
                                             : activePillar === 'E'
-                                            ? 'Environmental performance over time (actual values)'
-                                            : 'Cross-category performance comparison (actual values)'
+                                            ? t('dash.envPerformanceOverTime')
+                                            : t('dash.crossCategoryPerformance')
                                         }
                                     </p>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                                     {/* Mode toggle */}
                                     <div style={{
                                         display: 'flex',
@@ -893,6 +1037,7 @@ export default function Dashboard() {
                                         borderRadius: 999,
                                         padding: 3,
                                         gap: 2,
+                                        flexDirection: isRtl ? 'row-reverse' : 'row',
                                     }}>
                                         {(['indexed', 'actual', 'logarithmic'] as const).map(mode => (
                                             <button
@@ -914,7 +1059,7 @@ export default function Dashboard() {
                                                         : 'var(--text-muted)',
                                                 }}
                                             >
-                                                {mode === 'indexed' ? '% Index' : mode === 'actual' ? 'Actual' : 'Logarithmic'}
+                                                {mode === 'indexed' ? t('dash.modePercentIndex') : mode === 'actual' ? t('dash.modeActual') : t('dash.modeLogarithmic')}
                                             </button>
                                         ))}
                                     </div>
@@ -922,8 +1067,8 @@ export default function Dashboard() {
                                     {/* Range badge */}
                                     <div className="badge badge-gray">
                                         {fromPeriod 
-                                            ? `${new Date(fromPeriod.year, fromPeriod.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} → ${toPeriod ? new Date(toPeriod.year, toPeriod.month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Current'}`
-                                            : `YTD (${toPeriod?.year || new Date().getFullYear()})`
+                                            ? `${n(new Date(fromPeriod.year, fromPeriod.month - 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' }))} ${isRtl ? '←' : '→'} ${toPeriod ? n(new Date(toPeriod.year, toPeriod.month - 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' })) : t('dash.current')}`
+                                            : `${t('dash.ytd').replace('{{year}}', n(toPeriod?.year || new Date().getFullYear()))}`
                                         }
                                     </div>
                                 </div>
@@ -950,8 +1095,9 @@ export default function Dashboard() {
                                                 })}
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} tickFormatter={(v) => translateMonthName(v, t)} interval={0} />
                                             <YAxis
+                                                orientation={isRtl ? 'right' : 'left'}
                                                 scale={chartMode === 'logarithmic' ? 'log' : 'auto'}
                                                 axisLine={false}
                                                 tickLine={false}
@@ -959,10 +1105,10 @@ export default function Dashboard() {
                                                 width={72}
                                                 domain={chartMode === 'indexed' ? [0, 100] : chartMode === 'logarithmic' ? [1, 'auto'] : ['auto', 'auto']}
                                                 tickFormatter={(v: number) =>
-                                                    chartMode === 'indexed' ? `${v}%` : (
-                                                        v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` :
-                                                        v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` :
-                                                        String(v)
+                                                    chartMode === 'indexed' ? `${n(v)}%` : (
+                                                        v >= 1_000_000 ? `${n((v / 1_000_000), { maximumFractionDigits: 1 })}M` :
+                                                        v >= 1_000 ? `${n((v / 1_000), { maximumFractionDigits: 0 })}k` :
+                                                        n(v)
                                                     )
                                                 }
                                             />
@@ -978,9 +1124,10 @@ export default function Dashboard() {
                                                             padding: '12px 16px',
                                                             boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
                                                             minWidth: 180,
+                                                            textAlign: isRtl ? 'right' : 'left',
                                                         }}>
                                                             <div style={{ fontSize: 12, fontWeight: 700, color: '#8b90b8', marginBottom: 8 }}>
-                                                                {label}
+                                                                {translateMonthName(label, t)}
                                                             </div>
                                                             {payload.map((entry: any, i: number) => {
                                                                 // Find raw value from original chartData for the same month
@@ -991,41 +1138,42 @@ export default function Dashboard() {
                                                                     <div key={i} style={{
                                                                         display: 'flex', justifyContent: 'space-between',
                                                                         alignItems: 'center', gap: 16, marginBottom: 4,
+                                                                        flexDirection: isRtl ? 'row-reverse' : 'row',
                                                                     }}>
-                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                                                                             <div style={{
                                                                                 width: 8, height: 8, borderRadius: '50%',
                                                                                 background: entry.color, flexShrink: 0,
                                                                             }} />
                                                                             <span style={{ fontSize: 12, color: '#f0f2ff' }}>
-                                                                                {entry.dataKey}
+                                                                                {getStatName(entry.dataKey, t)}
                                                                             </span>
                                                                         </div>
-                                                                        <div style={{ textAlign: 'right' }}>
+                                                                        <div style={{ textAlign: isRtl ? 'left' : 'right' }}>
                                                                             {chartMode === 'indexed' ? (
                                                                                 <>
                                                                                     <span style={{ fontSize: 13, fontWeight: 700, color: entry.color }}>
-                                                                                        {entry.value}%
+                                                                                        {n(entry.value, { maximumFractionDigits: 1 })}%
                                                                                     </span>
                                                                                     {rawVal != null && (
                                                                                         <span style={{ fontSize: 10, color: '#8b90b8', display: 'block' }}>
                                                                                             {rawVal >= 1_000_000
-                                                                                                ? `${(rawVal / 1_000_000).toFixed(2)}M`
+                                                                                                ? `${n((rawVal / 1_000_000), { maximumFractionDigits: 2 })}M`
                                                                                                 : rawVal >= 1_000
-                                                                                                ? `${(rawVal / 1_000).toFixed(1)}k`
-                                                                                                : rawVal.toFixed(1)
-                                                                                            } actual
+                                                                                                ? `${n((rawVal / 1_000), { maximumFractionDigits: 1 })}k`
+                                                                                                : n(rawVal, { maximumFractionDigits: 1 })
+                                                                                            } {getCategoryUnit(entry.dataKey, t)} {t('dash.actualSuffix') || 'actual'}
                                                                                         </span>
                                                                                     )}
                                                                                 </>
                                                                             ) : (
                                                                                 <span style={{ fontSize: 13, fontWeight: 700, color: entry.color }}>
                                                                                     {entry.value >= 1_000_000
-                                                                                        ? `${(entry.value / 1_000_000).toFixed(2)}M`
+                                                                                        ? `${n((entry.value / 1_000_000), { maximumFractionDigits: 2 })}M`
                                                                                         : entry.value >= 1_000
-                                                                                        ? `${(entry.value / 1_000).toFixed(1)}k`
-                                                                                        : entry.value
-                                                                                    }
+                                                                                        ? `${n((entry.value / 1_000), { maximumFractionDigits: 1 })}k`
+                                                                                        : n(entry.value, { maximumFractionDigits: 1 })
+                                                                                    } {getCategoryUnit(entry.dataKey, t)}
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -1038,7 +1186,7 @@ export default function Dashboard() {
                                                                     borderTop: '1px solid rgba(255,255,255,0.06)',
                                                                     fontSize: 10, color: '#8b90b8', fontStyle: 'italic',
                                                                 }}>
-                                                                    100% = peak value for each series
+                                                                    {t('dash.peakValueExplanation')}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1059,16 +1207,16 @@ export default function Dashboard() {
                                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
                                         <path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" />
                                     </svg>
-                                    No time-series data for this pillar
+                                    {t('dash.noTimeSeriesData')}
                                 </div>
                             )}
                         </div>
 
                         {/* Emissions bar chart */}
                         <div className="surface" style={{ padding: 24 }}>
-                            <div style={{ marginBottom: 24 }}>
-                                <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>Emissions Analysis</h3>
-                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Total CO₂e (Metric Tonnes) — GHG Protocol</p>
+                            <div style={{ marginBottom: 24, textAlign: isRtl ? 'right' : 'left' }}>
+                                <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{t('dash.emissionsAnalysis')}</h3>
+                                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>{t('dash.totalCo2eGhg')}</p>
                             </div>
                             <div style={{ height: 320, cursor: 'pointer' }}>
                                 <ResponsiveContainer width="100%" height="100%">
@@ -1079,8 +1227,8 @@ export default function Dashboard() {
                                         }
                                     }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.04)" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} dy={12} tickFormatter={(v) => translateMonthName(v, t)} interval={0} />
+                                        <YAxis orientation={isRtl ? 'right' : 'left'} axisLine={false} tickLine={false} tick={{ fill: '#8b90b8', fontSize: 12 }} tickFormatter={(val: any) => n(val)} />
                                         <Tooltip 
                                             cursor={{ fill: 'rgba(255,255,255,0.03)' }} 
                                             content={({ active, payload, label }: any) => {
@@ -1092,20 +1240,21 @@ export default function Dashboard() {
                                                         borderRadius: 12,
                                                         padding: '12px 16px',
                                                         boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+                                                        textAlign: isRtl ? 'right' : 'left',
                                                     }}>
                                                         <div style={{ fontSize: 13, fontWeight: 700, color: '#8b90b8', marginBottom: 8 }}>
-                                                            {label}
+                                                            {translateMonthName(label, t)}
                                                         </div>
                                                         {payload.map((entry: any, i: number) => (
-                                                            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 4, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                                                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
                                                                     <span style={{ fontSize: 13, color: '#f0f2ff' }}>
                                                                         {entry.name}
                                                                     </span>
                                                                 </div>
-                                                                <span style={{ fontSize: 13, fontWeight: 700, color: entry.color }}>
-                                                                    {Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                                                                <span style={{ fontSize: 13, fontWeight: 700, color: entry.color, textAlign: isRtl ? 'left' : 'right' }}>
+                                                                    {n(Number(entry.value), { maximumFractionDigits: 3 })}
                                                                 </span>
                                                             </div>
                                                         ))}
@@ -1113,8 +1262,8 @@ export default function Dashboard() {
                                                 );
                                             }}
                                         />
-                                        <Bar dataKey="Scope 1" fill="#f87171" radius={[4, 4, 0, 0]} stackId="ghg" animationDuration={1500} />
-                                        <Bar dataKey="Scope 2" fill="#f43f5e" radius={[4, 4, 0, 0]} stackId="ghg" animationDuration={1800} />
+                                        <Bar dataKey="Scope 1" name={t('dash.scope1') || 'Scope 1'} fill="#f87171" radius={[4, 4, 0, 0]} stackId="ghg" animationDuration={1500} />
+                                        <Bar dataKey="Scope 2" name={t('dash.scope2') || 'Scope 2'} fill="#f43f5e" radius={[4, 4, 0, 0]} stackId="ghg" animationDuration={1800} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -1128,22 +1277,23 @@ export default function Dashboard() {
                     background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(16,24,47,1) 100%)',
                     border: '1px solid rgba(99,102,241,0.2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, borderRadius: 24,
+                    flexDirection: isRtl ? 'row-reverse' : 'row',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                         <div style={{ width: 60, height: 60, borderRadius: 16, background: 'rgba(99,102,241,0.15)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
                             </svg>
                         </div>
-                        <div>
-                            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#f0f2ff' }}>Expert Guidance at Your Fingertips</h3>
+                        <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#f0f2ff' }}>{t('dash.expertGuidanceTitle')}</h3>
                             <p style={{ fontSize: 14.5, color: '#9ca3af', marginTop: 6, maxWidth: 600, lineHeight: 1.5 }}>
-                                Need help interpreting your ESG data? Our Help Center provides step-by-step guides and direct access to sustainability consultants.
+                                {t('dash.expertGuidanceBody')}
                             </p>
                         </div>
                     </div>
                     <button className="btn btn-secondary" onClick={() => navigate('/help')} style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'white', color: 'white' }}>
-                        Explore Help Center
+                        {t('dash.visitHelpCenter')}
                     </button>
                 </div>
 

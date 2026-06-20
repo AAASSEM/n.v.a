@@ -8,6 +8,7 @@ import AccessDenied from '../../components/ui/AccessDenied';
 import { useAuthStore } from '../../stores/authStore';
 import { useSiteStore } from '../../stores/siteStore';
 import { canPerformAction } from '../../config/rbac';
+import { useTranslation, translateUnitStr, translateMeterName } from '../../i18n';
 
 interface ChecklistItem {
     id: number;
@@ -76,6 +77,7 @@ const FRAMEWORK_CONFIG: Record<string, { color: string; bg: string }> = {
 };
 
 export default function ChecklistView() {
+    const { t, n } = useTranslation();
     const queryClient = useQueryClient();
 
     const { user } = useAuthStore();
@@ -117,7 +119,7 @@ export default function ChecklistView() {
             setInviteError(null);
         },
         onError: (err: any) => {
-            setInviteError(err.response?.data?.detail || 'Failed to invite user');
+            setInviteError(err.response?.data?.detail || t('checklist.failInvite', 'Failed to invite user'));
         }
     });
 
@@ -188,7 +190,7 @@ export default function ChecklistView() {
     }
 
     if (isForbidden) {
-        return <AccessDenied showLayout title="Access Restricted" message="Your role does not have permission to view or manage the data checklist." />;
+        return <AccessDenied showLayout title={t('checklist.restrictedTitle')} message={t('checklist.restrictedMsg')} />;
     }
 
     const items = checklist || [];
@@ -216,9 +218,9 @@ export default function ChecklistView() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.color }} />
                         <span className="category-group-title" style={{ color: cfg.color }}>
-                            {cfg.icon} {cfg.label}
+                            {cfg.icon} {t(('data.' + cat.toLowerCase()) as any, cfg.label)}
                         </span>
-                        <span className="category-group-count">{categoryItems.length}</span>
+                        <span className="category-group-count">{n(categoryItems.length)}</span>
                     </div>
                     {canManage && (
                         <button
@@ -233,7 +235,7 @@ export default function ChecklistView() {
                                 <circle cx="9" cy="7" r="4" />
                                 <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
                             </svg>
-                            Assign All
+                            {t('checklist.assignAll')}
                         </button>
                     )}
                 </div>
@@ -244,7 +246,7 @@ export default function ChecklistView() {
                             {/* Top row */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14, flex: 1, paddingRight: 12 }}>
-                                    {item.element_name}
+                                    {translateMeterName(item.element_name, t)}
                                 </div>
                                 <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                     {item.frameworks && item.frameworks.split(',').map((f, i) => {
@@ -271,12 +273,12 @@ export default function ChecklistView() {
                             {/* Meta */}
                             <div style={{ display: 'flex', gap: 16 }}>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Unit: </span>
-                                    {item.unit || 'N/A'}
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{t('checklist.unitLabel')}: </span>
+                                    {translateUnitStr(item.unit, t) || 'N/A'}
                                 </div>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Freq: </span>
-                                    {item.frequency}
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{t('checklist.freqLabel')}: </span>
+                                    {t(`data.${item.frequency.toLowerCase()}` as any, item.frequency)}
                                 </div>
                             </div>
 
@@ -307,9 +309,9 @@ export default function ChecklistView() {
                                         {item.assigned_user_name ? item.assigned_user_name.charAt(0).toUpperCase() : '?'}
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Assigned to</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{t('checklist.assignedTo')}</div>
                                         <div style={{ fontSize: 12.5, fontWeight: 600, color: item.assigned_user_name ? 'var(--text-primary)' : 'var(--text-disabled)' }}>
-                                            {item.assigned_user_name || 'Unassigned'}
+                                            {item.assigned_user_name || t('checklist.unassigned')}
                                         </div>
                                     </div>
                                 </div>
@@ -321,7 +323,7 @@ export default function ChecklistView() {
                                             setModalConfig({ isOpen: true, type: 'SINGLE', checklistId: item.id });
                                         }}
                                     >
-                                        {item.assigned_user_name ? 'Reassign' : 'Assign'}
+                                        {item.assigned_user_name ? t('checklist.reassign') : t('checklist.assign')}
                                     </button>
                                 )}
                             </div>
@@ -338,8 +340,8 @@ export default function ChecklistView() {
                 {/* Header */}
                 <div className="page-header">
                     <div>
-                        <h1 className="page-title">Data Checklist</h1>
-                        <p className="page-subtitle">Assign data collection responsibilities to your team.</p>
+                        <h1 className="page-title">{t('checklist.title')}</h1>
+                        <p className="page-subtitle">{t('checklist.subtitle')}</p>
                     </div>
                 </div>
 
@@ -347,18 +349,18 @@ export default function ChecklistView() {
                 <div className="stat-card-grid stat-card-grid-3" style={{ marginBottom: 24 }}>
                     <div className="stat-card blue">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Total Elements</span>
+                            <span className="stat-card-label">{t('checklist.totalElements')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{filteredItems.length}</div>
+                        <div className="stat-card-value">{n(filteredItems.length)}</div>
                     </div>
                     <div className="stat-card green">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Assigned</span>
+                            <span className="stat-card-label">{t('checklist.assigned')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
@@ -366,17 +368,17 @@ export default function ChecklistView() {
                             </div>
                         </div>
                         <div className="stat-card-value" style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                            {assignedCount}
+                            {n(assignedCount)}
                             {filteredItems.length > 0 && (
                                 <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    ({Math.round((assignedCount / filteredItems.length) * 100)}%)
+                                    ({n(Math.round((assignedCount / filteredItems.length) * 100))}%)
                                 </span>
                             )}
                         </div>
                     </div>
                     <div className="stat-card amber">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Unassigned</span>
+                            <span className="stat-card-label">{t('checklist.unassigned')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
@@ -384,10 +386,10 @@ export default function ChecklistView() {
                             </div>
                         </div>
                         <div className="stat-card-value" style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                            {filteredItems.length - assignedCount}
+                            {n(filteredItems.length - assignedCount)}
                             {filteredItems.length > 0 && (
                                 <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    ({Math.round(((filteredItems.length - assignedCount) / filteredItems.length) * 100)}%)
+                                    ({n(Math.round(((filteredItems.length - assignedCount) / filteredItems.length) * 100))}%)
                                 </span>
                             )}
                         </div>
@@ -431,7 +433,7 @@ export default function ChecklistView() {
                             }}
                         >
                             {tab.icon && <span style={{ opacity: 0.8, display: 'flex', alignItems: 'center' }}>{tab.icon}</span>}
-                            {tab.label}
+                            {tab.key === 'ALL' ? t('checklist.all') : tab.key === 'E' ? t('data.env') : tab.key === 'S' ? t('data.soc') : t('data.gov')}
                             <span style={{
                                 fontSize: 11,
                                 opacity: 0.5,
@@ -440,7 +442,7 @@ export default function ChecklistView() {
                                 borderRadius: 6,
                                 marginLeft: tab.icon ? 0 : 2
                             }}>
-                                {tab.count}
+                                {n(tab.count)}
                             </span>
                         </button>
                     ))}
@@ -458,7 +460,7 @@ export default function ChecklistView() {
                             width: 'fit-content',
                             alignItems: 'center'
                         }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', paddingLeft: 8, paddingRight: 4 }}>Framework:</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', paddingLeft: 8, paddingRight: 4 }}>{t('checklist.frameworkFilter')}</span>
                             <button
                                 onClick={() => setSelectedFramework('ALL')}
                                 style={{
@@ -473,7 +475,7 @@ export default function ChecklistView() {
                                     color: selectedFramework === 'ALL' ? 'var(--text-primary)' : 'var(--text-secondary)',
                                 }}
                             >
-                                All
+                                {t('checklist.all')}
                             </button>
                             {availableFrameworks.map(fw => {
                                 const style = FRAMEWORK_CONFIG[fw] || FRAMEWORK_CONFIG['DEFAULT'];
@@ -513,8 +515,8 @@ export default function ChecklistView() {
                         <div className="modal-header">
                             <span className="modal-title">
                                 {modalMode === 'ASSIGN'
-                                    ? (modalConfig.type === 'BULK' ? 'Assign Entire Category' : 'Assign Element')
-                                    : 'Invite Team Member'}
+                                    ? (modalConfig.type === 'BULK' ? t('checklist.assignCategory') : t('checklist.assignElement'))
+                                    : t('checklist.inviteTeam')}
                             </span>
                             <button className="modal-close" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>✕</button>
                         </div>
@@ -545,8 +547,8 @@ export default function ChecklistView() {
                                                 </svg>
                                             </div>
                                             <div>
-                                                <strong>You are the only member in this site.</strong><br/>
-                                                Invite others to delegate data collection tasks!
+                                                <strong>{t('checklist.onlyMemberMsg')}</strong><br/>
+                                                {t('checklist.inviteOthersMsg')}
                                             </div>
                                         </div>
                                     )}
@@ -574,7 +576,7 @@ export default function ChecklistView() {
                                                 border: '1px solid var(--border-subtle)'
                                             }}>?</div>
                                             <div style={{ flex: 1, fontWeight: 600, color: selectedUserId === '' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
-                                                Unassigned
+                                                {t('checklist.unassigned')}
                                             </div>
                                             {selectedUserId === '' && (
                                                 <div style={{ color: 'var(--accent-green)' }}>✓</div>
@@ -628,7 +630,7 @@ export default function ChecklistView() {
                                                                     letterSpacing: '0.5px',
                                                                     whiteSpace: 'nowrap'
                                                                 }}>
-                                                                    {ROLE_LABELS[u.profile.role] || u.profile.role}
+                                                                    {t(`roles.${u.profile.role}` as any, ROLE_LABELS[u.profile.role] || u.profile.role)}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -671,25 +673,25 @@ export default function ChecklistView() {
                                                     fontSize: 13,
                                                 }}
                                             >
-                                                <span>+ Invite Team Member</span>
+                                                <span>+ {t('checklist.inviteTeam')}</span>
                                             </div>
                                         )}
                                     </div>
 
                                     <p style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, textAlign: 'center' }}>
                                         {modalConfig.type === 'BULK'
-                                            ? `This will reassign all ${modalConfig.category === 'E' ? 'Environmental' : modalConfig.category === 'S' ? 'Social' : 'Governance'} elements to this user.`
-                                            : 'This user will be responsible for providing data for this element.'}
+                                            ? t('checklist.bulkReassignMsg').replace('{{category}}', modalConfig.category === 'E' ? t('data.env') : modalConfig.category === 'S' ? t('data.soc') : t('data.gov'))
+                                            : t('checklist.singleReassignMsg')}
                                     </p>
                                 </div>
                                 <div className="modal-footer">
-                                    <button type="button" className="btn btn-ghost" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>Cancel</button>
+                                    <button type="button" className="btn btn-ghost" onClick={() => setModalConfig({ ...modalConfig, isOpen: false })}>{t('confirm.cancel')}</button>
                                     <button
                                         type="submit"
                                         className="btn btn-primary"
                                         disabled={assignMutation.isPending || bulkAssignMutation.isPending}
                                     >
-                                        {assignMutation.isPending || bulkAssignMutation.isPending ? 'Saving...' : 'Confirm Assignment'}
+                                        {assignMutation.isPending || bulkAssignMutation.isPending ? t('data.saving') : t('checklist.confirmAssignment')}
                                     </button>
                                 </div>
                             </form>
@@ -714,7 +716,7 @@ export default function ChecklistView() {
                                     )}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                                         <div>
-                                            <label className="form-label" style={{ fontSize: 11 }}>First Name</label>
+                                            <label className="form-label" style={{ fontSize: 11 }}>{t('checklist.firstName')}</label>
                                             <input
                                                 required
                                                 type="text"
@@ -726,7 +728,7 @@ export default function ChecklistView() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="form-label" style={{ fontSize: 11 }}>Last Name</label>
+                                            <label className="form-label" style={{ fontSize: 11 }}>{t('checklist.lastName')}</label>
                                             <input
                                                 required
                                                 type="text"
@@ -739,7 +741,7 @@ export default function ChecklistView() {
                                         </div>
                                     </div>
                                     <div style={{ marginBottom: 12 }}>
-                                        <label className="form-label" style={{ fontSize: 11 }}>Email Address</label>
+                                        <label className="form-label" style={{ fontSize: 11 }}>{t('checklist.emailAddress')}</label>
                                         <input
                                             required
                                             type="email"
@@ -751,7 +753,7 @@ export default function ChecklistView() {
                                         />
                                     </div>
                                     <div style={{ marginBottom: 16 }}>
-                                        <label className="form-label" style={{ fontSize: 11 }}>Select Role</label>
+                                        <label className="form-label" style={{ fontSize: 11 }}>{t('checklist.selectRole')}</label>
                                         <select
                                             required
                                             className="form-input"
@@ -766,10 +768,10 @@ export default function ChecklistView() {
                                                 borderRadius: 'var(--radius-md)'
                                             }}
                                         >
-                                            <option value="" disabled>Select Role...</option>
+                                            <option value="" disabled>{t('checklist.selectRolePlaceholder')}</option>
                                             {ROLE_HIERARCHY[user?.profile?.role || '']?.map(role => (
                                                 <option key={role} value={role}>
-                                                    {ROLE_LABELS[role] || role}
+                                                    {t(`roles.${role}` as any, ROLE_LABELS[role] || role)}
                                                 </option>
                                             ))}
                                         </select>
@@ -784,14 +786,14 @@ export default function ChecklistView() {
                                             setInviteError(null);
                                         }}
                                     >
-                                        Back
+                                        {t('data.back')}
                                     </button>
                                     <button
                                         type="submit"
                                         className="btn btn-primary"
                                         disabled={modalInviteMutation.isPending}
                                     >
-                                        {modalInviteMutation.isPending ? 'Inviting...' : 'Send Invite'}
+                                        {modalInviteMutation.isPending ? t('checklist.sendingInvite') : t('checklist.sendInvite')}
                                     </button>
                                 </div>
                             </form>

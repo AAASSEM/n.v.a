@@ -7,6 +7,7 @@ import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import CustomDropdown from '../../components/ui/CustomDropdown';
+import { useTranslation } from '../../i18n';
 
 interface UserProfile { role: string; company_id: number | null; }
 interface User {
@@ -61,6 +62,7 @@ const AVATAR_GRADIENTS = [
 ];
 
 export default function UserManagementView() {
+    const { t, n } = useTranslation();
     const queryClient = useQueryClient();
     const currentUser = useAuthStore(state => state.user);
     const currentUserRole = currentUser?.profile?.role || '';
@@ -96,37 +98,37 @@ export default function UserManagementView() {
         enabled: isActivityModalOpen && !!selectedUser,
     });
 
-    const getRoleConfig = (role: string): { icon: React.ReactNode, bg: string, color: string, desc: string } => {
+    const getRoleConfig = (role: string): { icon: React.ReactNode, bg: string, color: string, descKey: string } => {
         const r = role?.toLowerCase() || '';
         const props = { width: 14, height: 14, strokeWidth: 2.5, stroke: "currentColor" };
 
         if (r.includes('admin')) return {
             icon: <svg {...props} viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
-            bg: 'rgba(249, 115, 22, 0.15)', color: '#fb923c', desc: 'System-wide permissions and user management.'
+            bg: 'rgba(249, 115, 22, 0.15)', color: '#fb923c', descKey: 'roles.desc.admin'
         };
         if (r.includes('site')) return {
             icon: <svg {...props} viewBox="0 0 24 24" fill="none"><path d="M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17" /></svg>,
-            bg: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', desc: 'Manage specific property operations and data.'
+            bg: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', descKey: 'roles.desc.site'
         };
         if (r.includes('meter')) return {
             icon: <svg {...props} viewBox="0 0 24 24" fill="none"><path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" /></svg>,
-            bg: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', desc: 'Configure building meters and monitoring.'
+            bg: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', descKey: 'roles.desc.meter'
         };
         if (r.includes('upload')) return {
             icon: <svg {...props} viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>,
-            bg: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', desc: 'Submit and review ESG evidence documents.'
+            bg: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', descKey: 'roles.desc.uploader'
         };
         if (r.includes('view')) return {
             icon: <svg {...props} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" /><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /></svg>,
-            bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', desc: 'Read-only access to dashboards and reports.'
+            bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', descKey: 'roles.desc.viewer'
         };
         if (r.includes('super')) return {
             icon: <svg {...props} viewBox="0 0 24 24" fill="none"><path d="m12 15 5 3-1-5 4-4-5-1-3-4-3 4-5 1 4 4-1 5z" /></svg>,
-            bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', desc: 'Full system authority and global settings.'
+            bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171', descKey: 'roles.desc.super'
         };
         return {
             icon: <svg {...props} viewBox="0 0 24 24" fill="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-            bg: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', desc: 'Standard platform access.'
+            bg: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8', descKey: 'roles.desc.default'
         };
     };
     const [searchQuery, setSearchQuery] = useState('');
@@ -235,7 +237,7 @@ export default function UserManagementView() {
     }
 
     if (isForbidden) {
-        return <AccessDenied showLayout title="Access Restricted" message="Your account role does not have permission to view or manage users for this company." />;
+        return <AccessDenied showLayout title={t('access.title')} message={t('access.message')} />;
     }
 
     return (
@@ -244,8 +246,8 @@ export default function UserManagementView() {
                 {/* Header */}
                 <div className="page-header">
                     <div>
-                        <h1 className="page-title">User Management</h1>
-                        <p className="page-subtitle">Manage user accounts, roles, and permissions</p>
+                        <h1 className="page-title">{t('users.title')}</h1>
+                        <p className="page-subtitle">{t('users.subtitle')}</p>
                     </div>
                     {availableRolesToAssign.length > 0 && (
                         <button
@@ -259,7 +261,7 @@ export default function UserManagementView() {
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
-                            Add User
+                            {t('users.addUser')}
                         </button>
                     )}
                 </div>
@@ -268,47 +270,47 @@ export default function UserManagementView() {
                 <div className="stat-card-grid stat-card-grid-4" style={{ marginBottom: 24 }}>
                     <div className="stat-card blue">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Total Users</span>
+                            <span className="stat-card-label">{t('users.totalUsers')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{totalUsers}</div>
+                        <div className="stat-card-value">{n(totalUsers)}</div>
                     </div>
                     <div className="stat-card green">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Active</span>
+                            <span className="stat-card-label">{t('users.active')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><polyline points="16 11 18 13 22 9" />
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{activeUsers}</div>
+                        <div className="stat-card-value">{n(activeUsers)}</div>
                     </div>
                     <div className="stat-card amber">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Inactive</span>
+                            <span className="stat-card-label">{t('users.inactive')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="18" y1="8" x2="22" y2="12" /><line x1="22" y1="8" x2="18" y2="12" />
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{totalUsers - activeUsers}</div>
+                        <div className="stat-card-value">{n(totalUsers - activeUsers)}</div>
                     </div>
                     <div className="stat-card purple">
                         <div className="stat-card-header">
-                            <span className="stat-card-label">Pending Verification</span>
+                            <span className="stat-card-label">{t('users.pending')}</span>
                             <div className="stat-card-icon">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
                                 </svg>
                             </div>
                         </div>
-                        <div className="stat-card-value">{pendingInvites}</div>
+                        <div className="stat-card-value">{n(pendingInvites)}</div>
                     </div>
                 </div>
 
@@ -344,10 +346,10 @@ export default function UserManagementView() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
                                 </svg>
-                                <span>All Users</span>
-                                <span className="type-count">{counts.all}</span>
+                                <span>{t('users.allUsers')}</span>
+                                <span className="type-count">{n(counts.all)}</span>
                             </button>
-                            {Object.entries(ROLE_LABELS).map(([role, label]) => {
+                            {Object.entries(ROLE_LABELS).map(([role]) => {
                                 const cfg = getRoleConfig(role);
                                 return (
                                     <button
@@ -357,8 +359,8 @@ export default function UserManagementView() {
                                         style={{ minWidth: '130px', justifyContent: 'center' }}
                                     >
                                         <div style={{ color: cfg.color, display: 'flex', alignItems: 'center' }}>{cfg.icon}</div>
-                                        <span>{label}</span>
-                                        <span className="type-count">{(counts as any)[role]}</span>
+                                        <span>{t(`roles.${role}` as any)}</span>
+                                        <span className="type-count">{n((counts as any)[role])}</span>
                                     </button>
                                 );
                             })}
@@ -371,19 +373,19 @@ export default function UserManagementView() {
                                 className={`status-chip ${statusFilter === 'all' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('all')}
                             >
-                                All Status
+                                {t('data.allStatus')}
                             </button>
                             <button
                                 className={`status-chip green ${statusFilter === 'active' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('active')}
                             >
-                                <div className="dot green" /> Active <span className="s-count">{counts.active}</span>
+                                <div className="dot green" /> {t('users.active')} <span className="s-count">{n(counts.active)}</span>
                             </button>
                             <button
                                 className={`status-chip gray ${statusFilter === 'inactive' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('inactive')}
                             >
-                                <div className="dot red" /> Inactive <span className="s-count">{counts.inactive}</span>
+                                <div className="dot red" /> {t('users.inactive')} <span className="s-count">{n(counts.inactive)}</span>
                             </button>
                         </div>
 
@@ -394,7 +396,7 @@ export default function UserManagementView() {
                             </svg>
                             <input
                                 type="text"
-                                placeholder="Find user..."
+                                placeholder={t('users.findUser')}
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
@@ -407,10 +409,10 @@ export default function UserManagementView() {
                     <table className="dark-table">
                         <thead>
                             <tr>
-                                <th>User</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th>{t('users.user')}</th>
+                                <th>{t('users.role')}</th>
+                                <th>{t('users.status')}</th>
+                                <th>{t('users.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -447,12 +449,12 @@ export default function UserManagementView() {
                                                     border: `1px solid ${getRoleConfig(userRole).color}30`
                                                 }}
                                             >
-                                                {ROLE_LABELS[userRole] || userRole}
+                                                {t(`roles.${userRole}` as any)}
                                             </span>
                                         </td>
                                         <td>
                                             <span className={`badge ${user.is_active ? 'badge-green' : 'badge-gray'}`}>
-                                                {user.is_active ? 'Active' : 'Inactive'}
+                                                {user.is_active ? t('users.active') : t('users.inactive')}
                                             </span>
                                         </td>
                                         <td>
@@ -470,7 +472,7 @@ export default function UserManagementView() {
                                                         <path d="M18 20V4" />
                                                         <path d="M6 20v-4" />
                                                     </svg>
-                                                    Activity
+                                                    {t('users.activity')}
                                                 </button>
                                                 {cManage && (
                                                     <>
@@ -487,7 +489,7 @@ export default function UserManagementView() {
                                                                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                                                                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                             </svg>
-                                                            Edit
+                                                            {t('users.edit')}
                                                         </button>
                                                         <button
                                                             className="btn btn-danger btn-sm"
@@ -498,7 +500,7 @@ export default function UserManagementView() {
                                                                 <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                                                                 <path d="M10 11v6M14 11v6" />
                                                             </svg>
-                                                            Remove
+                                                            {t('users.remove')}
                                                         </button>
                                                     </>
                                                 )}
@@ -511,7 +513,7 @@ export default function UserManagementView() {
                     </table>
                     {!filteredUsers?.length && (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-                            No users found matching your filters.
+                            {t('users.noUsersFound')}
                         </div>
                     )}
                 </div>
@@ -522,14 +524,14 @@ export default function UserManagementView() {
                 <div className="modal-backdrop" onClick={() => { setIsInviteModalOpen(false); setCreationStep(1); }}>
                     <div className="modal modal-md animate-scale-in" onClick={e => e.stopPropagation()} style={{ maxWidth: creationStep === 1 ? 650 : 500 }}>
                         <div className="modal-header">
-                            <span className="modal-title">{creationStep === 1 ? 'Select Access Role' : 'User Details'}</span>
+                            <span className="modal-title">{creationStep === 1 ? t('users.selectRole') : t('users.userDetails')}</span>
                             <button className="modal-close" onClick={() => { setIsInviteModalOpen(false); setCreationStep(1); }}>✕</button>
                         </div>
 
                         {creationStep === 1 ? (
                             <div className="modal-body">
                                 <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: 14 }}>
-                                    Select the level of access for the new team member:
+                                    {t('users.selectAccessLevel')}
                                 </p>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16 }}>
                                     {availableRolesToAssign.map(role => {
@@ -564,8 +566,8 @@ export default function UserManagementView() {
                                                     {cfg.icon}
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: 15, marginBottom: 4 }}>{ROLE_LABELS[role] || role}</div>
-                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, paddingInline: 8 }}>{cfg.desc}</div>
+                                                    <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: 15, marginBottom: 4 }}>{t(`roles.${role}` as any)}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, paddingInline: 8 }}>{t(cfg.descKey as any)}</div>
                                                 </div>
                                             </button>
                                         );
@@ -582,18 +584,18 @@ export default function UserManagementView() {
                                     )}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                                         <div>
-                                            <label className="form-label">First Name</label>
+                                            <label className="form-label">{t('signup.firstName')}</label>
                                             <input required type="text" className="form-input" placeholder="John" value={inviteForm.first_name}
                                                 onChange={e => setInviteForm({ ...inviteForm, first_name: e.target.value })} />
                                         </div>
                                         <div>
-                                            <label className="form-label">Last Name</label>
+                                            <label className="form-label">{t('signup.lastName')}</label>
                                             <input required type="text" className="form-input" placeholder="Doe" value={inviteForm.last_name}
                                                 onChange={e => setInviteForm({ ...inviteForm, last_name: e.target.value })} />
                                         </div>
                                     </div>
                                     <div style={{ marginBottom: 16 }}>
-                                        <label className="form-label">Email Address</label>
+                                        <label className="form-label">{t('signup.emailLabel')}</label>
                                         <input required type="email" className="form-input" placeholder="john.doe@example.com" value={inviteForm.email}
                                             onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })} />
                                     </div>
@@ -610,17 +612,17 @@ export default function UserManagementView() {
                                                 </div>
                                             </div>
                                             <div>
-                                                <span style={{ color: 'var(--text-muted)' }}>Assigned Role: </span>
-                                                <strong style={{ color: 'var(--text-primary)' }}>{ROLE_LABELS[inviteForm.role] || inviteForm.role}</strong>
+                                                <span style={{ color: 'var(--text-muted)' }}>{t('users.assignedRole')} </span>
+                                                <strong style={{ color: 'var(--text-primary)' }}>{t(`roles.${inviteForm.role}` as any)}</strong>
                                             </div>
-                                            <button type="button" onClick={() => setCreationStep(1)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent-green)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>Change</button>
+                                            <button type="button" onClick={() => setCreationStep(1)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent-green)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>{t('users.change')}</button>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="modal-footer">
-                                    <button type="button" className="btn btn-ghost" onClick={() => setCreationStep(1)}>Back</button>
+                                    <button type="button" className="btn btn-ghost" onClick={() => setCreationStep(1)}>{t('users.back')}</button>
                                     <button type="submit" className="btn btn-primary" disabled={inviteMutation.isPending}>
-                                        {inviteMutation.isPending ? 'Inviting...' : 'Send Invite'}
+                                        {inviteMutation.isPending ? t('users.inviting') : t('users.sendInvite')}
                                     </button>
                                 </div>
                             </form>
@@ -634,25 +636,25 @@ export default function UserManagementView() {
                 <div className="modal-backdrop" onClick={() => setIsEditModalOpen(false)}>
                     <div className="modal modal-sm animate-scale-in" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <span className="modal-title">Edit Role</span>
+                            <span className="modal-title">{t('users.editRole')}</span>
                             <button className="modal-close" onClick={() => setIsEditModalOpen(false)}>✕</button>
                         </div>
                         <form onSubmit={e => { e.preventDefault(); setErrorMessage(null); if (selectedUser) updateRoleMutation.mutate({ userId: selectedUser.id, role: editRole }); }}>
                             <div className="modal-body">
                                 <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
-                                    Update role for <strong style={{ color: 'var(--text-primary)' }}>{selectedUser.first_name} {selectedUser.last_name}</strong>
+                                    {t('users.updateRoleFor')} <strong style={{ color: 'var(--text-primary)' }}>{selectedUser.first_name} {selectedUser.last_name}</strong>
                                 </p>
-                                <label className="form-label">New Role</label>
+                                <label className="form-label">{t('users.newRole')}</label>
                                 <CustomDropdown
-                                    options={availableRolesToAssign.map(r => ({ value: r, label: ROLE_LABELS[r] || r }))}
+                                    options={availableRolesToAssign.map(r => ({ value: r, label: t(`roles.${r}` as any) }))}
                                     value={editRole}
                                     onChange={setEditRole}
                                 />
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn btn-ghost" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+                                <button type="button" className="btn btn-ghost" onClick={() => setIsEditModalOpen(false)}>{t('confirm.cancel')}</button>
                                 <button type="submit" className="btn btn-primary" disabled={updateRoleMutation.isPending}>
-                                    {updateRoleMutation.isPending ? 'Saving...' : 'Save Changes'}
+                                    {updateRoleMutation.isPending ? t('users.saving') : t('settings.save')}
                                 </button>
                             </div>
                         </form>
@@ -663,9 +665,9 @@ export default function UserManagementView() {
             {/* CONFIRM DELETE MODAL */}
             <ConfirmModal
                 isOpen={!!confirmDelete}
-                title="Remove User"
-                message={`Are you sure you want to remove ${confirmDelete?.first_name} ${confirmDelete?.last_name}? This action cannot be undone.`}
-                confirmLabel="Remove"
+                title={t('users.removeUser')}
+                message={t('users.removeConfirmMsg').replace('{{name}}', `${confirmDelete?.first_name} ${confirmDelete?.last_name}`)}
+                confirmLabel={t('users.confirmRemove')}
                 danger
                 onConfirm={() => { if (confirmDelete) deleteMutation.mutate(confirmDelete.id); }}
                 onCancel={() => setConfirmDelete(null)}
@@ -683,12 +685,12 @@ export default function UserManagementView() {
                                         <path d="M18 20V4" />
                                         <path d="M6 20v-4" />
                                     </svg>
-                                    User Activity Logs
+                                    {t('users.activityLogs')}
                                 </span>
                                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span>Tracking tasks for</span>
+                                    <span>{t('users.trackingTasksFor')}</span>
                                     <strong style={{ color: 'var(--text-primary)' }}>{selectedUser.first_name} {selectedUser.last_name}</strong>
-                                    <span className="badge badge-gray" style={{ fontSize: 10 }}>{ROLE_LABELS[selectedUser.profile?.role || ''] || selectedUser.profile?.role}</span>
+                                    <span className="badge badge-gray" style={{ fontSize: 10 }}>{t(`roles.${selectedUser.profile?.role}` as any)}</span>
                                 </div>
                             </div>
                             <button className="modal-close" onClick={() => { setIsActivityModalOpen(false); setSelectedUser(null); }}>✕</button>
@@ -704,7 +706,7 @@ export default function UserManagementView() {
                                         onClick={() => setActivityScope('month')}
                                         style={{ padding: '6px 14px', fontSize: 12.5 }}
                                     >
-                                        Month View
+                                        {t('users.monthView')}
                                     </button>
                                     <button
                                         type="button"
@@ -712,7 +714,7 @@ export default function UserManagementView() {
                                         onClick={() => setActivityScope('year')}
                                         style={{ padding: '6px 14px', fontSize: 12.5 }}
                                     >
-                                        Year View
+                                        {t('users.yearView')}
                                     </button>
                                 </div>
 
@@ -725,7 +727,7 @@ export default function UserManagementView() {
                                             onChange={e => setSelectedMonth(Number(e.target.value))}
                                         >
                                             {MONTHS.map((m, idx) => (
-                                                <option key={m} value={idx + 1}>{m}</option>
+                                                <option key={m} value={idx + 1}>{t(`months.${m.toLowerCase()}` as any)}</option>
                                             ))}
                                         </select>
                                     )}
@@ -752,9 +754,9 @@ export default function UserManagementView() {
                                         <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                                         <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
                                     </svg>
-                                    <h4 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>No Tasks Assigned</h4>
+                                    <h4 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{t('users.noTasksAssigned')}</h4>
                                     <p style={{ fontSize: 12.5, color: 'var(--text-muted)', maxWidth: 320, margin: '0 auto', lineHeight: 1.5 }}>
-                                        This user is not assigned to any active checklist items on this site for the selected period.
+                                        {t('users.noTasksAssignedDesc')}
                                     </p>
                                 </div>
                             ) : (
@@ -762,34 +764,34 @@ export default function UserManagementView() {
                                     {/* Summary Stats cards */}
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
                                         <div style={{ padding: '14px 16px', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: 12 }}>
-                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Assigned</div>
-                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.total_assigned}</div>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{t('checklist.assigned')}</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{n(userActivity.summary.total_assigned)}</div>
                                         </div>
                                         <div style={{ padding: '14px 16px', background: 'rgba(34, 197, 94, 0.04)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: 12 }}>
-                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Completed</div>
-                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.completed}</div>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{t('users.completed')}</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{n(userActivity.summary.completed)}</div>
                                         </div>
                                         {userActivity.summary.partial > 0 && (
                                             <div style={{ padding: '14px 16px', background: 'rgba(245, 158, 11, 0.04)', border: '1px solid rgba(245, 158, 11, 0.15)', borderRadius: 12 }}>
-                                                <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Partial</div>
-                                                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.partial}</div>
+                                                <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{t('data.partial')}</div>
+                                                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{n(userActivity.summary.partial)}</div>
                                             </div>
                                         )}
                                         <div style={{ padding: '14px 16px', background: 'rgba(239, 68, 68, 0.04)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: 12 }}>
-                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Pending</div>
-                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.pending}</div>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{t('users.pendingTask')}</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{n(userActivity.summary.pending)}</div>
                                         </div>
                                         <div style={{ padding: '14px 16px', background: 'rgba(168, 85, 247, 0.04)', border: '1px solid rgba(168, 85, 247, 0.15)', borderRadius: 12 }}>
-                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Completion</div>
-                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{userActivity.summary.completion_rate}%</div>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{t('users.completion')}</div>
+                                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{n(userActivity.summary.completion_rate)}%</div>
                                         </div>
                                     </div>
 
                                     {/* Progress Bar */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                                            <span>Progress</span>
-                                            <span>{userActivity.summary.completed}/{userActivity.summary.total_assigned} tasks done</span>
+                                            <span>{t('users.progress')}</span>
+                                            <span>{t('users.tasksDone').replace('{{completed}}', n(userActivity.summary.completed)).replace('{{total}}', n(userActivity.summary.total_assigned))}</span>
                                         </div>
                                         <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
                                             <div style={{ width: `${userActivity.summary.completion_rate}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #a855f7)', borderRadius: 3, transition: 'width 0.4s ease' }} />
@@ -798,7 +800,7 @@ export default function UserManagementView() {
 
                                     {/* Task Checklist Items */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        <h4 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.2px', textTransform: 'uppercase', marginBottom: 4 }}>Assigned Tasks</h4>
+                                        <h4 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.2px', textTransform: 'uppercase', marginBottom: 4 }}>{t('users.assignedTasks')}</h4>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                             {userActivity.tasks.map((task: any, idx: number) => {
                                                 const catInfo = CATEGORY_CONFIG[task.category as 'E'|'S'|'G'] || { label: task.category, color: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)' };
@@ -835,28 +837,28 @@ export default function UserManagementView() {
 
                                                             <div>
                                                                 {task.status === 'complete' && (
-                                                                    <span className="badge badge-green">✓ Complete</span>
+                                                                    <span className="badge badge-green">{t('users.badgeComplete')}</span>
                                                                 )}
                                                                 {task.status === 'partial' && (
-                                                                    <span className="badge badge-amber">◐ Partial</span>
+                                                                    <span className="badge badge-amber">{t('users.badgePartial')}</span>
                                                                 )}
                                                                 {task.status === 'pending' && (
-                                                                    <span className="badge badge-red">✕ Pending</span>
+                                                                    <span className="badge badge-red">{t('users.badgePending')}</span>
                                                                 )}
                                                             </div>
                                                         </div>
 
                                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 11.5, color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: 8 }}>
-                                                            <div>Frequency: <strong style={{ color: 'var(--text-secondary)' }}>{task.frequency}</strong></div>
-                                                            <div>Scope: <strong style={{ color: 'var(--text-secondary)' }}>{task.details}</strong></div>
+                                                            <div>{t('users.frequency')} <strong style={{ color: 'var(--text-secondary)' }}>{task.frequency}</strong></div>
+                                                            <div>{t('users.scope')} <strong style={{ color: 'var(--text-secondary)' }}>{task.details}</strong></div>
                                                             {task.latest_submission && (
                                                                 <>
-                                                                    <div>Value: <strong style={{ color: 'var(--accent-blue)' }}>{task.latest_submission.value}</strong></div>
+                                                                    <div>{t('users.value')} <strong style={{ color: 'var(--accent-blue)' }}>{n(task.latest_submission.value)}</strong></div>
                                                                     <div>
-                                                                        Submitted by: <strong style={{ color: 'var(--text-secondary)' }}>{task.latest_submission.submitted_by || 'Unknown'}</strong>
+                                                                        {t('users.submittedBy')} <strong style={{ color: 'var(--text-secondary)' }}>{task.latest_submission.submitted_by || t('users.unknown')}</strong>
                                                                     </div>
                                                                     <div>
-                                                                        Date: <strong style={{ color: 'var(--text-secondary)' }}>{new Date(task.latest_submission.submitted_at).toLocaleDateString()}</strong>
+                                                                        {t('users.dateLabel')} <strong style={{ color: 'var(--text-secondary)' }}>{n(new Date(task.latest_submission.submitted_at).toLocaleDateString())}</strong>
                                                                     </div>
                                                                 </>
                                                             )}
@@ -878,7 +880,7 @@ export default function UserManagementView() {
 
                         <div className="modal-footer" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
                             <button type="button" className="btn btn-secondary" onClick={() => { setIsActivityModalOpen(false); setSelectedUser(null); }}>
-                                Close
+                                {t('users.close')}
                             </button>
                         </div>
                     </div>

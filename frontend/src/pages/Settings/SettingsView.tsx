@@ -4,10 +4,12 @@ import { api } from '../../services/api';
 import { useAuthStore } from '../../stores/authStore';
 import AppLayout from '../../components/layout/AppLayout';
 import { canPerformAction } from '../../config/rbac';
+import { useTranslation } from '../../i18n';
 
 export default function SettingsView() {
     const { user, fetchUser } = useAuthStore();
     const queryClient = useQueryClient();
+    const { t, lang, setLang } = useTranslation();
     
     const canAccessOrg = canPerformAction(user?.profile?.role, 'settings_org', 'read');
     
@@ -63,8 +65,8 @@ export default function SettingsView() {
     const handleOrgSubmit = (e: React.FormEvent) => { e.preventDefault(); setMessage({ text: '', type: '' }); updateOrg.mutate(orgData); };
 
     const tabs = [
-        { id: 'profile', label: 'Personal Profile', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
-        ...(canAccessOrg ? [{ id: 'organization', label: 'Organization', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17" /></svg> }] : []),
+        { id: 'profile', label: t('settings.personalProfile'), icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
+        ...(canAccessOrg ? [{ id: 'organization', label: t('settings.orgProfile'), icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M3 7v1a3 3 0 006 0V7m0 1a3 3 0 006 0V7m0 1a3 3 0 006 0V7M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17" /></svg> }] : []),
     ];
 
     const initials = `${(user?.first_name || '').charAt(0)}${(user?.last_name || '').charAt(0)}`.toUpperCase();
@@ -164,7 +166,7 @@ export default function SettingsView() {
 
                 {/* ── Header ── */}
                 <div className="sv-header">
-                    <h1 className="sv-title">Settings</h1>
+                    <h1 className="sv-title">{t('settings.title')}</h1>
                     <p className="sv-subtitle">Manage your personal account and organization preferences.</p>
                 </div>
 
@@ -195,33 +197,42 @@ export default function SettingsView() {
                             {/* PROFILE TAB */}
                             {activeTab === 'profile' && (
                                 <form onSubmit={handleProfileSubmit}>
-                                    <div className="sv-card-section-title">Personal Information</div>
-                                    <div className="sv-card-section-sub">Update your name and email address.</div>
+                                    <div className="sv-card-section-title">{t('settings.personalInfo')}</div>
+                                    <div className="sv-card-section-sub">{t('settings.personalSub')}</div>
                                     <hr className="sv-divider" />
 
                                     <div className="sv-row">
                                         <div className="sv-field" style={{ marginBottom: 0 }}>
-                                            <label className="sv-label">First Name</label>
+                                            <label className="sv-label">{t('settings.firstName')}</label>
                                             <input className="sv-input" type="text" value={profileData.first_name}
                                                 onChange={e => setProfileData({ ...profileData, first_name: e.target.value })} required />
                                         </div>
                                         <div className="sv-field" style={{ marginBottom: 0 }}>
-                                            <label className="sv-label">Last Name</label>
+                                            <label className="sv-label">{t('settings.lastName')}</label>
                                             <input className="sv-input" type="text" value={profileData.last_name}
                                                 onChange={e => setProfileData({ ...profileData, last_name: e.target.value })} required />
                                         </div>
                                     </div>
 
                                     <div className="sv-field">
-                                        <label className="sv-label">Email Address</label>
+                                        <label className="sv-label">{t('settings.email')}</label>
                                         <input className="sv-input" type="email" value={profileData.email}
                                             onChange={e => setProfileData({ ...profileData, email: e.target.value })} required />
                                         <span className="sv-input-hint">Used for secure login and reporting alerts.</span>
                                     </div>
 
+                                    <div className="sv-field">
+                                        <label className="sv-label">{t('settings.language')}</label>
+                                        <select className="sv-input" value={lang} onChange={e => setLang(e.target.value as any)}>
+                                            <option value="en">{t('settings.english')}</option>
+                                            <option value="ar">{t('settings.arabic')}</option>
+                                        </select>
+                                        <span className="sv-input-hint">Select your preferred application language.</span>
+                                    </div>
+
                                     <div className="sv-btn-footer">
                                         <button type="submit" className="sv-btn-primary" disabled={updateProfile.isPending}>
-                                            {updateProfile.isPending ? 'Saving...' : 'Update Personal Info'}
+                                            {updateProfile.isPending ? 'Saving...' : t('settings.save')}
                                         </button>
                                     </div>
                                 </form>
@@ -230,8 +241,8 @@ export default function SettingsView() {
                             {/* ORGANIZATION TAB */}
                             {activeTab === 'organization' && (
                                 <form onSubmit={handleOrgSubmit}>
-                                    <div className="sv-card-section-title">Organization Details</div>
-                                    <div className="sv-card-section-sub">Update your legal entity and compliance information.</div>
+                                    <div className="sv-card-section-title">{t('settings.orgDetails')}</div>
+                                    <div className="sv-card-section-sub">{t('settings.orgSub')}</div>
                                     <hr className="sv-divider" />
 
                                     {loadingCompany ? (
@@ -242,19 +253,19 @@ export default function SettingsView() {
                                     ) : (
                                         <>
                                             <div className="sv-field">
-                                                <label className="sv-label">Legal Entity Name</label>
+                                                <label className="sv-label">{t('settings.legalName')}</label>
                                                 <input className="sv-input" type="text" value={orgData.name}
                                                     onChange={e => setOrgData({ ...orgData, name: e.target.value })} required />
                                             </div>
 
                                             <div className="sv-row">
                                                 <div className="sv-field" style={{ marginBottom: 0 }}>
-                                                    <label className="sv-label">Registration No.</label>
+                                                    <label className="sv-label">{t('settings.regNo')}</label>
                                                     <input className="sv-input" type="text" value={orgData.registration_number}
                                                         onChange={e => setOrgData({ ...orgData, registration_number: e.target.value })} />
                                                 </div>
                                                 <div className="sv-field" style={{ marginBottom: 0 }}>
-                                                    <label className="sv-label">Trade License</label>
+                                                    <label className="sv-label">{t('settings.tradeLicense')}</label>
                                                     <input className="sv-input" type="text" value={orgData.trade_license_number}
                                                         onChange={e => setOrgData({ ...orgData, trade_license_number: e.target.value })} />
                                                 </div>
@@ -262,7 +273,7 @@ export default function SettingsView() {
 
                                             <div className="sv-row">
                                                 <div className="sv-field" style={{ marginBottom: 0 }}>
-                                                    <label className="sv-label">Emirate / State</label>
+                                                    <label className="sv-label">{t('settings.emirate')}</label>
                                                     <select className="sv-input" value={orgData.emirate} onChange={e => setOrgData({ ...orgData, emirate: e.target.value })}>
                                                         <option value="dubai">Dubai</option>
                                                         <option value="abu-dhabi">Abu Dhabi</option>
@@ -274,7 +285,7 @@ export default function SettingsView() {
                                                     </select>
                                                 </div>
                                                 <div className="sv-field" style={{ marginBottom: 0 }}>
-                                                    <label className="sv-label">Industry Sector</label>
+                                                    <label className="sv-label">{t('settings.sector')}</label>
                                                     <select className="sv-input" value={orgData.sector} onChange={e => {
                                                          const sec = e.target.value;
                                                          setOrgData({
@@ -315,7 +326,7 @@ export default function SettingsView() {
 
                                             <div className="sv-btn-footer">
                                                 <button type="submit" className="sv-btn-primary" disabled={updateOrg.isPending}>
-                                                    {updateOrg.isPending ? 'Saving...' : 'Save Organization Details'}
+                                                    {updateOrg.isPending ? 'Saving...' : t('settings.save')}
                                                 </button>
                                             </div>
                                         </>

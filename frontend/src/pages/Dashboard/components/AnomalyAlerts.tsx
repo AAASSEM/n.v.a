@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { useSiteStore } from '../../../stores/siteStore';
+import { useTranslation } from '../../../i18n';
 
 export const AnomalyAlerts = () => {
+    const { t, lang, n } = useTranslation();
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const [dismissed, setDismissed] = useState(false);
 
@@ -45,14 +47,18 @@ export const AnomalyAlerts = () => {
 
     if (anomalies.length === 0) return null;
 
+    const isRtl = lang === 'ar';
+
     return (
         <div style={{
-            background: 'linear-gradient(90deg, rgba(244,63,94,0.1) 0%, rgba(16,18,30,0) 100%)',
-            borderLeft: '4px solid #f43f5e',
+            background: isRtl
+                ? 'linear-gradient(-90deg, rgba(244,63,94,0.1) 0%, rgba(16,18,30,0) 100%)'
+                : 'linear-gradient(90deg, rgba(244,63,94,0.1) 0%, rgba(16,18,30,0) 100%)',
+            borderLeft: isRtl ? '1px solid rgba(255,255,255,0.05)' : '4px solid #f43f5e',
             borderTop: '1px solid rgba(244,63,94,0.2)',
             borderBottom: '1px solid rgba(244,63,94,0.2)',
-            borderRight: '1px solid rgba(255,255,255,0.05)',
-            borderRadius: '0 12px 12px 0',
+            borderRight: isRtl ? '4px solid #f43f5e' : '1px solid rgba(255,255,255,0.05)',
+            borderRadius: isRtl ? '12px 0 0 12px' : '0 12px 12px 0',
             padding: '16px 20px',
             marginBottom: 24,
             display: 'flex',
@@ -73,14 +79,14 @@ export const AnomalyAlerts = () => {
             
             <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#f0f2ff', marginBottom: 4 }}>
-                    Automated Anomaly Detected
+                    {t('dash.automatedAnomalyDetected')}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    Our intelligence engine detected unexpected spikes in the current reporting period:
-                    <ul style={{ margin: '8px 0 0 20px', color: '#f43f5e', fontWeight: 600 }}>
+                    {t('dash.anomalyDesc')}
+                    <ul style={{ margin: isRtl ? '8px 20px 0 0' : '8px 0 0 20px', color: '#f43f5e', fontWeight: 600 }}>
                         {anomalies.map((a: any) => (
                             <li key={a.element_code}>
-                                {a.name} increased by {a.delta_pct.toFixed(1)}% ({a.value_a} → {a.value_b} {a.unit})
+                                {a.name} {t('dash.increasedBy')} {n(a.delta_pct.toFixed(1))}% ({n(a.value_a)} {isRtl ? '←' : '→'} {n(a.value_b)} {a.unit})
                             </li>
                         ))}
                     </ul>

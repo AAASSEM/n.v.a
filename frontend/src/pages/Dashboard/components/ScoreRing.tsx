@@ -3,13 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../../services/api';
 import { useAuthStore } from '../../../stores/authStore';
 import { useSiteStore } from '../../../stores/siteStore';
+import { useTranslation } from '../../../i18n';
 
 export const ScoreRing = () => {
+    const { t, lang, n } = useTranslation();
+    const isRtl = lang === 'ar';
     const { user } = useAuthStore();
     const currentSiteId = useSiteStore(s => s.currentSiteId);
 
     const userRole = user?.profile?.role;
     const isAuthorized = userRole === 'super_user' || userRole === 'admin';
+
+    const getArabicGrade = (g: string) => {
+        if (!g) return '';
+        return g
+            .replace('A', 'أ')
+            .replace('B', 'ب')
+            .replace('C', 'ج')
+            .replace('D', 'د')
+            .replace('F', 'هـ');
+    };
 
     const { data: scoreData, isLoading } = useQuery({
         queryKey: ['dashboard', 'score', currentSiteId],
@@ -56,21 +69,21 @@ export const ScoreRing = () => {
                     />
                 </svg>
                 <div style={{ position: 'absolute', fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {grade}
+                    {isRtl ? getArabicGrade(grade) : grade}
                 </div>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Reporting Coverage
+                    {t('dash.scoreRing')}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                     <span style={{ fontSize: 20, fontWeight: 800, color: '#f0f2ff', lineHeight: 1 }}>
-                        {overall}
+                        {n(overall)}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: delta >= 0 ? '#10b981' : '#f87171', display: 'flex', alignItems: 'center', gap: 4 }} title="Change in score vs last month">
-                        {delta > 0 ? '+' : ''}{delta} pts
-                        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-muted)' }}>vs last month</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: delta >= 0 ? '#10b981' : '#f87171', display: 'flex', alignItems: 'center', gap: 4 }} title={t('dash.vsLastMonth')}>
+                        {delta > 0 ? '+' : ''}{n(delta)} pts
+                        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-muted)' }}>{t('dash.vsLastMonth')}</span>
                     </span>
                 </div>
             </div>

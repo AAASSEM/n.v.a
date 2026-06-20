@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import DemoModal from '../../components/ui/DemoModal';
+import { useTranslation } from '../../i18n';
 
 /* ─────────────────────────── tiny hooks ─────────────────────────── */
 function useCountUp(target: number, duration = 2000, start = false) {
@@ -33,53 +34,54 @@ function useInView(threshold = 0.2) {
 
 /* ─────────────────────────── data ─────────────────────────── */
 const TICKERS = [
-    { label: 'Carbon Offset', value: '−2.4t', delta: '↓ 12%' },
-    { label: 'GRI Score', value: '98.2', delta: '↑ 4.1' },
-    { label: 'Scope 1', value: '144 tCO₂', delta: '↓ 8%' },
-    { label: 'Social Index', value: '87.5', delta: '↑ 2.3' },
-    { label: 'Governance', value: 'AAA', delta: 'STABLE' },
-    { label: 'Energy Use', value: '1.2 GWh', delta: '↓ 5%' },
-    { label: 'Water', value: '340 kL', delta: '↓ 3%' },
-    { label: 'Waste Recycled', value: '91%', delta: '↑ 6%' },
+    { label: 'landing.ticker.carbonOffset', value: '−2.4t', delta: '↓ 12%' },
+    { label: 'landing.ticker.griScore', value: '98.2', delta: '↑ 4.1' },
+    { label: 'landing.ticker.scope1', value: '144 tCO₂', delta: '↓ 8%' },
+    { label: 'landing.ticker.socialIndex', value: '87.5', delta: '↑ 2.3' },
+    { label: 'landing.ticker.governance', value: 'AAA', delta: 'landing.ticker.stable' },
+    { label: 'landing.ticker.energyUse', value: '1.2 GWh', delta: '↓ 5%' },
+    { label: 'landing.ticker.water', value: '340 kL', delta: '↓ 3%' },
+    { label: 'landing.ticker.wasteRecycled', value: '91%', delta: '↑ 6%' },
 ];
 
 const FEATURES = [
     {
-        num: '01', title: 'Carbon Intelligence', accent: '#10b981',
-        body: 'Automate Scope 1, 2, and 3 emissions tracking with real-time telemetry. Connect data sources directly to your carbon footprint dashboard.',
+        num: '01', title: 'landing.feat.carbonTitle', accent: '#10b981',
+        body: 'landing.feat.carbonBody',
         tags: ['Scope 1–3', 'Real-time', 'API-native'],
         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /><path d="M12 2C6.5 7 6.5 17 12 22" /><path d="M12 2c5.5 5 5.5 15 0 20" /></svg>,
     },
     {
-        num: '02', title: 'Social Metrics Engine', accent: '#6366f1',
-        body: 'Monitor health & safety KPIs, DEI benchmarks, and community impact scores — backed by cryptographically signed evidence chains.',
+        num: '02', title: 'landing.feat.socialTitle', accent: '#6366f1',
+        body: 'landing.feat.socialBody',
         tags: ['DEI Tracking', 'Audit Trail', 'ISO 26000'],
         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>,
     },
     {
-        num: '03', title: 'Governance Command', accent: '#8b5cf6',
-        body: 'Centralize compliance, board-level risk assessments, and disclosure reporting in a single auditable source of truth.',
+        num: '03', title: 'landing.feat.govTitle', accent: '#8b5cf6',
+        body: 'landing.feat.govBody',
         tags: ['SEC Aligned', 'TCFD Ready', 'SOC 2'],
         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
     },
     {
-        num: '04', title: 'Automated Disclosures', accent: '#14b8a6',
-        body: 'Generate GRI, SASB, TCFD, and CSRD reports at one click. Export audit-ready packages for any regulatory framework.',
+        num: '04', title: 'landing.feat.discTitle', accent: '#14b8a6',
+        body: 'landing.feat.discBody',
         tags: ['GRI 2024', 'CSRD', 'SASB'],
         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
     },
 ];
 
 const STEPS = [
-    { n: '1', title: 'Connect Sources', body: 'Link ERP, IoT sensors, HR systems, and third-party data via 200+ native connectors.' },
-    { n: '2', title: 'AI Normalizes Data', body: 'Our engine cleanses, classifies, and enriches raw data against global ESG taxonomies.' },
-    { n: '3', title: 'Publish & Comply', body: 'Generate certified reports, share live dashboards with stakeholders, and file with regulators.' },
+    { n: '1', title: 'landing.how.step1Title', body: 'landing.how.step1Body' },
+    { n: '2', title: 'landing.how.step2Title', body: 'landing.how.step2Body' },
+    { n: '3', title: 'landing.how.step3Title', body: 'landing.how.step3Body' },
 ];
 
 const LOGOS = ['Unilever', 'BlackRock', 'Nestlé', 'Siemens', 'Schneider', 'BASF', 'Philips', 'Danone'];
 
 /* ─────────────────────────── component ─────────────────────────── */
 export default function LandingPage() {
+    const { t, n } = useTranslation();
     const { isAuthenticated, logout } = useAuthStore();
     const [showDemoModal, setShowDemoModal] = useState(false);
 
@@ -352,18 +354,18 @@ export default function LandingPage() {
                         </div>
                     </Link>
                     <div className="lp-nav-links">
-                        <a href="#features">Features</a>
-                        <a href="#how">How It Works</a>
-                        <a href="#metrics">Frameworks</a>
-                        <a href="#security">Security</a>
+                        <a href="#features">{t('landing.navFeatures')}</a>
+                        <a href="#how">{t('landing.navHow')}</a>
+                        <a href="#metrics">{t('landing.navFrameworks')}</a>
+                        <a href="#security">{t('landing.navSecurity')}</a>
                     </div>
                     <div className="lp-nav-cta">
                         {isAuthenticated ? (
-                            <Link to="/dashboard" className="lp-btn-primary">Dashboard →</Link>
+                            <Link to="/dashboard" className="lp-btn-primary">{t('landing.dashboard')}</Link>
                         ) : (
                             <>
-                                <Link to="/login" className="lp-btn-ghost">Login</Link>
-                                <Link to="/signup" className="lp-btn-primary">Start Free →</Link>
+                                <Link to="/login" className="lp-btn-ghost">{t('landing.login')}</Link>
+                                <Link to="/signup" className="lp-btn-primary">{t('landing.startFree')}</Link>
                             </>
                         )}
                     </div>
@@ -373,11 +375,11 @@ export default function LandingPage() {
             {/* ── LIVE TICKER ── */}
             <div className="lp-ticker">
                 <div className="lp-ticker-track">
-                    {[...TICKERS, ...TICKERS, ...TICKERS, ...TICKERS].map((t, i) => (
+                    {[...TICKERS, ...TICKERS, ...TICKERS, ...TICKERS].map((tick, i) => (
                         <div className="lp-ticker-item" key={i}>
-                            <span className="lp-tick-lbl">{t.label}</span>
-                            <span className="lp-tick-val">{t.value}</span>
-                            <span className="lp-tick-delta">{t.delta}</span>
+                            <span className="lp-tick-lbl">{t(tick.label)}</span>
+                            <span className="lp-tick-val">{n(tick.value)}</span>
+                            <span className="lp-tick-delta">{n(tick.delta.startsWith('landing.') ? t(tick.delta) : tick.delta)}</span>
                         </div>
                     ))}
                 </div>
@@ -388,29 +390,29 @@ export default function LandingPage() {
                 <div className="lp-hero">
                     {/* LEFT */}
                     <div>
-                        <div className="lp-eyebrow"><span className="lp-eyebrow-dot" /> Now Compliant with GRI 2024 Standards</div>
+                        <div className="lp-eyebrow"><span className="lp-eyebrow-dot" /> {t('landing.eyebrow')}</div>
                         <h1 className="lp-h1">
-                            Measure<br />
-                            what <span className="lp-h1-green">really</span><br />
-                            <span className="lp-h1-stroke">matters.</span>
+                            {t('landing.h1Line1')}<br />
+                            {t('landing.h1Line2')} <span className="lp-h1-green">{t('landing.h1Really')}</span><br />
+                            <span className="lp-h1-stroke">{t('landing.h1Line3')}</span>
                         </h1>
                         <p className="lp-hero-sub">
-                            The command center for corporate sustainability. Track emissions, automate disclosures, and transform ESG data into a genuine competitive edge.
+                            {t('landing.heroSub')}
                         </p>
                         <div className="lp-hero-actions">
                             <Link to="/signup" className="lp-btn-hero lp-btn-hero-p">
-                                Start Free Trial
+                                {t('landing.startTrial')}
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                             </Link>
                             <button className="lp-btn-hero lp-btn-hero-o" onClick={() => setShowDemoModal(true)}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none" /></svg>
-                                Watch Demo
+                                {t('landing.watchDemo')}
                             </button>
                         </div>
                         <div className="lp-proof">
-                            <div className="lp-proof-item"><div className="lp-proof-num">94<span>%</span></div><div className="lp-proof-lbl">Efficiency Gain</div></div>
-                            <div className="lp-proof-item"><div className="lp-proof-num">12<span>k+</span></div><div className="lp-proof-lbl">Metrics Tracked</div></div>
-                            <div className="lp-proof-item" style={{ borderRight: 'none', marginRight: 0 }}><div className="lp-proof-num">340<span>+</span></div><div className="lp-proof-lbl">Enterprises</div></div>
+                            <div className="lp-proof-item"><div className="lp-proof-num">{n(94)}<span>%</span></div><div className="lp-proof-lbl">{t('landing.efficiencyGain')}</div></div>
+                            <div className="lp-proof-item"><div className="lp-proof-num">{n(12)}<span>k+</span></div><div className="lp-proof-lbl">{t('landing.metricsTracked')}</div></div>
+                            <div className="lp-proof-item" style={{ borderRight: 'none', marginRight: 0 }}><div className="lp-proof-num">{n(340)}<span>+</span></div><div className="lp-proof-lbl">{t('landing.enterprises')}</div></div>
                         </div>
                     </div>
 
@@ -426,22 +428,22 @@ export default function LandingPage() {
                             <div className="lp-dash-body">
                                 <div className="lp-kpis">
                                     {[
-                                        { l: 'Carbon Score', v: '98.2', d: '↑ 4.1', c: '#10b981' },
-                                        { l: 'Scope 1 (tCO₂)', v: '144', d: '↓ 8%', c: '#10b981' },
-                                        { l: 'Data Completeness', v: '98%', d: '↑ 2%', c: '#6366f1' },
+                                        { l: t('landing.dash.carbonScore'), v: '98.2', d: '↑ 4.1', c: '#10b981' },
+                                        { l: t('landing.dash.scope1tco2'), v: '144', d: '↓ 8%', c: '#10b981' },
+                                        { l: t('landing.dash.dataCompleteness'), v: '98%', d: '↑ 2%', c: '#6366f1' },
                                     ].map((k, i) => (
                                         <div className="lp-kpi" key={i}>
                                             <div className="lp-kpi-lbl">{k.l}</div>
-                                            <div className="lp-kpi-val" style={{ color: k.c }}>{k.v}</div>
-                                            <div className="lp-kpi-delta">{k.d}</div>
+                                            <div className="lp-kpi-val" style={{ color: k.c }}>{n(k.v)}</div>
+                                            <div className="lp-kpi-delta">{n(k.d)}</div>
                                         </div>
                                     ))}
                                 </div>
 
                                 <div className="lp-chart-box">
                                     <div className="lp-chart-head">
-                                        <span className="lp-chart-title">Emissions Trend — 12 Months</span>
-                                        <span className="lp-chart-live">● LIVE</span>
+                                        <span className="lp-chart-title">{t('landing.dash.emissionsTrend')}</span>
+                                        <span className="lp-chart-live">{t('landing.dash.live')}</span>
                                     </div>
                                     <svg viewBox="0 0 380 88" style={{ width: '100%', height: 72 }}>
                                         <defs>
@@ -462,18 +464,18 @@ export default function LandingPage() {
 
                                 <div className="lp-dash-bottom">
                                     <div className="lp-mini">
-                                        <div className="lp-mini-lbl">Scope Breakdown</div>
+                                        <div className="lp-mini-lbl">{t('landing.dash.scopeBreakdown')}</div>
                                         {[{ l: 'S1', w: 35, c: '#10b981' }, { l: 'S2', w: 52, c: '#6366f1' }, { l: 'S3', w: 78, c: '#8b5cf6' }].map((b, i) => (
                                             <div className="lp-bar-row" key={i}>
                                                 <span className="lp-bar-lbl">{b.l}</span>
                                                 <div className="lp-bar-track"><div className="lp-bar-fill" style={{ width: `${b.w}%`, background: b.c }} /></div>
-                                                <span className="lp-bar-pct">{b.w}%</span>
+                                                <span className="lp-bar-pct">{n(b.w)}%</span>
                                             </div>
                                         ))}
                                     </div>
                                     <div className="lp-mini" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <div>
-                                            <div className="lp-mini-lbl" style={{ textAlign: 'center' }}>ESG Score</div>
+                                            <div className="lp-mini-lbl" style={{ textAlign: 'center' }}>{t('landing.dash.esgScore')}</div>
                                             <svg width="80" height="80" viewBox="0 0 80 80" style={{ display: 'block', margin: '0 auto' }}>
                                                 <circle cx="40" cy="40" r="30" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
                                                 <circle cx="40" cy="40" r="30" fill="none" stroke="#10b981" strokeWidth="6"
@@ -504,16 +506,16 @@ export default function LandingPage() {
 
             {/* ── FEATURES ── */}
             <section id="features" className="lp-feat-section">
-                <div className="lp-sec-label">Platform Capabilities</div>
-                <h2 className="lp-feat-h2">Everything you need to<br /><em>lead on sustainability.</em></h2>
+                <div className="lp-sec-label">{t('landing.feat.sectionLabel')}</div>
+                <h2 className="lp-feat-h2">{t('landing.feat.h2')}</h2>
                 <div className="lp-feat-grid">
                     {FEATURES.map((f, i) => (
                         <div className="lp-feat-card" key={i} style={{ '--accent': f.accent } as React.CSSProperties}>
-                            <div className="lp-feat-num">{f.num} / {String(FEATURES.length).padStart(2, '0')}</div>
+                            <div className="lp-feat-num">{n(f.num)} / {n(String(FEATURES.length).padStart(2, '0'))}</div>
                             <div className="lp-feat-icon" style={{ background: `${f.accent}18`, color: f.accent }}>{f.icon}</div>
-                            <div className="lp-feat-title">{f.title}</div>
-                            <div className="lp-feat-body">{f.body}</div>
-                            <div className="lp-feat-tags">{f.tags.map((t, j) => <span className="lp-feat-tag" key={j}>{t}</span>)}</div>
+                            <div className="lp-feat-title">{t(f.title)}</div>
+                            <div className="lp-feat-body">{t(f.body)}</div>
+                            <div className="lp-feat-tags">{f.tags.map((tg, j) => <span className="lp-feat-tag" key={j}>{tg}</span>)}</div>
                         </div>
                     ))}
                 </div>
@@ -522,28 +524,28 @@ export default function LandingPage() {
             {/* ── STATS ── */}
             <section id="metrics" className="lp-stats-section">
                 <div className="lp-stats-inner" ref={statsRef.ref}>
-                    <div className="lp-stat-cell"><div className="lp-stat-num">{eff}<span className="ac">%</span></div><div className="lp-stat-lbl">Efficiency Gains</div></div>
-                    <div className="lp-stat-cell"><div className="lp-stat-num">{metrics}<span className="ac">k+</span></div><div className="lp-stat-lbl">Metrics Tracked</div></div>
-                    <div className="lp-stat-cell"><div className="lp-stat-num" style={{ fontSize: 'clamp(36px, 3.5vw, 52px)' }}>GRI<span className="ac">+</span></div><div className="lp-stat-lbl">Native Framework Support</div></div>
-                    <div className="lp-stat-cell"><div className="lp-stat-num">{clients}<span className="ac">+</span></div><div className="lp-stat-lbl">Enterprise Clients</div></div>
+                    <div className="lp-stat-cell"><div className="lp-stat-num">{n(eff)}<span className="ac">%</span></div><div className="lp-stat-lbl">{t('landing.stats.efficiencyGains')}</div></div>
+                    <div className="lp-stat-cell"><div className="lp-stat-num">{n(metrics)}<span className="ac">k+</span></div><div className="lp-stat-lbl">{t('landing.metricsTracked')}</div></div>
+                    <div className="lp-stat-cell"><div className="lp-stat-num" style={{ fontSize: 'clamp(36px, 3.5vw, 52px)' }}>GRI<span className="ac">+</span></div><div className="lp-stat-lbl">{t('landing.stats.nativeFrameworkSupport')}</div></div>
+                    <div className="lp-stat-cell"><div className="lp-stat-num">{n(clients)}<span className="ac">+</span></div><div className="lp-stat-lbl">{t('landing.stats.enterpriseClients')}</div></div>
                 </div>
             </section>
 
             {/* ── HOW IT WORKS ── */}
             <section id="how" className="lp-how-section">
-                <div className="lp-sec-label">Process</div>
-                <h2 className="lp-feat-h2" style={{ maxWidth: 460 }}>From raw data to<br /><em>certified reports.</em></h2>
+                <div className="lp-sec-label">{t('landing.how.sectionLabel')}</div>
+                <h2 className="lp-feat-h2" style={{ maxWidth: 460 }}>{t('landing.how.h2')}</h2>
                 <div className="lp-how-steps">
                     {STEPS.map((s, i) => (
                         <div className="lp-step" key={i}>
-                            <div className="lp-step-n">STEP {s.n}</div>
+                            <div className="lp-step-n">{t('landing.how.step')} {n(s.n)}</div>
                             {i < STEPS.length - 1 && (
                                 <div className="lp-step-conn">
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                 </div>
                             )}
-                            <div className="lp-step-title">{s.title}</div>
-                            <div className="lp-step-body">{s.body}</div>
+                            <div className="lp-step-title">{t(s.title)}</div>
+                            <div className="lp-step-body">{t(s.body)}</div>
                         </div>
                     ))}
                 </div>
@@ -551,12 +553,12 @@ export default function LandingPage() {
 
             {/* ── CTA ── */}
             <section className="lp-cta">
-                <div className="lp-cta-eyebrow">Get Started Today</div>
-                <h2 className="lp-cta-h2">Your sustainability<br />journey starts <em>now.</em></h2>
-                <p className="lp-cta-sub">Join 340+ enterprises already using ESGravity to turn compliance into competitive advantage.</p>
+                <div className="lp-cta-eyebrow">{t('landing.cta.eyebrow')}</div>
+                <h2 className="lp-cta-h2">{t('landing.cta.h2')}</h2>
+                <p className="lp-cta-sub">{t('landing.cta.sub')}</p>
                 <div className="lp-cta-actions">
                     <Link to="/signup" className="lp-btn-hero lp-btn-hero-p">
-                        Start Free — No Card Required
+                        {t('landing.cta.btn')}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                     </Link>
                 </div>
@@ -578,12 +580,12 @@ export default function LandingPage() {
                             </div>
                             <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.05em', color: '#f0f2ff' }}>ESGRAVITY</span>
                         </div>
-                        <p>The command center for corporate sustainability intelligence.</p>
+                        <p>{t('landing.footer.desc')}</p>
                     </div>
                     {[
-                        { title: 'Product', links: ['Features', 'Frameworks', 'Security', 'Changelog'] },
-                        { title: 'Company', links: ['About', 'Careers', 'Blog', 'Press'] },
-                        { title: 'Legal', links: ['Privacy', 'Terms', 'Security', 'Cookies'] },
+                        { title: t('landing.footer.product'), links: [t('landing.footer.features'), t('landing.footer.frameworks'), t('landing.footer.security'), t('landing.footer.changelog')] },
+                        { title: t('landing.footer.company'), links: [t('landing.footer.about'), t('landing.footer.careers'), t('landing.footer.blog'), t('landing.footer.press')] },
+                        { title: t('landing.footer.legal'), links: [t('landing.footer.privacy'), t('landing.footer.terms'), t('landing.footer.security'), t('landing.footer.cookies')] },
                     ].map((col, i) => (
                         <div key={i}>
                             <div className="lp-footer-col-title">{col.title}</div>
@@ -592,7 +594,7 @@ export default function LandingPage() {
                     ))}
                 </div>
                 <div className="lp-footer-bottom">
-                    <span className="lp-footer-copy">© 2024 ESGRAVITY GLOBAL SYSTEMS — ALL RIGHTS RESERVED</span>
+                    <span className="lp-footer-copy">{t('landing.footer.copy')}</span>
                     <div className="lp-footer-badges">
                         <span className="lp-badge">SOC 2</span>
                         <span className="lp-badge">ISO 27001</span>

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useTranslation } from '../../i18n';
 
 export default function Login() {
     const [email, setEmail] = useState('');
     const [isSubmitted, setIsSubmitted] = useState(false);
     const { requestLoginLink, isLoading, error } = useAuthStore();
-
+    const { t } = useTranslation();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,18 +36,18 @@ export default function Login() {
                         ✓
                     </div>
                     <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12, letterSpacing: '-0.3px' }}>
-                        Check your email
+                        {t('login.checkEmail')}
                     </h2>
                     <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 28 }}>
-                        We sent a secure magic link to <strong style={{ color: 'var(--text-primary)' }}>{email}</strong>. 
-                        Click the link in the email to log in instantly.
+                        {t('login.magicLinkSent')} <strong style={{ color: 'var(--text-primary)' }}>{email}</strong>. 
+                        {t('login.clickLink')}
                     </p>
                     <button 
                         onClick={() => setIsSubmitted(false)}
                         className="btn btn-secondary"
                         style={{ width: '100%', justifyContent: 'center' }}
                     >
-                        Back to sign in
+                        {t('login.backToSignIn')}
                     </button>
                 </div>
             </div>
@@ -75,7 +76,7 @@ export default function Login() {
                                 </svg>
                         </div>
                         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-                            ESGravity
+                            {t('login.title')}
                         </h1>
                     </div>
                 </Link>
@@ -100,14 +101,14 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div>
-                        <label className="form-label">Email Address</label>
+                        <label className="form-label">{t('login.emailLabel')}</label>
                         <input
                             id="email-address"
                             type="email"
                             required
                             autoComplete="email"
                             className="form-input"
-                            placeholder="you@company.com"
+                            placeholder={t('login.emailPlaceholder')}
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                         />
@@ -122,16 +123,16 @@ export default function Login() {
                         {isLoading ? (
                             <>
                                 <div className="spinner spinner-sm" />
-                                Sending link...
+                                {t('login.sendingLink')}
                             </>
-                        ) : 'Send Magic Link'}
+                        ) : t('login.sendMagicLink')}
                     </button>
                 </form>
 
                 <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13.5, color: 'var(--text-muted)' }}>
-                    Don't have an account?{' '}
+                    {t('login.noAccount')}{' '}
                     <Link to="/signup" style={{ color: 'var(--accent-green)', fontWeight: 600, textDecoration: 'none' }}>
-                        Sign up here
+                        {t('login.signUpHere')}
                     </Link>
                 </div>
             </div>

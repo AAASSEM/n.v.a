@@ -1,4 +1,5 @@
 import AppLayout from '../layout/AppLayout';
+import { useTranslation } from '../../i18n';
 
 interface AccessDeniedProps {
     title?: string;
@@ -7,10 +8,13 @@ interface AccessDeniedProps {
 }
 
 export default function AccessDenied({ 
-    title = "Access Restricted", 
-    message = "You don't have the necessary permissions to view this page. If you believe this is an error, please contact your administrator.",
+    title, 
+    message,
     showLayout = false
 }: AccessDeniedProps) {
+    const { t } = useTranslation();
+    const displayTitle = title || t('access.title');
+    const displayMessage = message || t('access.message');
     const content = (
         <div className="animate-fade-in" style={{ 
             display: 'flex', 
@@ -45,7 +49,7 @@ export default function AccessDenied({
                 marginBottom: 12,
                 letterSpacing: '-0.5px'
             }}>
-                {title}
+                {displayTitle}
             </h1>
             <p style={{ 
                 fontSize: '15px', 
@@ -54,14 +58,14 @@ export default function AccessDenied({
                 lineHeight: 1.6,
                 marginBottom: 32
             }}>
-                {message}
+                {displayMessage}
             </p>
             <button 
                 className="btn btn-secondary"
                 onClick={() => window.history.back()}
                 style={{ borderRadius: '12px' }}
             >
-                Go Back
+                {t('access.goBack')}
             </button>
         </div>
     );

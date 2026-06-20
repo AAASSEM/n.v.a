@@ -8,6 +8,7 @@ import { useSiteStore } from '../../stores/siteStore';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
 import { canPerformAction } from '../../config/rbac';
+import { useTranslation, translateUnitStr, translateMeterName } from '../../i18n';
 
 interface GridRow {
     row_id: string;
@@ -36,32 +37,20 @@ interface User {
     } | null;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-    'super_user': 'Super User',
-    'admin': 'Admin',
-    'site_manager': 'Site Manager',
-    'meter_manager': 'Meter Manager',
-    'uploader': 'Data Uploader',
-    'viewer': 'Viewer',
-};
-
 const ROLE_HIERARCHY: Record<string, string[]> = {
     'super_user': ['admin', 'site_manager', 'uploader', 'viewer', 'meter_manager'],
     'admin': ['site_manager', 'uploader', 'viewer', 'meter_manager'],
     'site_manager': ['uploader', 'viewer', 'meter_manager'],
 };
 
-const MONTHS = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-];
+
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const CATEGORY_CONFIG = {
-    E: { label: 'Environmental', color: 'var(--color-env)', bg: 'var(--color-env-bg)' },
-    S: { label: 'Social', color: 'var(--color-soc)', bg: 'var(--color-soc-bg)' },
-    G: { label: 'Governance', color: 'var(--color-gov)', bg: 'var(--color-gov-bg)' },
+    E: { labelKey: 'data.env', color: 'var(--color-env)', bg: 'var(--color-env-bg)' },
+    S: { labelKey: 'data.soc', color: 'var(--color-soc)', bg: 'var(--color-soc-bg)' },
+    G: { labelKey: 'data.gov', color: 'var(--color-gov)', bg: 'var(--color-gov-bg)' },
 };
 
 // Normalize evidence_files from the API to a plain string
@@ -79,19 +68,39 @@ function getStatusClass(value: string | number, evidence: string): string {
 }
 
 function StatusBadge({ value, evidence }: { value: string | number, evidence: string }) {
+    const { t } = useTranslation();
     const status = getStatusClass(String(value), evidence);
     if (status === 'status-complete') {
-        return <span className="badge badge-green">Complete</span>;
+        return <span className="badge badge-green">{t('data.complete')}</span>;
     }
     if (status === 'status-partial') {
-        return <span className="badge badge-amber">Partial</span>;
+        return <span className="badge badge-amber">{t('data.partial')}</span>;
     }
-    return <span className="badge badge-red">Missing</span>;
+    return <span className="badge badge-red">{t('data.missing')}</span>;
 }
 
 export default function DataEntryView() {
+    const { t, n } = useTranslation();
     const { user } = useAuthStore();
     const queryClient = useQueryClient();
+
+    const getMonthLabel = (mNum: number) => {
+        const keys = [
+            'months.january', 'months.february', 'months.march', 'months.april',
+            'months.may', 'months.june', 'months.july', 'months.august',
+            'months.september', 'months.october', 'months.november', 'months.december'
+        ];
+        return t(keys[mNum - 1]);
+    };
+
+    const getShortMonthLabel = (mNum: number) => {
+        const keys = [
+            'months.short.jan', 'months.short.feb', 'months.short.mar', 'months.short.apr',
+            'months.short.may', 'months.short.jun', 'months.short.jul', 'months.short.aug',
+            'months.short.sep', 'months.short.oct', 'months.short.nov', 'months.short.dec'
+        ];
+        return t(keys[mNum - 1]);
+    };
 
     const currentSiteId = useSiteStore(s => s.currentSiteId);
     const currentDate = new Date();
@@ -388,7 +397,7 @@ export default function DataEntryView() {
     const years = [year - 2, year - 1, year, year + 1];
 
     if (isForbidden) {
-        return <AccessDenied showLayout title="Data Entry Restricted" message="Your role does not have permission to access the data entry grid for this company." />;
+        return <AccessDenied showLayout title={t('data.restrictedTitle')} message={t('data.restrictedMsg')} />;
     }
 
     return (
@@ -397,8 +406,8 @@ export default function DataEntryView() {
                 {/* Page Header */}
                 <div className="page-header">
                     <div>
-                        <h1 className="page-title">Data Entry Interface</h1>
-                        <p className="page-subtitle">Enter monthly metric readings and upload supporting evidence.</p>
+                        <h1 className="page-title">{t('data.title')}</h1>
+                        <p className="page-subtitle">{t('data.subtitle')}</p>
                     </div>
                     <button
                         className="btn btn-primary"
@@ -408,7 +417,7 @@ export default function DataEntryView() {
                         {bulkSaveMutation.isPending ? (
                             <>
                                 <div className="spinner spinner-sm" />
-                                Saving...
+                                {t('data.saving')}
                             </>
                         ) : (
                             <>
@@ -417,7 +426,7 @@ export default function DataEntryView() {
                                     <polyline points="17 21 17 13 7 13 7 21" />
                                     <polyline points="7 3 7 8 15 8" />
                                 </svg>
-                                Save All
+                                {t('data.saveData')}
                             </>
                         )}
                     </button>
@@ -426,7 +435,7 @@ export default function DataEntryView() {
                 {/* Reporting Period */}
                 <div className="reporting-period-card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                        <div className="reporting-period-title">Reporting Period</div>
+                        <div className="reporting-period-title">{t('data.reportingPeriod')}</div>
 
                         {/* Year Dropdown */}
                         <div className="dropdown-wrapper" ref={yearRef}>
@@ -440,7 +449,7 @@ export default function DataEntryView() {
                                     <line x1="8" y1="2" x2="8" y2="6" />
                                     <line x1="3" y1="10" x2="21" y2="10" />
                                 </svg>
-                                <span style={{ fontWeight: 700 }}>Year: {year}</span>
+                                <span style={{ fontWeight: 700 }}>{t('data.yearLabel').replace('{{year}}', n(year))}</span>
                                 <svg className="dropdown-chevron" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                 </svg>
@@ -453,7 +462,7 @@ export default function DataEntryView() {
                                             className={`dropdown-item ${y === year ? 'selected' : ''}`}
                                             onClick={() => { setYear(y); setYearDropdownOpen(false); }}
                                         >
-                                            {y}
+                                            {n(y)}
                                             {y === year && (
                                                 <svg style={{ marginLeft: 'auto', width: 14, height: 14 }} viewBox="0 0 20 20" fill="currentColor">
                                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -474,7 +483,7 @@ export default function DataEntryView() {
                                 className={`month-pill ${month === i + 1 ? 'active' : ''}`}
                                 onClick={() => setMonth(i + 1)}
                             >
-                                {m}
+                                {getShortMonthLabel(i + 1)}
                             </button>
                         ))}
                     </div>
@@ -493,8 +502,8 @@ export default function DataEntryView() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
                                 </svg>
-                                <span>All Metric</span>
-                                <span className="type-count">{gridData?.length || 0}</span>
+                                <span>{t('data.allMetrics')}</span>
+                                <span className="type-count">{n(gridData?.length || 0)}</span>
                             </button>
                             <button
                                 className={`type-btn ${typeFilter === 'monthly' ? 'active' : ''}`}
@@ -504,8 +513,8 @@ export default function DataEntryView() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                                 </svg>
-                                <span>Monthly</span>
-                                <span className="type-count">{counts.monthly}</span>
+                                <span>{t('data.monthly')}</span>
+                                <span className="type-count">{n(counts.monthly)}</span>
                             </button>
                             <button
                                 className={`type-btn ${typeFilter === 'annual' ? 'active' : ''}`}
@@ -515,8 +524,8 @@ export default function DataEntryView() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                 </svg>
-                                <span>Annual</span>
-                                <span className="type-count">{counts.annual}</span>
+                                <span>{t('data.annual')}</span>
+                                <span className="type-count">{n(counts.annual)}</span>
                             </button>
                             <button
                                 className={`type-btn ${typeFilter === 'events' ? 'active' : ''}`}
@@ -526,8 +535,8 @@ export default function DataEntryView() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
                                 </svg>
-                                <span>Events</span>
-                                <span className="type-count">{counts.events}</span>
+                                <span>{t('data.events')}</span>
+                                <span className="type-count">{n(counts.events)}</span>
                             </button>
                         </div>
                     </div>
@@ -538,31 +547,31 @@ export default function DataEntryView() {
                                 className={`status-chip ${statusFilter === 'all' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('all')}
                             >
-                                All Status
+                                {t('data.allStatus')}
                             </button>
                             <button
                                 className={`status-chip metered ${statusFilter === 'metered' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('metered')}
                             >
-                                <div className="dot blue" /> Metered <span className="s-count">{counts.metered}</span>
+                                <div className="dot blue" /> {t('data.metered')} <span className="s-count">{n(counts.metered)}</span>
                             </button>
                             <button
                                 className={`status-chip complete ${statusFilter === 'complete' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('complete')}
                             >
-                                <div className="dot green" /> Complete <span className="s-count">{counts.complete}</span>
+                                <div className="dot green" /> {t('data.complete')} <span className="s-count">{n(counts.complete)}</span>
                             </button>
                             <button
                                 className={`status-chip partial ${statusFilter === 'partial' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('partial')}
                             >
-                                <div className="dot amber" /> Partial <span className="s-count">{counts.partial}</span>
+                                <div className="dot amber" /> {t('data.partial')} <span className="s-count">{n(counts.partial)}</span>
                             </button>
                             <button
                                 className={`status-chip missing ${statusFilter === 'missing' ? 'active' : ''}`}
                                 onClick={() => setStatusFilter('missing')}
                             >
-                                <div className="dot red" /> Missing <span className="s-count">{counts.missing}</span>
+                                <div className="dot red" /> {t('data.missing')} <span className="s-count">{n(counts.missing)}</span>
                             </button>
                         </div>
 
@@ -573,7 +582,7 @@ export default function DataEntryView() {
                             </svg>
                             <input
                                 type="text"
-                                placeholder="Find metric..."
+                                placeholder={t('data.findMetric')}
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
@@ -598,7 +607,7 @@ export default function DataEntryView() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
                         </svg>
-                        Note: Annual metrics and Special Events are typically reported in December. You are currently viewing {MONTHS[month - 1]}.
+                        {t('data.decemberNotice').replace('{{month}}', getMonthLabel(month))}
                     </div>
                 )}
 
@@ -606,15 +615,15 @@ export default function DataEntryView() {
                 <div className="stat-card-grid stat-card-grid-2" style={{ marginBottom: 20 }}>
                     <div className="progress-card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <span className="progress-card-title">Data Entry Progress</span>
+                            <span className="progress-card-title">{t('data.progressTitle')}</span>
                             <span style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: 99 }}>
-                                {MONTHS[month - 1]} {year}
+                                {getMonthLabel(month)} {n(year)}
                             </span>
                         </div>
                         <div className="progress-metric">
                             <div className="progress-metric-header">
-                                <span className="progress-metric-label">Data Entries</span>
-                                <span className="progress-metric-value" style={{ color: 'var(--accent-green)' }}>{dataProgress}%</span>
+                                <span className="progress-metric-label">{t('data.entriesLabel')}</span>
+                                <span className="progress-metric-value" style={{ color: 'var(--accent-green)' }}>{n(dataProgress)}%</span>
                             </div>
                             <div className="progress-bar-track">
                                 <div className="progress-bar-fill green" style={{ width: `${dataProgress}%` }} />
@@ -622,22 +631,22 @@ export default function DataEntryView() {
                         </div>
                         <div className="progress-metric">
                             <div className="progress-metric-header">
-                                <span className="progress-metric-label">Evidence Uploads</span>
-                                <span style={{ color: '#818cf8' }} className="progress-metric-value">{evidenceProgress}%</span>
+                                <span className="progress-metric-label">{t('data.uploadsLabel')}</span>
+                                <span style={{ color: '#818cf8' }} className="progress-metric-value">{n(evidenceProgress)}%</span>
                             </div>
                             <div className="progress-bar-track">
                                 <div className="progress-bar-fill blue" style={{ width: `${evidenceProgress}%` }} />
                             </div>
                         </div>
-                        <div className="progress-metric-tasks">{withValue} / {total}</div>
-                        <div className="progress-metric-tasks-label">Metrics matching current filters</div>
+                        <div className="progress-metric-tasks">{n(withValue)} / {n(total)}</div>
+                        <div className="progress-metric-tasks-label">{t('data.matchingFilters')}</div>
                     </div>
 
                     <div className="progress-card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <span className="progress-card-title">Framework Distribution</span>
+                            <span className="progress-card-title">{t('data.frameworkDist')}</span>
                             <span style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-elevated)', padding: '2px 10px', borderRadius: 99 }}>
-                                Current View
+                                {t('data.currentView')}
                             </span>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
@@ -656,10 +665,10 @@ export default function DataEntryView() {
                                         border: '1px solid var(--border-subtle)',
                                     }}>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: cfg.color, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
-                                            {cfg.label}
+                                            {t(cfg.labelKey as any)}
                                         </div>
                                         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
-                                            {filled}<span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 500 }}>/{catRows.length}</span>
+                                            {n(filled)}<span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 500 }}>/{n(catRows.length)}</span>
                                         </div>
                                     </div>
                                 );
@@ -671,10 +680,10 @@ export default function DataEntryView() {
                                 border: '1px solid var(--border-subtle)',
                             }}>
                                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
-                                    Evidence
+                                    {t('data.evidenceLabel')}
                                 </div>
                                 <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>
-                                    {withEvidenceRows}<span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 500 }}>/{total}</span>
+                                    {n(withEvidenceRows)}<span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 500 }}>/{n(total)}</span>
                                 </div>
                             </div>
                         </div>
@@ -692,10 +701,10 @@ export default function DataEntryView() {
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                             <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
                         </svg>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>No Data Elements</div>
-                        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
-                            Complete your company setup and checklist to activate data entry.
-                        </div>
+                        <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>{searchQuery ? t('data.noMatchingMetrics') : t('data.noData')}</h3>
+                        <p style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 300, margin: '0 auto' }}>
+                            {searchQuery ? t('data.adjustSearchQuery') : t('data.noDataDesc')}
+                        </p>
                     </div>
                 ) : (
                     (['E', 'S', 'G'] as const).map(cat => {
@@ -710,10 +719,10 @@ export default function DataEntryView() {
                                             width: 8, height: 8, borderRadius: '50%', background: cfg.color
                                         }} />
                                         <span className="category-group-title" style={{ color: cfg.color }}>
-                                            {cfg.label}
+                                            {t(cfg.labelKey as any)}
                                         </span>
                                     </div>
-                                    <span className="category-group-count">{rows.length} items</span>
+                                    <span className="category-group-count">{t('data.itemsCount').replace('{{count}}', n(rows.length))}</span>
                                 </div>
 
                                 {rows.map(row => {
@@ -726,13 +735,13 @@ export default function DataEntryView() {
                                             <div className="data-entry-card-header">
                                                 <div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                        <div className="data-entry-card-name">{row.name}</div>
+                                                        <div className="data-entry-card-name">{translateMeterName(row.name, t)}</div>
                                                         {row.is_meter && (
-                                                            <span className="badge badge-blue" style={{ fontSize: 10, padding: '1px 7px' }}>Meter</span>
+                                                            <span className="badge badge-blue" style={{ fontSize: 10, padding: '1px 7px' }}>{t('data.meterBadge')}</span>
                                                         )}
                                                     </div>
                                                     <div className="data-entry-card-freq">
-                                                        {row.unit ? `Unit: ${row.unit}` : ''}
+                                                        {row.unit ? t('data.unitLabel').replace('{{unit}}', translateUnitStr(row.unit, t)) : ''}
                                                     </div>
                                                 </div>
                                                 <div className="data-entry-card-actions">
@@ -748,7 +757,7 @@ export default function DataEntryView() {
                                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                                                         </svg>
-                                                        Data Entry
+                                                        {t('data.entryLabel')}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                                         <input
@@ -771,7 +780,7 @@ export default function DataEntryView() {
                                                                 border: '1px solid var(--border-subtle)',
                                                                 fontWeight: 600,
                                                             }}>
-                                                                {row.unit}
+                                                                {translateUnitStr(row.unit, t)}
                                                             </span>
                                                         )}
                                                     </div>
@@ -783,7 +792,7 @@ export default function DataEntryView() {
                                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
                                                         </svg>
-                                                        Evidence
+                                                        {t('data.evidenceLabel')}
                                                     </div>
 
                                                     {local.evidence_files ? (
@@ -802,7 +811,7 @@ export default function DataEntryView() {
                                                                 <button
                                                                     className="btn-delete-file"
                                                                     onClick={() => handleDeleteFile(row.row_id)}
-                                                                    title="Delete file"
+                                                                    title={t('data.deleteFile')}
                                                                 >
                                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -815,7 +824,7 @@ export default function DataEntryView() {
                                                         <label style={{ cursor: canUpdate ? 'pointer' : 'default', display: 'block' }}>
                                                             <div className="evidence-zone" style={{ opacity: canUpdate ? 1 : 0.6 }}>
                                                                 <div className="evidence-zone-icon">⬆</div>
-                                                                <div className="evidence-zone-text">{canUpdate ? 'Drop file or click' : 'No file uploaded'}</div>
+                                                                <div className="evidence-zone-text">{canUpdate ? t('data.dropFile') : t('data.noFile')}</div>
                                                             </div>
                                                             {canUpdate && (
                                                                 <input
@@ -867,9 +876,9 @@ export default function DataEntryView() {
                                                         {row.assigned_user_name ? row.assigned_user_name.charAt(0).toUpperCase() : '?'}
                                                     </div>
                                                     <div>
-                                                        <div style={{ fontSize: 9, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Assigned To</div>
+                                                        <div style={{ fontSize: 9, color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>{t('data.assignedTo')}</div>
                                                         <div style={{ fontSize: 12, fontWeight: 600, color: row.assigned_user_name ? 'var(--text-primary)' : 'var(--text-disabled)' }}>
-                                                            {row.assigned_user_name || 'Unassigned'}
+                                                            {row.assigned_user_name || t('data.unassigned')}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -887,7 +896,7 @@ export default function DataEntryView() {
                                                         });
                                                     }}
                                                 >
-                                                    {row.assigned_user_name ? 'Reassign' : 'Assign'}
+                                                    {row.assigned_user_name ? t('data.reassign') : t('data.assign')}
                                                 </button>
                                             </div>
                                         </div>
@@ -915,7 +924,7 @@ export default function DataEntryView() {
                     <div className="modal modal-sm animate-scale-in" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <span className="modal-title">
-                                {modalMode === 'ASSIGN' ? 'Assign Task' : 'Invite Team Member'}
+                                {modalMode === 'ASSIGN' ? t('data.assignTask') : t('data.inviteTeamMember')}
                             </span>
                             <button className="modal-close" onClick={() => setAssignmentModal({ ...assignmentModal, isOpen: false })}>✕</button>
                         </div>
@@ -923,8 +932,8 @@ export default function DataEntryView() {
                             <>
                                 <div className="modal-body">
                                     <div style={{ marginBottom: 16 }}>
-                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>TASK</div>
-                                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{assignmentModal.rowName}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{t('data.taskLabel')}</div>
+                                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{translateMeterName(assignmentModal.rowName, t)}</div>
                                     </div>
                                     
                                     {users.length <= 1 && (
@@ -950,14 +959,14 @@ export default function DataEntryView() {
                                                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                                 </svg>
                                             </div>
-                                            <div>
-                                                <strong>You are the only member in this site.</strong><br/>
-                                                Invite others to delegate data collection tasks!
+                                                                           <div>
+                                                <strong>{t('data.onlyMember')}</strong><br/>
+                                                {t('data.inviteOthers')}
                                             </div>
                                         </div>
                                     )}
 
-                                    <label className="form-label">Select Team Member</label>
+                                    <label className="form-label">{t('data.selectTeamMember')}</label>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, maxHeight: '350px', overflowY: 'auto', paddingRight: '4px', marginBottom: 8 }}>
                                         {/* Unassigned Option */}
                                         <div
@@ -981,7 +990,7 @@ export default function DataEntryView() {
                                                 border: '1px solid var(--border-subtle)'
                                             }}>?</div>
                                             <div style={{ flex: 1, fontWeight: 600, color: assignmentModal.assignedUserId === '' ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
-                                                Unassigned
+                                                {t('data.unassigned')}
                                             </div>
                                             {assignmentModal.assignedUserId === '' && (
                                                 <div style={{ color: 'var(--accent-green)' }}>✓</div>
@@ -1035,7 +1044,7 @@ export default function DataEntryView() {
                                                                     letterSpacing: '0.5px',
                                                                     whiteSpace: 'nowrap'
                                                                 }}>
-                                                                    {ROLE_LABELS[u.profile.role] || u.profile.role}
+                                                                    {t(`roles.${u.profile.role}` as any)}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -1078,16 +1087,16 @@ export default function DataEntryView() {
                                                     fontSize: 13,
                                                 }}
                                             >
-                                                <span>+ Invite Team Member</span>
+                                                <span>+ {t('data.inviteTeamMember')}</span>
                                             </div>
                                         )}
                                     </div>
                                     <p style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4, textAlign: 'center' }}>
-                                        The selected member will be responsible for data entry and evidence for this element.
+                                        {t('data.memberResponsible')}
                                     </p>
                                 </div>
                                 <div className="modal-footer">
-                                    <button className="btn btn-ghost" onClick={() => setAssignmentModal({ ...assignmentModal, isOpen: false })}>Cancel</button>
+                                    <button className="btn btn-ghost" onClick={() => setAssignmentModal({ ...assignmentModal, isOpen: false })}>{t('confirm.cancel')}</button>
                                     <button
                                         className="btn btn-primary"
                                         disabled={assignMutation.isPending}
@@ -1100,7 +1109,7 @@ export default function DataEntryView() {
                                             }
                                         }}
                                     >
-                                        {assignMutation.isPending ? 'Saving...' : 'Confirm Assignment'}
+                                        {assignMutation.isPending ? t('data.saving') : t('data.confirmAssignment')}
                                     </button>
                                 </div>
                             </>
@@ -1125,7 +1134,7 @@ export default function DataEntryView() {
                                     )}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                                         <div>
-                                            <label className="form-label" style={{ fontSize: 11 }}>First Name</label>
+                                            <label className="form-label" style={{ fontSize: 11 }}>{t('settings.firstName')}</label>
                                             <input
                                                 required
                                                 type="text"
@@ -1137,7 +1146,7 @@ export default function DataEntryView() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="form-label" style={{ fontSize: 11 }}>Last Name</label>
+                                            <label className="form-label" style={{ fontSize: 11 }}>{t('settings.lastName')}</label>
                                             <input
                                                 required
                                                 type="text"
@@ -1150,7 +1159,7 @@ export default function DataEntryView() {
                                         </div>
                                     </div>
                                     <div style={{ marginBottom: 12 }}>
-                                        <label className="form-label" style={{ fontSize: 11 }}>Email Address</label>
+                                        <label className="form-label" style={{ fontSize: 11 }}>{t('settings.email')}</label>
                                         <input
                                             required
                                             type="email"
@@ -1162,7 +1171,7 @@ export default function DataEntryView() {
                                         />
                                     </div>
                                     <div style={{ marginBottom: 16 }}>
-                                        <label className="form-label" style={{ fontSize: 11 }}>Select Role</label>
+                                        <label className="form-label" style={{ fontSize: 11 }}>{t('users.role')}</label>
                                         <select
                                             required
                                             className="form-input"
@@ -1177,10 +1186,10 @@ export default function DataEntryView() {
                                                 borderRadius: 'var(--radius-md)'
                                             }}
                                         >
-                                            <option value="" disabled>Select Role...</option>
+                                            <option value="" disabled>{t('users.selectRole')}</option>
                                             {ROLE_HIERARCHY[user?.profile?.role || '']?.map(role => (
                                                 <option key={role} value={role}>
-                                                    {ROLE_LABELS[role] || role}
+                                                    {t(`roles.${role}` as any)}
                                                 </option>
                                             ))}
                                         </select>
@@ -1195,14 +1204,14 @@ export default function DataEntryView() {
                                             setInviteError(null);
                                         }}
                                     >
-                                        Back
+                                        {t('data.back')}
                                     </button>
                                     <button
                                         type="submit"
                                         className="btn btn-primary"
                                         disabled={modalInviteMutation.isPending}
                                     >
-                                        {modalInviteMutation.isPending ? 'Inviting...' : 'Send Invite'}
+                                        {modalInviteMutation.isPending ? t('data.inviting') : t('data.sendInvite')}
                                     </button>
                                 </div>
                             </form>
@@ -1218,8 +1227,8 @@ export default function DataEntryView() {
                             setPendingUpload(null);
                         }} />
                         <div style={{ position: 'relative', width: '100%', maxWidth: 500, background: '#13152a', borderRadius: 20, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }} className="animate-slide-up">
-                            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f0f2ff', marginBottom: 16 }}>Confirm Evidence Upload</h3>
-                            <p style={{ color: '#8b90b8', fontSize: 14, marginBottom: 20 }}>You selected <strong>{pendingUpload.file.name}</strong>. Is this the correct file?</p>
+                            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f0f2ff', marginBottom: 16 }}>{t('data.confirmUploadTitle')}</h3>
+                            <p style={{ color: '#8b90b8', fontSize: 14, marginBottom: 20 }}>{t('data.confirmUploadMsg').replace('{{filename}}', pendingUpload.file.name)}</p>
                             
                             {pendingUpload.previewUrl ? (
                                 <div style={{ marginBottom: 24, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -1234,7 +1243,7 @@ export default function DataEntryView() {
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 8, opacity: 0.5 }}>
                                         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
                                     </svg>
-                                    <div style={{ fontSize: 14 }}>Preview not available for this file type.</div>
+                                    <div style={{ fontSize: 14 }}>{t('data.noPreview')}</div>
                                 </div>
                             )}
                             
@@ -1243,14 +1252,14 @@ export default function DataEntryView() {
                                     if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
                                     setPendingUpload(null);
                                 }}>
-                                    Cancel
+                                    {t('confirm.cancel')}
                                 </button>
                                 <button className="btn btn-primary" onClick={() => {
                                     handleFileUpload(pendingUpload.row_id, pendingUpload.file);
                                     if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
                                     setPendingUpload(null);
                                 }}>
-                                    Upload File
+                                    {t('data.uploadFile')}
                                 </button>
                             </div>
                         </div>
@@ -1264,7 +1273,7 @@ export default function DataEntryView() {
                         <div style={{ position: 'relative', width: '100%', maxWidth: 900, height: '85vh', background: '#13152a', borderRadius: 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }} className="animate-slide-up">
                             <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f0f2ff', margin: 0 }}>View Evidence</h3>
+                                    <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f0f2ff', margin: 0 }}>{t('data.viewEvidence')}</h3>
                                     <span style={{ fontSize: 13, color: '#8b90b8', fontFamily: 'monospace' }}>{viewingEvidence.split('/').pop()}</span>
                                 </div>
                                 <div style={{ display: 'flex', gap: 12 }}>
@@ -1272,7 +1281,7 @@ export default function DataEntryView() {
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
                                             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
                                         </svg>
-                                        Open in New Tab
+                                        {t('data.openNewTab')}
                                     </a>
                                     <button onClick={() => setViewingEvidence(null)} className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.05)', color: '#f0f2ff', border: 'none', padding: '0 12px' }}>
                                         ✕
@@ -1289,10 +1298,10 @@ export default function DataEntryView() {
                                         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16, opacity: 0.5, margin: '0 auto' }}>
                                             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
                                         </svg>
-                                        <div style={{ fontSize: 16, marginBottom: 8, fontWeight: 500, color: '#f0f2ff' }}>Preview not supported</div>
-                                        <div style={{ fontSize: 14 }}>This file type cannot be previewed in the browser.</div>
+                                        <div style={{ fontSize: 16, marginBottom: 8, fontWeight: 500, color: '#f0f2ff' }}>{t('data.previewNotSupported')}</div>
+                                        <div style={{ fontSize: 14 }}>{t('data.previewNotSupportedDesc')}</div>
                                         <a href={viewingEvidence} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 16, color: '#38bdf8', textDecoration: 'none', fontWeight: 600, background: 'rgba(56,189,248,0.1)', padding: '8px 16px', borderRadius: 8 }}>
-                                            Download File
+                                            {t('data.downloadFile')}
                                         </a>
                                     </div>
                                 )}

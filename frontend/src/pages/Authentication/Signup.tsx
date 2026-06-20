@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API_URL } from '../../config';
 import DemoModal from '../../components/ui/DemoModal';
+import { useTranslation } from '../../i18n';
 
 export default function Signup() {
+    const { t } = useTranslation();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -51,14 +53,14 @@ export default function Signup() {
                         </svg>
                     </div>
                     <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
-                        Check your email
+                        {t('signup.checkEmail')}
                     </h1>
                     <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 32 }}>
-                        We've sent a magic link to <strong>{email}</strong>. 
-                        Please click the link to verify your account and continue.
+                        {t('signup.magicLinkSent')} <strong>{email}</strong>. 
+                        {t('signup.clickToVerify')}
                     </p>
                     <Link to="/login" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', textDecoration: 'none' }}>
-                        Return to Sign In
+                        {t('signup.returnToSignIn')}
                     </Link>
                 </div>
             </div>
@@ -87,7 +89,7 @@ export default function Signup() {
 </svg>
                         </div>
                         <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
-                            Create Account
+                            {t('signup.title')}
                         </h1>
                     </div>
                 </Link>
@@ -112,19 +114,19 @@ export default function Signup() {
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
-                            <label className="form-label">First Name</label>
+                            <label className="form-label">{t('signup.firstName')}</label>
                             <input required type="text" className="form-input" placeholder="John"
                                 value={firstName} onChange={e => setFirstName(e.target.value)} />
                         </div>
                         <div>
-                            <label className="form-label">Last Name</label>
+                            <label className="form-label">{t('signup.lastName')}</label>
                             <input required type="text" className="form-input" placeholder="Doe"
                                 value={lastName} onChange={e => setLastName(e.target.value)} />
                         </div>
                     </div>
 
                     <div>
-                        <label className="form-label">Email Address</label>
+                        <label className="form-label">{t('signup.emailLabel')}</label>
                         <input required type="email" autoComplete="email" className="form-input"
                             placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} />
                     </div>
@@ -140,9 +142,9 @@ export default function Signup() {
                         {isLoading ? (
                             <>
                                 <div className="spinner spinner-sm" />
-                                Creating account...
+                                {t('signup.creating')}
                             </>
-                        ) : 'Create Account'}
+                        ) : t('signup.createBtn')}
                     </button>
 
                     <button
@@ -151,14 +153,14 @@ export default function Signup() {
                         className="btn btn-secondary btn-lg"
                         style={{ width: '100%', marginTop: 8, justifyContent: 'center' }}
                     >
-                        View Demo
+                        {t('signup.viewDemo')}
                     </button>
                 </form>
 
                 <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13.5, color: 'var(--text-muted)' }}>
-                    Already have an account?{' '}
+                    {t('signup.hasAccount')}{' '}
                     <Link to="/login" style={{ color: 'var(--accent-green)', fontWeight: 600, textDecoration: 'none' }}>
-                        Sign in
+                        {t('signup.signIn')}
                     </Link>
                 </div>
             </div>

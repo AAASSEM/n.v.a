@@ -194,6 +194,7 @@ async def generate_report(
         name=report_name,
         year=year,
         category=framework.upper(),
+        format=format.upper(),
         size='1.2 MB' if format.upper() == 'PDF' else '850 KB',
         status='Completed',
         download_url=dl_url

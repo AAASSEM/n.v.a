@@ -677,7 +677,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-muted);
-  text-align: left;
+  text-align: start;
   white-space: nowrap;
 }
 
@@ -2213,4 +2213,31 @@ input:-webkit-autofill:active {
   transform: translateY(-2px);
   box-shadow: 0 12px 36px rgba(0,0,0,0.5);
   border-color: rgba(255,255,255,0.15);
+}
+/* =============================================
+   RTL SUPPORT
+   ============================================= */
+[dir='rtl'] {
+  text-align: right;
+  direction: rtl;
+}
+
+[dir='rtl'] .nav-links,
+[dir='rtl'] .nav-user-section,
+[dir='rtl'] .nav-logo,
+[dir='rtl'] .nav-item-btn,
+[dir='rtl'] .nav-user-pill,
+[dir='rtl'] .btn,
+[dir='rtl'] .stat-card-header,
+[dir='rtl'] .stat-card-meta {
+  flex-direction: row-reverse;
+}
+
+[dir='rtl'] .nav-logo {
+  padding-right: 8px;
+  padding-left: 0;
+}
+
+[dir='rtl'] .nav-user-pill {
+  padding: 3px 12px 3px 6px;
 }

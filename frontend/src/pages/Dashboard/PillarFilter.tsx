@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../../i18n';
 
 type Pillar = 'ALL' | 'E' | 'S' | 'G';
 
@@ -8,11 +9,12 @@ interface PillarFilterProps {
 }
 
 export default function PillarFilter({ activePillar, onChange }: PillarFilterProps) {
+    const { t } = useTranslation();
     const pillars: { id: Pillar, label: string, color: string, icon?: React.ReactNode }[] = [
-        { id: 'ALL', label: 'ALL', color: 'var(--text-secondary)' },
+        { id: 'ALL', label: t('checklist.all'), color: 'var(--text-secondary)' },
         { 
             id: 'E', 
-            label: 'Environmental', 
+            label: t('dash.env'), 
             color: 'var(--color-env)',
             icon: (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -23,7 +25,7 @@ export default function PillarFilter({ activePillar, onChange }: PillarFilterPro
         },
         { 
             id: 'S', 
-            label: 'Social', 
+            label: t('dash.social'), 
             color: 'var(--color-soc)',
             icon: (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -36,7 +38,7 @@ export default function PillarFilter({ activePillar, onChange }: PillarFilterPro
         },
         { 
             id: 'G', 
-            label: 'Governance', 
+            label: t('dash.gov'), 
             color: 'var(--color-gov)',
             icon: (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

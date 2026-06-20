@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { useSiteStore } from '../../stores/siteStore';
+import { useTranslation } from '../../i18n';
 
 export default function SiteSwitcher() {
     const user = useAuthStore((s) => s.user);
@@ -10,7 +11,8 @@ export default function SiteSwitcher() {
     const currentSiteId = useSiteStore((s) => s.currentSiteId);
     const setCurrentSiteId = useSiteStore((s) => s.setCurrentSiteId);
     const queryClient = useQueryClient();
-
+    const { t, lang } = useTranslation();
+    const isRtl = lang === 'ar';
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const location = useLocation();
@@ -86,7 +88,8 @@ export default function SiteSwitcher() {
                     color: 'var(--text-primary)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    outline: 'none'
+                    outline: 'none',
+                    flexDirection: isRtl ? 'row-reverse' : 'row'
                 }}
             >
                 {current ? (
@@ -99,9 +102,9 @@ export default function SiteSwitcher() {
                         <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path>
                     </svg>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'inherit', maxWidth: 140, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {current ? current.name : 'All Sites'}
+                        {current ? current.name : t('sites.allSites')}
                     </span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                         <polyline points="6 9 12 15 18 9"></polyline>
@@ -113,7 +116,8 @@ export default function SiteSwitcher() {
                 <div className="nav-dropdown-menu animate-fade-in" style={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
-                    right: 0,
+                    right: isRtl ? 'auto' : 0,
+                    left: isRtl ? 0 : 'auto',
                     width: 200,
                     background: 'var(--bg-elevated)',
                     border: '1px solid var(--border-subtle)',
@@ -137,7 +141,7 @@ export default function SiteSwitcher() {
                             }}
                         >
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                All Sites (Company-wide)
+                                {t('sites.allSites')} {t('sites.companyWide')}
                             </span>
                             {currentSiteId === null && (
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
