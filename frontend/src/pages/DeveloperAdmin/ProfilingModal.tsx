@@ -6,10 +6,9 @@ interface ProfilingModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialData?: any;
-    reqConfig: any;
 }
 
-export default function ProfilingModal({ isOpen, onClose, initialData, reqConfig }: ProfilingModalProps) {
+export default function ProfilingModal({ isOpen, onClose, initialData }: ProfilingModalProps) {
     const queryClient = useQueryClient();
 
     const [formData, setFormData] = useState({
@@ -46,9 +45,9 @@ export default function ProfilingModal({ isOpen, onClose, initialData, reqConfig
     const mutation = useMutation({
         mutationFn: async (data: typeof formData) => {
             if (initialData?.id) {
-                return await api.put(`/developer-admin/profiling-questions/${initialData.id}`, data, reqConfig);
+                return await api.put(`/developer-admin/profiling-questions/${initialData.id}`, data);
             } else {
-                return await api.post('/developer-admin/profiling-questions', data, reqConfig);
+                return await api.post('/developer-admin/profiling-questions', data);
             }
         },
         onSuccess: () => {
@@ -60,7 +59,7 @@ export default function ProfilingModal({ isOpen, onClose, initialData, reqConfig
     const { data: dbFrameworks, isLoading: loadingFrameworks } = useQuery({
         queryKey: ['availableFrameworks'],
         queryFn: async () => {
-            const res = await api.get('/developer-admin/frameworks', reqConfig);
+            const res = await api.get('/developer-admin/frameworks');
             return res.data;
         },
     });

@@ -6,10 +6,9 @@ interface FrameworkModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialData?: any;
-    reqConfig: any;
 }
 
-export default function FrameworkModal({ isOpen, onClose, initialData, reqConfig }: FrameworkModalProps) {
+export default function FrameworkModal({ isOpen, onClose, initialData }: FrameworkModalProps) {
     const queryClient = useQueryClient();
 
     const [formData, setFormData] = useState({
@@ -46,9 +45,9 @@ export default function FrameworkModal({ isOpen, onClose, initialData, reqConfig
     const mutation = useMutation({
         mutationFn: async (data: typeof formData) => {
             if (initialData?.id) {
-                return await api.put(`/developer-admin/frameworks/${initialData.id}`, data, reqConfig);
+                return await api.put(`/developer-admin/frameworks/${initialData.id}`, data);
             } else {
-                return await api.post('/developer-admin/frameworks', data, reqConfig);
+                return await api.post('/developer-admin/frameworks', data);
             }
         },
         onSuccess: () => {

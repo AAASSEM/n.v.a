@@ -6,10 +6,9 @@ interface MeterTypeModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialData?: any;
-    reqConfig: any;
 }
 
-export default function MeterTypeModal({ isOpen, onClose, initialData, reqConfig }: MeterTypeModalProps) {
+export default function MeterTypeModal({ isOpen, onClose, initialData }: MeterTypeModalProps) {
     const queryClient = useQueryClient();
 
     const [formData, setFormData] = useState({
@@ -40,9 +39,9 @@ export default function MeterTypeModal({ isOpen, onClose, initialData, reqConfig
     const mutation = useMutation({
         mutationFn: async (data: typeof formData) => {
             if (initialData?.id) {
-                return await api.put(`/developer-admin/meter-types/${initialData.id}`, data, reqConfig);
+                return await api.put(`/developer-admin/meter-types/${initialData.id}`, data);
             } else {
-                return await api.post('/developer-admin/meter-types', data, reqConfig);
+                return await api.post('/developer-admin/meter-types', data);
             }
         },
         onSuccess: () => {

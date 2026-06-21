@@ -207,6 +207,64 @@ from pydantic import BaseModel, EmailStr
 class LoginLinkRequest(BaseModel):
     email: EmailStr
 
+@router.post("/developer/request-login-link")
+async def request_developer_login_link(
+    request: LoginLinkRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+) -> Any:
+    """
+    Send a login magic link specifically for the developer panel.
+    Only authorized developer emails are allowed.
+    """
+    allowed_emails = ["aami.abdelfattah@gmail.com", "aaaibrahim.1104@gamil.com", "aaaibrahim.1104@gmail.com"]
+    if request.email not in allowed_emails:
+        # Standardize generic response to prevent email enumeration
+        return {"detail": "If authorized, a magic link will be sent."}
+        
+    result = await db.execute(select(User).where(User.email == request.email))
+    user = result.scalars().first()
+    
+    if not user:
+        # Auto-create developer
+        user = User(
+            email=request.email,
+            password_hash="DEVELOPER_NO_PASSWORD",
+            first_name="Admin",
+            last_name="Developer",
+            is_active=True,
+            email_verified=True,
+            is_developer=True
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    elif not user.is_developer:
+        user.is_developer = True
+        await db.commit()
+        await db.refresh(user)
+        
+    # Create login token
+    token_obj = EmailVerificationToken(
+        user_id=user.id,
+        token_type=TokenType.login
+    )
+    db.add(token_obj)
+    await db.commit()
+    await db.refresh(token_obj)
+    
+    background_tasks.add_task(
+        email_service.send_magic_link_email,
+        email=user.email,
+        token=token_obj,
+        context={
+            "name": user.first_name,
+            "company_name": "ESGravity Developer Platform"
+        }
+    )
+    
+    return {"detail": "If authorized, a magic link will be sent."}
+
 @router.post("/request-login-link")
 async def request_login_link(
     request: LoginLinkRequest,

@@ -75,6 +75,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // If user is developer, they shouldn't be in the main app. Send them to dev panel.
+  if (user?.is_developer) {
+    return <Navigate to="/developer-admin" replace />;
+  }
+
   // If they don't have a company, force them to onboarding (unless already onboarding)
   const allowedWithoutCompany = ['/onboarding'];
   if (user && !user.profile?.company_id && !allowedWithoutCompany.includes(location.pathname)) {
@@ -95,9 +100,12 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   if (isAuthenticated) {
+    if (user?.is_developer) {
+      return <Navigate to="/developer-admin" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 

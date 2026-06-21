@@ -40,7 +40,9 @@ const MagicLinkVerify: React.FC = () => {
     if (status === 'success' && user) {
       // Small delay for smooth UX transition
       const timer = setTimeout(() => {
-        if (user.profile?.must_reset_password) {
+        if (user.is_developer) {
+          navigate('/developer-admin', { replace: true });
+        } else if (user.profile?.must_reset_password) {
           navigate('/setup-account', { replace: true });
         } else if (!user.profile?.company_id) {
           navigate('/onboarding', { replace: true });

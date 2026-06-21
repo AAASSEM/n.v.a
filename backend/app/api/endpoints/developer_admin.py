@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func, desc
 
-from app.api.deps import get_db, verify_developer_secret
+from app.api.deps import get_db, verify_developer_user
 from app.models.user import User, UserProfile
 from app.models.company import Company
 from app.models.data_element import DataElement
@@ -119,7 +119,7 @@ class AuditLogListSchema(BaseModel):
 @router.get("/diagnostics")
 async def get_system_diagnostics(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     """Return top-level system health metrics."""
     stats = await platform_service.get_platform_stats(db)
@@ -133,7 +133,7 @@ async def get_system_diagnostics(
 @router.get("/settings")
 async def list_settings(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(SystemSetting))
     settings = result.scalars().all()
@@ -144,7 +144,7 @@ async def update_setting(
     key: str,
     data: SystemSettingUpdate,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     setting = await platform_service.set_system_setting(db, key, data.value, data.description)
     await audit_service.log_action(db, user_id=None, action="UPDATE_SETTING", entity_type="SYSTEM", entity_id=key, details={"value": data.value})
@@ -158,7 +158,7 @@ async def list_audit_logs(
     offset: int = 0,
     action: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ):
     query = select(AuditLog).order_by(desc(AuditLog.created_at), desc(AuditLog.id)).limit(limit).offset(offset)
     if action:
@@ -183,7 +183,7 @@ async def list_audit_logs(
 async def impersonate_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
@@ -206,7 +206,7 @@ async def seed_demo(
     name: str = "Demo Site Alpha",
     email: str = "demo.alpha@esgravity.com",
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     await audit_service.log_action(db, user_id=None, action="SEED_DEMO", entity_type="SYSTEM", entity_id=name)
     return await platform_service.seed_demo_property(db, name, email)
@@ -214,7 +214,7 @@ async def seed_demo(
 @router.post("/seed-system-defaults")
 async def seed_system_defaults(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     """Populate Frameworks, MeterTypes, ProfilingQuestions, and Data Elements with the full library."""
     from app.core.seed_data import SEED_DATA
@@ -285,7 +285,7 @@ async def seed_system_defaults(
 @router.get("/companies")
 async def list_companies(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(Company))
     companies = result.scalars().all()
@@ -295,7 +295,7 @@ async def list_companies(
 async def delete_company(
     company_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(Company).where(Company.id == company_id))
     company = result.scalars().first()
@@ -314,7 +314,7 @@ async def extend_trial(
     company_id: int,
     data: TrialUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     """Extend (or set) the trial expiry to N days from now."""
     company = await db.get(Company, company_id)
@@ -330,7 +330,7 @@ async def extend_trial(
 async def remove_trial(
     company_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     """Remove trial limit — marks account as fully paid (NULL = no expiry)."""
     company = await db.get(Company, company_id)
@@ -346,7 +346,7 @@ async def remove_trial(
 @router.get("/users")
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(User).options(selectinload(User.profile)))
     users = result.scalars().all()
@@ -367,25 +367,49 @@ async def list_users(
 async def delete_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).options(selectinload(User.profile)).where(User.id == user_id))
     local_user = result.scalars().first()
     if not local_user:
         raise HTTPException(status_code=404, detail="User not found")
     if getattr(local_user, 'is_developer', False):
         raise HTTPException(status_code=400, detail="Cannot delete a developer account via this API")
-    await audit_service.log_action(db, user_id=None, action="DELETE_USER", entity_type="USER", entity_id=str(user_id), details={"email": local_user.email})
-    await db.delete(local_user)
+        
+    company_deleted = False
+    if local_user.profile and local_user.profile.role == 'super_user' and local_user.profile.company_id:
+        company_id = local_user.profile.company_id
+        
+        # 1. Find all users in this company and delete them first
+        users_result = await db.execute(
+            select(User).join(UserProfile).where(UserProfile.company_id == company_id)
+        )
+        company_users = users_result.scalars().all()
+        for u in company_users:
+            if not getattr(u, 'is_developer', False):
+                await db.delete(u)
+        
+        # 2. Delete the company (this cascades to sites, meters, user_profiles, etc)
+        company = await db.get(Company, company_id)
+        if company:
+            await audit_service.log_action(db, user_id=None, action="DELETE_COMPANY", entity_type="COMPANY", entity_id=str(company_id), details={"reason": "Super user deleted", "user_id": user_id, "name": company.name})
+            await db.delete(company)
+            company_deleted = True
+    else:
+        # Just delete the single user
+        await audit_service.log_action(db, user_id=None, action="DELETE_USER", entity_type="USER", entity_id=str(user_id), details={"email": local_user.email})
+        await db.delete(local_user)
+        
     await db.commit()
-    return {"msg": "User deleted successfully"}
+    msg = "User, associated company, and all company members deleted successfully" if company_deleted else "User deleted successfully"
+    return {"msg": msg}
 
 # --- Data Elements Management (STAY THE SAME) ---
 
 @router.get("/data-elements")
 async def list_data_elements(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(DataElement))
     elements = result.scalars().all()
@@ -408,7 +432,7 @@ async def list_data_elements(
 async def create_data_element(
     data: DataElementCreate,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_el = DataElement(**data.dict())
     db.add(new_el)
@@ -421,7 +445,7 @@ async def create_data_element(
 async def delete_data_element(
     element_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(DataElement).where(DataElement.id == element_id))
     element = result.scalars().first()
@@ -437,7 +461,7 @@ async def delete_data_element(
 @router.get("/frameworks")
 async def list_frameworks(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(Framework))
     frameworks = result.scalars().all()
@@ -456,7 +480,7 @@ async def list_frameworks(
 async def create_framework(
     data: FrameworkCreate,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_fw = Framework(**data.dict())
     db.add(new_fw)
@@ -468,7 +492,7 @@ async def create_framework(
 async def delete_framework(
     fw_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(Framework).where(Framework.id == fw_id))
     fw = result.scalars().first()
@@ -483,7 +507,7 @@ async def delete_framework(
 @router.get("/profiling-questions")
 async def list_profiling_questions(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(ProfilingQuestion).order_by(ProfilingQuestion.question_order))
     questions = result.scalars().all()
@@ -500,7 +524,7 @@ async def list_profiling_questions(
 async def create_profiling_question(
     data: ProfilingQuestionCreate,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_pq = ProfilingQuestion(**data.dict())
     db.add(new_pq)
@@ -512,7 +536,7 @@ async def create_profiling_question(
 async def delete_profiling_question(
     pq_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(ProfilingQuestion).where(ProfilingQuestion.id == pq_id))
     pq = result.scalars().first()
@@ -527,7 +551,7 @@ async def delete_profiling_question(
 @router.get("/meter-types")
 async def list_meter_types(
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(MeterType))
     types = result.scalars().all()
@@ -543,7 +567,7 @@ async def list_meter_types(
 async def create_meter_type(
     data: MeterTypeCreate,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_mt = MeterType(**data.dict())
     db.add(new_mt)
@@ -555,7 +579,7 @@ async def create_meter_type(
 async def delete_meter_type(
     mt_id: int,
     db: AsyncSession = Depends(get_db),
-    _secret: bool = Depends(verify_developer_secret),
+    _dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(MeterType).where(MeterType.id == mt_id))
     mt = result.scalars().first()

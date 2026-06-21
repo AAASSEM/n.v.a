@@ -65,11 +65,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        const isDeveloperSecretUsed = error.config?.headers?.['X-Developer-Secret'];
         const isDeveloperUrl = error.config?.url?.includes('/developer-admin');
         const isCurrentlyInAdminPanel = window.location.pathname.includes('/developer-admin');
 
-        if (error.response?.status === 401 && !isDeveloperSecretUsed && !isDeveloperUrl && !isCurrentlyInAdminPanel) {
+        if (error.response?.status === 401 && !isDeveloperUrl && !isCurrentlyInAdminPanel) {
             useAuthStore.getState().logout();
             useSiteStore.getState().reset();
             window.location.href = '/login';

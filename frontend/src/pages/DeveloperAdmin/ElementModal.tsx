@@ -6,10 +6,9 @@ interface ElementModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialData?: any;
-    reqConfig: any;
 }
 
-export default function ElementModal({ isOpen, onClose, initialData, reqConfig }: ElementModalProps) {
+export default function ElementModal({ isOpen, onClose, initialData }: ElementModalProps) {
     const queryClient = useQueryClient();
 
     const [formData, setFormData] = useState({
@@ -58,9 +57,9 @@ export default function ElementModal({ isOpen, onClose, initialData, reqConfig }
     const mutation = useMutation({
         mutationFn: async (data: typeof formData) => {
             if (initialData?.id) {
-                return await api.put(`/developer-admin/data-elements/${initialData.id}`, data, reqConfig);
+                return await api.put(`/developer-admin/data-elements/${initialData.id}`, data);
             } else {
-                return await api.post('/developer-admin/data-elements', data, reqConfig);
+                return await api.post('/developer-admin/data-elements', data);
             }
         },
         onSuccess: () => {
@@ -72,8 +71,7 @@ export default function ElementModal({ isOpen, onClose, initialData, reqConfig }
     const { data: dbFrameworks, isLoading: loadingFrameworks } = useQuery({
         queryKey: ['frameworks_list', isOpen],
         queryFn: async () => {
-            if (!isOpen) return [];
-            return (await api.get('/developer-admin/frameworks', reqConfig)).data;
+            return (await api.get('/developer-admin/frameworks')).data;
         },
         enabled: isOpen,
         staleTime: 5 * 60 * 1000
@@ -82,8 +80,7 @@ export default function ElementModal({ isOpen, onClose, initialData, reqConfig }
     const { data: dbMeterTypes } = useQuery({
         queryKey: ['meter_types_list', isOpen],
         queryFn: async () => {
-            if (!isOpen) return [];
-            return (await api.get('/developer-admin/meter-types', reqConfig)).data;
+            return (await api.get('/developer-admin/meter-types')).data;
         },
         enabled: isOpen,
         staleTime: 5 * 60 * 1000

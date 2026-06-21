@@ -123,13 +123,10 @@ function LoadingRows() {
 
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 
-function LoginScreen({
-    onLogin,
-}: {
-    onLogin: (secret: string) => Promise<void>;
-}) {
-    const [secret, setSecret] = useState('');
+function LoginScreen() {
+    const [email, setEmail] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -137,10 +134,11 @@ function LoginScreen({
         setError('');
         setLoading(true);
         try {
-            await onLogin(secret);
-        } catch {
-            setError('Invalid Developer Secret Key.');
-            setSecret('');
+            await api.post('/auth/developer/request-login-link', { email });
+            setSuccess(true);
+        } catch (err: any) {
+            setError('Failed to request developer link.');
+            setEmail('');
         } finally {
             setLoading(false);
         }
@@ -191,16 +189,14 @@ function LoginScreen({
                     style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
                 >
                     <input
-                        type="password"
-                        value={secret}
-                        onChange={(e) => setSecret(e.target.value)}
-                        placeholder="Enter Developer Secret"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter Developer Email"
                         className="form-input"
                         style={{
                             textAlign: 'center',
-                            fontFamily: 'monospace',
-                            letterSpacing: '6px',
-                            fontSize: 18,
+                            fontSize: 16,
                         }}
                         required
                         autoFocus
@@ -223,17 +219,34 @@ function LoginScreen({
                         </div>
                     )}
 
+                    {success && (
+                        <div
+                            style={{
+                                padding: '10px 14px',
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                color: '#10b981',
+                                borderRadius: 8,
+                                fontSize: 12,
+                                textAlign: 'center',
+                                fontWeight: 600,
+                                border: '1px solid rgba(16, 185, 129, 0.2)',
+                            }}
+                        >
+                            ✓ Magic link sent! Check your inbox.
+                        </div>
+                    )}
+
                     <button
                         type="submit"
-                        disabled={loading || !secret}
+                        disabled={loading || !email || success}
                         className="btn btn-primary"
                         style={{
                             height: 48,
                             background: 'linear-gradient(to right, #e11d48, #be123c)',
-                            opacity: loading || !secret ? 0.6 : 1,
+                            opacity: loading || !email || success ? 0.6 : 1,
                         }}
                     >
-                        {loading ? 'Verifying…' : 'Authenticate & Enter'}
+                        {loading ? 'Requesting…' : success ? 'Sent' : 'Send Magic Link'}
                     </button>
                 </form>
             </div>
@@ -243,12 +256,13 @@ function LoginScreen({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+import { useAuthStore } from '../../stores/authStore';
+
 export default function DeveloperAdminView() {
     const queryClient = useQueryClient();
 
     // Auth
-    const [secret, setSecret] = useState('');
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { isAuthenticated, user, logout } = useAuthStore();
 
     // Navigation
     const [activeTab, setActiveTab] = useState<TabId>('diagnostics');
@@ -279,31 +293,25 @@ export default function DeveloperAdminView() {
     const [selectedActionFilter, setSelectedActionFilter] = useState<string>('');
     const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
-    // ── Request Config (memoised so React Query doesn't re-fetch on every render) ──
-    const reqConfig = useMemo(
-        () => ({ headers: { 'X-Developer-Secret': secret } }),
-        [secret],
-    );
-
     // ── Queries ──────────────────────────────────────────────────────────────────
 
-    const enabled = isAuthenticated;
+    const enabled = isAuthenticated && !!user?.is_developer;
 
     const { data: diagnostics, isLoading: loadingDiag } = useQuery({
-        queryKey: ['admin_diagnostics', secret],
-        queryFn: async () => (await api.get('/developer-admin/diagnostics', reqConfig)).data,
+        queryKey: ['admin_diagnostics'],
+        queryFn: async () => (await api.get('/developer-admin/diagnostics')).data,
         enabled,
     });
 
     const { data: settings, isLoading: loadingSettings } = useQuery({
-        queryKey: ['admin_settings', secret],
-        queryFn: async () => (await api.get('/developer-admin/settings', reqConfig)).data,
+        queryKey: ['admin_settings'],
+        queryFn: async () => (await api.get('/developer-admin/settings')).data,
         enabled,
     });
 
     const logLimit = 25;
     const { data: logsData, isLoading: loadingLogs } = useQuery({
-        queryKey: ['admin_logs', secret, logPage, selectedActionFilter],
+        queryKey: ['admin_logs', logPage, selectedActionFilter],
         queryFn: async () => {
             const params: any = {
                 limit: logLimit,
@@ -312,48 +320,45 @@ export default function DeveloperAdminView() {
             if (selectedActionFilter) {
                 params.action = selectedActionFilter;
             }
-            return (await api.get('/developer-admin/logs', {
-                headers: { 'X-Developer-Secret': secret },
-                params,
-            })).data;
+            return (await api.get('/developer-admin/logs', { params })).data;
         },
         enabled,
     });
 
     const { data: elements, isLoading: loadingElements } = useQuery({
-        queryKey: ['admin_elements', secret],
-        queryFn: async () => (await api.get('/developer-admin/data-elements', reqConfig)).data,
+        queryKey: ['admin_elements'],
+        queryFn: async () => (await api.get('/developer-admin/data-elements')).data,
         enabled,
     });
 
     const { data: frameworks, isLoading: loadingFrameworks } = useQuery({
-        queryKey: ['admin_frameworks', secret],
-        queryFn: async () => (await api.get('/developer-admin/frameworks', reqConfig)).data,
+        queryKey: ['admin_frameworks'],
+        queryFn: async () => (await api.get('/developer-admin/frameworks')).data,
         enabled,
     });
 
     const { data: meterTypes, isLoading: loadingMeterTypes } = useQuery({
-        queryKey: ['admin_meter_types', secret],
-        queryFn: async () => (await api.get('/developer-admin/meter-types', reqConfig)).data,
+        queryKey: ['admin_meter_types'],
+        queryFn: async () => (await api.get('/developer-admin/meter-types')).data,
         enabled,
     });
 
     const { data: profiling, isLoading: loadingProfiling } = useQuery({
-        queryKey: ['admin_profiling', secret],
+        queryKey: ['admin_profiling'],
         queryFn: async () =>
-            (await api.get('/developer-admin/profiling-questions', reqConfig)).data,
+            (await api.get('/developer-admin/profiling-questions')).data,
         enabled,
     });
 
     const { data: companies, isLoading: loadingCompanies } = useQuery({
-        queryKey: ['admin_companies', secret],
-        queryFn: async () => (await api.get('/developer-admin/companies', reqConfig)).data,
+        queryKey: ['admin_companies'],
+        queryFn: async () => (await api.get('/developer-admin/companies')).data,
         enabled,
     });
 
     const { data: users, isLoading: loadingUsers } = useQuery({
-        queryKey: ['admin_users', secret],
-        queryFn: async () => (await api.get('/developer-admin/users', reqConfig)).data,
+        queryKey: ['admin_users'],
+        queryFn: async () => (await api.get('/developer-admin/users')).data,
         enabled,
     });
 
@@ -371,7 +376,7 @@ export default function DeveloperAdminView() {
 
     const deleteMutation = useMutation({
         mutationFn: async ({ resource, id }: { resource: string; id: number }) =>
-            api.delete(`/developer-admin/${resource}/${id}`, reqConfig),
+            api.delete(`/developer-admin/${resource}/${id}`),
         onSuccess: (_, { resource }) => {
             const key = resourceQueryKey[resource];
             if (key) queryClient.invalidateQueries({ queryKey: [key] });
@@ -381,7 +386,7 @@ export default function DeveloperAdminView() {
 
     const updateSettingMutation = useMutation({
         mutationFn: async ({ key, value }: { key: string; value: any }) =>
-            api.put(`/developer-admin/settings/${key}`, { value }, reqConfig),
+            api.put(`/developer-admin/settings/${key}`, { value }),
         onSuccess: () =>
             queryClient.invalidateQueries({ queryKey: ['admin_settings'] }),
     });
@@ -389,9 +394,7 @@ export default function DeveloperAdminView() {
     const seedMutation = useMutation({
         mutationFn: async ({ name, email }: { name: string; email: string }) =>
             api.post(
-                `/developer-admin/seed-demo?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`,
-                {},
-                reqConfig,
+                `/developer-admin/seed-demo?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
             ),
         onSuccess: () => {
             setSeedModal({ isOpen: false, name: '', email: '' });
@@ -403,7 +406,7 @@ export default function DeveloperAdminView() {
 
     const seedSystemMutation = useMutation({
         mutationFn: async () =>
-            api.post('/developer-admin/seed-system-defaults', {}, reqConfig),
+            api.post('/developer-admin/seed-system-defaults'),
         onSuccess: () => {
             ['admin_frameworks', 'admin_meter_types', 'admin_profiling', 'admin_diagnostics', 'admin_elements'].forEach((k) =>
                 queryClient.invalidateQueries({ queryKey: [k] }),
@@ -415,9 +418,7 @@ export default function DeveloperAdminView() {
     const impersonateMutation = useMutation({
         mutationFn: async (userId: number) => {
             const res = await api.post(
-                `/developer-admin/impersonate/${userId}`,
-                {},
-                reqConfig,
+                `/developer-admin/impersonate/${userId}`
             );
             return res.data;
         },
@@ -425,14 +426,6 @@ export default function DeveloperAdminView() {
     });
 
     // ── Helpers ───────────────────────────────────────────────────────────────────
-
-    const handleLogin = async (inputSecret: string) => {
-        await api.get('/developer-admin/diagnostics', {
-            headers: { 'X-Developer-Secret': inputSecret },
-        });
-        setSecret(inputSecret);
-        setIsAuthenticated(true);
-    };
 
     /**
      * Opens a confirmation dialog before deleting a resource.
@@ -457,8 +450,8 @@ export default function DeveloperAdminView() {
 
     // ── Guard ─────────────────────────────────────────────────────────────────────
 
-    if (!isAuthenticated) {
-        return <LoginScreen onLogin={handleLogin} />;
+    if (!isAuthenticated || !user?.is_developer) {
+        return <LoginScreen />;
     }
 
     // ── Render ────────────────────────────────────────────────────────────────────
@@ -553,13 +546,12 @@ export default function DeveloperAdminView() {
                             </button>
                             <button
                                 onClick={() => {
-                                    setIsAuthenticated(false);
-                                    setSecret('');
+                                    logout();
                                 }}
                                 className="btn btn-ghost btn-sm"
                                 style={{ color: 'var(--text-muted)' }}
                             >
-                                Lock
+                                Logout
                             </button>
                         </div>
                     </div>
@@ -1749,28 +1741,24 @@ export default function DeveloperAdminView() {
                 isOpen={elementModalOpen}
                 onClose={() => { setElementModalOpen(false); setSelectedElement(null); }}
                 initialData={selectedElement}
-                reqConfig={reqConfig}
             />
 
             <FrameworkModal
                 isOpen={frameworkModalOpen}
                 onClose={() => { setFrameworkModalOpen(false); setSelectedFramework(null); }}
                 initialData={selectedFramework}
-                reqConfig={reqConfig}
             />
 
             <ProfilingModal
                 isOpen={profilingModalOpen}
                 onClose={() => { setProfilingModalOpen(false); setSelectedProfiling(null); }}
                 initialData={selectedProfiling}
-                reqConfig={reqConfig}
             />
 
             <MeterTypeModal
                 isOpen={meterTypeModalOpen}
                 onClose={() => { setMeterTypeModalOpen(false); setSelectedMeterType(null); }}
                 initialData={selectedMeterType}
-                reqConfig={reqConfig}
             />
 
             <ConfirmModal

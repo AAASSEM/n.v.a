@@ -137,13 +137,9 @@ async def resolve_site_id(
     return site.id
 
 
-async def verify_developer_secret(
-    x_developer_secret: str = Header(..., description="Static Developer Secret Key")
+async def verify_developer_user(
+    current_user: User = Depends(get_current_user)
 ):
-    # Strip any hidden whitespaces or newlines from both the header and the settings
-    clean_secret = x_developer_secret.strip()
-    target_secret = settings.DEVELOPER_ADMIN_SECRET.strip()
-    
-    if clean_secret != target_secret:
-        raise HTTPException(status_code=403, detail="Invalid Developer Secret")
-    return True
+    if not getattr(current_user, 'is_developer', False):
+        raise HTTPException(status_code=403, detail="Developer access required")
+    return current_user
