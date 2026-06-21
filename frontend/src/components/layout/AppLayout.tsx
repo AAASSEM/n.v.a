@@ -117,8 +117,43 @@ export default function AppLayout({ children, hideNav = false }: { children: Rea
 
     const filteredNavItems = NAV_ITEMS.filter(item => canAccessPage(user?.profile?.role, item.path));
 
+    // Trial countdown
+    const trialDaysLeft = (() => {
+        if (!user?.trial_expires_at) return null;
+        const diff = new Date(user.trial_expires_at).getTime() - Date.now();
+        return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    })();
+    const showTrialBanner = trialDaysLeft !== null && trialDaysLeft >= 0 && trialDaysLeft <= 30;
+    const trialUrgent = trialDaysLeft !== null && trialDaysLeft <= 7;
+
     return (
         <div className="app-layout">
+            {/* Trial Countdown Banner */}
+            {showTrialBanner && (
+                <div style={{
+                    background: trialUrgent
+                        ? 'linear-gradient(90deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08))'
+                        : 'linear-gradient(90deg, rgba(251,191,36,0.12), rgba(251,191,36,0.06))',
+                    borderBottom: `1px solid ${trialUrgent ? 'rgba(239,68,68,0.25)' : 'rgba(251,191,36,0.2)'}`,
+                    padding: '8px 24px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                    fontSize: 13, color: trialUrgent ? '#fca5a5' : '#fde68a',
+                    fontWeight: 600,
+                }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    {trialDaysLeft === 0
+                        ? 'Your free trial expires today!'
+                        : `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} remaining in your free trial.`}
+                    <a href="mailto:support@esgravity.com?subject=Trial%20Upgrade%20Request"
+                        style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 700, opacity: 0.9 }}>
+                        Upgrade now →
+                    </a>
+                </div>
+            )}
             {/* Navbar */}
             {!hideNav && (
                 <nav className="nav-container-floating">

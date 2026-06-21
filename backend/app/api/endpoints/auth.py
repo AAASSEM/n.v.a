@@ -97,11 +97,21 @@ async def verify_magic_link(
 
 @router.get("/me", response_model=UserSchema)
 async def read_users_me(
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> Any:
     """
-    Get current user.
+    Get current user, including trial expiry from their company.
     """
+    from app.models.company import Company
+    trial_expires_at = None
+    if current_user.profile and current_user.profile.company_id:
+        company = await db.get(Company, current_user.profile.company_id)
+        if company:
+            trial_expires_at = company.trial_expires_at
+
+    # Inject into the ORM object dynamically so FastAPI response_model can serialize it
+    setattr(current_user, "trial_expires_at", trial_expires_at)
     return current_user
 
 from app.services.platform_service import platform_service

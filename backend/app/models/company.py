@@ -32,6 +32,7 @@ class Company(Base):
     sector = Column(String(50), nullable=False)
     active_frameworks = Column(JSONEncodedDict, default=list) # e.g. ["ESG", "DST"]
     has_green_key = Column(Boolean(), default=False)
+    trial_expires_at = Column(DateTime, nullable=True)  # NULL = no trial limit (grandfathered / paid)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 

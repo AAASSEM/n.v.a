@@ -37,6 +37,7 @@ class UserInDBBase(UserBase):
 # Additional properties to return via API
 class User(UserInDBBase):
     profile: Optional[UserProfileBase] = None
+    trial_expires_at: Optional[datetime] = None
 
 # Additional properties stored in DB
 class UserInDB(UserInDBBase):

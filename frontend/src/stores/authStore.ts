@@ -12,6 +12,7 @@ interface AuthState {
     accessToken: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isTrialExpired: boolean;
     error: string | null;
     requestLoginLink: (email: string) => Promise<void>;
     logout: () => void;
@@ -28,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
             accessToken: null,
             isAuthenticated: false,
             isLoading: false,
+            isTrialExpired: false,
             error: null,
 
             requestLoginLink: async (email: string) => {
@@ -134,7 +136,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: () => {
-                set({ user: null, accessToken: null, isAuthenticated: false });
+                set({ user: null, accessToken: null, isAuthenticated: false, isTrialExpired: false });
                 useSiteStore.getState().reset();
             },
 
@@ -149,7 +151,17 @@ export const useAuthStore = create<AuthState>()(
                         fetch(`${API_URL}/sites/`, { headers: { 'Authorization': `Bearer ${token}` } })
                     ]);
                     
-                    if (!meRes.ok) throw new Error("Failed to fetch user");
+                    if (!meRes.ok) {
+                        // Check for trial expiry
+                        if (meRes.status === 403) {
+                            const errData = await meRes.json().catch(() => ({}));
+                            if (errData.detail === 'TRIAL_EXPIRED') {
+                                set({ isTrialExpired: true });
+                                return;
+                            }
+                        }
+                        throw new Error("Failed to fetch user");
+                    }
                     const user = (await meRes.json()) as User;
                     set({ user });
                     

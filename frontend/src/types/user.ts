@@ -14,6 +14,7 @@ export interface User {
     is_developer: boolean;
     email_verified: boolean;
     profile?: UserProfile;
+    trial_expires_at?: string | null;
 }
 
 export interface LoginCredentials {

@@ -306,6 +306,43 @@ async def delete_company(
     await db.commit()
     return {"msg": "Company deleted successfully"}
 
+class TrialUpdateRequest(BaseModel):
+    days: Optional[int] = 90  # How many days from now to extend
+
+@router.post("/companies/{company_id}/extend-trial")
+async def extend_trial(
+    company_id: int,
+    data: TrialUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    _secret: bool = Depends(verify_developer_secret),
+) -> Any:
+    """Extend (or set) the trial expiry to N days from now."""
+    company = await db.get(Company, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    company.trial_expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=data.days or 90)
+    db.add(company)
+    await db.commit()
+    await audit_service.log_action(db, user_id=None, action="EXTEND_TRIAL", entity_type="COMPANY", entity_id=str(company_id), details={"days": data.days, "new_expiry": company.trial_expires_at.isoformat()})
+    return {"msg": f"Trial extended to {company.trial_expires_at.isoformat()}", "trial_expires_at": company.trial_expires_at}
+
+@router.post("/companies/{company_id}/remove-trial")
+async def remove_trial(
+    company_id: int,
+    db: AsyncSession = Depends(get_db),
+    _secret: bool = Depends(verify_developer_secret),
+) -> Any:
+    """Remove trial limit — marks account as fully paid (NULL = no expiry)."""
+    company = await db.get(Company, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    company.trial_expires_at = None
+    db.add(company)
+    await db.commit()
+    await audit_service.log_action(db, user_id=None, action="REMOVE_TRIAL", entity_type="COMPANY", entity_id=str(company_id))
+    return {"msg": "Trial removed — account is now fully paid (no expiry)"}
+
+
 @router.get("/users")
 async def list_users(
     db: AsyncSession = Depends(get_db),

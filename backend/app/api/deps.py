@@ -26,6 +26,9 @@ from app.services.platform_service import platform_service
 # In-memory cache for maintenance mode (avoids a DB query on every single request)
 _maint_cache: dict = {"value": None, "expires": 0}
 
+# In-memory cache for trial expiry (30-second TTL per company)
+_trial_cache: dict = {}  # company_id -> (trial_expires_at, cache_expires_epoch)
+
 async def get_current_user(
     db: AsyncSession = Depends(get_db), token: str = Depends(reusable_oauth2)
 ) -> User:
@@ -57,7 +60,22 @@ async def get_current_user(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Platform is currently under maintenance. Please try again later."
         )
-        
+
+    # Check trial expiry (cached per company, 30s TTL)
+    if user.profile and user.profile.company_id and not getattr(user, 'is_developer', False):
+        import datetime as dt
+        from app.models.company import Company as CompanyModel
+        company_id = user.profile.company_id
+        cached = _trial_cache.get(company_id)
+        if not cached or cached[1] < now:
+            company = await db.get(CompanyModel, company_id)
+            trial_val = company.trial_expires_at if company else None
+            _trial_cache[company_id] = (trial_val, now + 30)
+        else:
+            trial_val = cached[0]
+        if trial_val and dt.datetime.utcnow() > trial_val:
+            raise HTTPException(status_code=403, detail="TRIAL_EXPIRED")
+
     return user
 
 async def get_current_active_user(

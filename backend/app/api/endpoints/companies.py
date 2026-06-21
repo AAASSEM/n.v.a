@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from app.services.audit_service import audit_service
@@ -124,7 +125,8 @@ async def create_company(
         emirate=company_in.emirate.lower(),
         sector=company_in.sector.lower(),
         has_green_key=has_gk,
-        active_frameworks=fws
+        active_frameworks=fws,
+        trial_expires_at=datetime.datetime.utcnow() + datetime.timedelta(days=90)
     )
     db.add(company)
     await db.commit()

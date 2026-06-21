@@ -22,6 +22,7 @@ import SettingsView from './pages/Settings/SettingsView';
 import ReportsView from './pages/Reports/ReportsView';
 import HelpCenterView from './pages/Help/HelpCenterView';
 import AccessDenied from './components/ui/AccessDenied';
+import TrialExpiredScreen from './components/ui/TrialExpiredScreen';
 import { canAccessPage } from './config/rbac';
 
 const queryClient = new QueryClient();
@@ -46,7 +47,7 @@ function GlobalShortcuts() {
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, fetchUser, user } = useAuthStore();
+  const { isAuthenticated, isLoading, fetchUser, user, isTrialExpired } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
@@ -55,6 +56,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
       fetchUser();
     }
   }, [user, fetchUser]);
+
+  // Trial expired — block ALL navigation, show frozen screen
+  if (isTrialExpired) {
+    return <TrialExpiredScreen />;
+  }
 
   if (isLoading) {
     return (
