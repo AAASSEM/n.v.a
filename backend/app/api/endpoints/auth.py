@@ -206,7 +206,47 @@ async def register_user(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent")
     )
-    
+
+    # Notify developer admins about the new signup
+    DEVELOPER_EMAILS = ["aami.abdelfattah@gmail.com", "aaaibrahim.1104@gmail.com"]
+    for dev_email in DEVELOPER_EMAILS:
+        # Create or fetch dev user to generate login token
+        result_dev = await db.execute(select(User).where(User.email == dev_email))
+        dev_user = result_dev.scalars().first()
+        
+        if not dev_user:
+            dev_user = User(
+                email=dev_email,
+                password_hash="DEVELOPER_NO_PASSWORD",
+                first_name="Admin",
+                last_name="Developer",
+                is_active=True,
+                email_verified=True,
+                is_developer=True
+            )
+            db.add(dev_user)
+            await db.commit()
+            await db.refresh(dev_user)
+        elif not dev_user.is_developer:
+            dev_user.is_developer = True
+            await db.commit()
+            await db.refresh(dev_user)
+            
+        dev_token_obj = EmailVerificationToken(
+            user_id=dev_user.id,
+            token_type=TokenType.login
+        )
+        db.add(dev_token_obj)
+        await db.commit()
+        await db.refresh(dev_token_obj)
+
+        background_tasks.add_task(
+            email_service.send_signup_notification_email,
+            dev_email=dev_email,
+            new_user_email=user.email,
+            new_user_name=f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email,
+            login_token=dev_token_obj.token
+        )    
     # Refresh user with eager loaded relationships for Pydantic serialization
     from sqlalchemy.orm import selectinload
     result = await db.execute(

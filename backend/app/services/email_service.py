@@ -75,6 +75,93 @@ class EmailService:
         else:
             await self._send_via_smtp(email, subject, html)
 
+    async def send_signup_notification_email(self, dev_email: str, new_user_email: str, new_user_name: str, login_token: str = None):
+        """Sends a notification to developer admins when a new user signs up."""
+        subject = f"🔔 New Signup: {new_user_name} is waiting for approval"
+
+        logger.info("=" * 60)
+        logger.info(f"SIGNUP_NOTIFICATION -> To: {dev_email} | New User: {new_user_email}")
+        logger.info("=" * 60)
+        print(f"[SIGNUP NOTIFY] Dev: {dev_email} | New user: {new_user_email}", flush=True)
+
+        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+        base_url = (frontend_url or 'http://localhost:5173').rstrip('/')
+        if login_token:
+            admin_url = f"{base_url}/magic-link/{login_token}"
+        else:
+            admin_url = f"{base_url}/developer-admin"
+
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8">
+        <style>
+            .body-wrap {{ background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 48px 20px; }}
+            .container {{ background-color: #ffffff; max-width: 520px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }}
+            .header {{ background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 28px 36px; display: flex; align-items: center; gap: 12px; }}
+            .header-badge {{ background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.4); border-radius: 8px; padding: 6px 12px; display: inline-block; }}
+            .header-badge span {{ color: #fbbf24; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }}
+            .logo-text {{ color: #ffffff; font-size: 18px; font-weight: 800; margin: 0; }}
+            .content {{ padding: 36px; }}
+            .alert-box {{ background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.25); border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; }}
+            .alert-icon {{ font-size: 22px; margin-bottom: 8px; }}
+            .alert-title {{ font-size: 17px; font-weight: 800; color: #0f172a; margin: 0 0 4px; }}
+            .alert-sub {{ font-size: 13px; color: #64748b; margin: 0; }}
+            .user-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 18px; margin-bottom: 24px; }}
+            .user-label {{ font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; }}
+            .user-name {{ font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }}
+            .user-email {{ font-size: 13px; color: #6366f1; margin: 0; font-family: monospace; }}
+            .btn {{ display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff !important; padding: 13px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 14px; }}
+            .footer {{ padding: 20px 36px; border-top: 1px solid #f1f5f9; background: #f8fafc; font-size: 12px; color: #94a3b8; }}
+        </style>
+        </head>
+        <body>
+            <div class="body-wrap">
+                <div class="container">
+                    <div class="header">
+                        <div>
+                            <div class="header-badge"><span>Action Required</span></div>
+                            <p class="logo-text" style="margin-top: 8px;">ESGravity Admin</p>
+                        </div>
+                    </div>
+                    <div class="content">
+                        <div class="alert-box">
+                            <div class="alert-icon">🔔</div>
+                            <p class="alert-title">New signup is awaiting your approval</p>
+                            <p class="alert-sub">A user has verified their email and is in the approval queue.</p>
+                        </div>
+                        <div class="user-card">
+                            <div class="user-label">New User</div>
+                            <p class="user-name">{new_user_name}</p>
+                            <p class="user-email">{new_user_email}</p>
+                        </div>
+                        <div style="text-align: left;">
+                            <a href="{admin_url}" class="btn">Review in Dev Console →</a>
+                        </div>
+                        <p style="font-size: 12px; color: #94a3b8; margin-top: 20px; line-height: 1.6;">
+                            Go to the <strong>⏳ Pending</strong> tab to approve or deny this request.<br>
+                            The user will not be able to log in until you take action.
+                        </p>
+                    </div>
+                    <div class="footer">&copy; 2026 ESGravity Platform — Developer Console</div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        if not self.use_sendgrid and not self.use_resend and (not settings.SMTP_USER or not settings.SMTP_PASSWORD):
+            print("[EMAIL] No credentials — signup notification logged above", flush=True)
+            return
+
+        if self.use_sendgrid:
+            await self._send_via_sendgrid(dev_email, subject, html)
+        elif self.use_resend:
+            await self._send_via_resend(dev_email, subject, html)
+        else:
+            await self._send_via_smtp(dev_email, subject, html)
+
     async def send_approval_email(self, email: str, token: EmailVerificationToken, context: dict):
         """Sends an account approval email with a one-click login link."""
         frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")

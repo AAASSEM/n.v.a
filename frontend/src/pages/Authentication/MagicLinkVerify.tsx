@@ -6,7 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 const MagicLinkVerify: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { magicLinkLogin, user, fetchUser } = useAuthStore();
+  const { magicLinkLogin, user, fetchUser, logout } = useAuthStore();
   
   const [status, setStatus] = useState<'loading' | 'success' | 'pending' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -147,7 +147,10 @@ const MagicLinkVerify: React.FC = () => {
                 </span>
               </div>
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
                 className="btn btn-secondary"
                 style={{ width: '100%', justifyContent: 'center' }}
               >
@@ -207,7 +210,10 @@ const MagicLinkVerify: React.FC = () => {
                     Retry Link
                 </button>
                 <button
-                    onClick={() => navigate('/login')}
+                    onClick={() => {
+                        logout();
+                        navigate('/login');
+                    }}
                     className="btn btn-primary"
                     style={{ flex: 1, justifyContent: 'center' }}
                 >
