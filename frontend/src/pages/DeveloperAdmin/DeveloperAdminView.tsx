@@ -19,7 +19,8 @@ type TabId =
     | 'companies'
     | 'users'
     | 'settings'
-    | 'logs';
+    | 'logs'
+    | 'pending';
 
 interface ConfirmState {
     isOpen: boolean;
@@ -32,6 +33,7 @@ interface ConfirmState {
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 
 const TABS: { id: TabId; label: string }[] = [
+    { id: 'pending', label: '⏳ Pending' },
     { id: 'diagnostics', label: '⬡ Health' },
     { id: 'settings', label: '⚑ Flags' },
     { id: 'logs', label: '⊟ Audit' },
@@ -362,6 +364,13 @@ export default function DeveloperAdminView() {
         enabled,
     });
 
+    const { data: pendingUsers, isLoading: loadingPending } = useQuery({
+        queryKey: ['admin_pending_users'],
+        queryFn: async () => (await api.get('/developer-admin/pending-users')).data,
+        enabled,
+        refetchInterval: 30000, // auto-refresh every 30s
+    });
+
     // ── Mutations ─────────────────────────────────────────────────────────────────
 
     // Map API path segments → query keys
@@ -423,6 +432,25 @@ export default function DeveloperAdminView() {
             return res.data;
         },
         onSuccess: (data) => setImpersonateToken(data.access_token),
+    });
+
+    const approveMutation = useMutation({
+        mutationFn: async (userId: number) =>
+            api.post(`/developer-admin/pending-users/${userId}/approve`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin_pending_users'] });
+            queryClient.invalidateQueries({ queryKey: ['admin_users'] });
+            queryClient.invalidateQueries({ queryKey: ['admin_diagnostics'] });
+        },
+    });
+
+    const denyMutation = useMutation({
+        mutationFn: async (userId: number) =>
+            api.post(`/developer-admin/pending-users/${userId}/deny`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['admin_pending_users'] });
+            queryClient.invalidateQueries({ queryKey: ['admin_diagnostics'] });
+        },
     });
 
     // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -523,6 +551,17 @@ export default function DeveloperAdminView() {
                                     }
                                 >
                                     {tab.label}
+                                    {tab.id === 'pending' && (pendingUsers?.length ?? 0) > 0 && (
+                                        <span style={{
+                                            marginLeft: 6,
+                                            background: '#f59e0b', color: '#000',
+                                            fontSize: 10, fontWeight: 800,
+                                            borderRadius: 10, padding: '1px 6px',
+                                            lineHeight: '16px', display: 'inline-block',
+                                        }}>
+                                            {pendingUsers.length}
+                                        </span>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -559,6 +598,130 @@ export default function DeveloperAdminView() {
 
                 {/* ── Content ──────────────────────────────────────────────────────── */}
                 <div className="animate-in fade-in duration-300">
+
+                    {/* PENDING APPROVAL */}
+                    {activeTab === 'pending' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div>
+                                    <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Signup Approval Queue</h2>
+                                    <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                                        Users who verified their email and are waiting for your approval.
+                                    </p>
+                                </div>
+                                {!loadingPending && (
+                                    <span style={{
+                                        fontSize: 12, fontWeight: 700,
+                                        background: pendingUsers?.length > 0 ? 'rgba(245,158,11,0.15)' : 'var(--bg-elevated)',
+                                        color: pendingUsers?.length > 0 ? '#f59e0b' : 'var(--text-muted)',
+                                        border: `1px solid ${pendingUsers?.length > 0 ? 'rgba(245,158,11,0.3)' : 'var(--border-subtle)'}`,
+                                        borderRadius: 20, padding: '4px 14px',
+                                    }}>
+                                        {pendingUsers?.length ?? 0} pending
+                                    </span>
+                                )}
+                            </div>
+
+                            {loadingPending ? (
+                                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>
+                            ) : pendingUsers?.length === 0 ? (
+                                <div style={{
+                                    padding: '60px 40px', textAlign: 'center',
+                                    background: 'var(--bg-card)', borderRadius: 16,
+                                    border: '1px solid var(--border-subtle)',
+                                }}>
+                                    <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                                    <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>
+                                        All caught up!
+                                    </h3>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                                        No signup requests are waiting for review.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    {(pendingUsers ?? []).map((pu: any) => (
+                                        <div key={pu.id} style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                            background: 'var(--bg-card)', border: '1px solid rgba(245,158,11,0.2)',
+                                            borderRadius: 14, padding: '16px 20px', gap: 16,
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1 }}>
+                                                <div style={{
+                                                    width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                                                    background: 'rgba(245,158,11,0.12)',
+                                                    border: '1px solid rgba(245,158,11,0.25)',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 16, fontWeight: 800, color: '#f59e0b',
+                                                }}>
+                                                    {(pu.first_name?.[0] || pu.email[0]).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                                        {pu.first_name && pu.last_name ? `${pu.first_name} ${pu.last_name}` : '—'}
+                                                    </div>
+                                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                        {pu.email}
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                        Signed up {pu.created_at ? new Date(pu.created_at).toLocaleString() : '—'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                                                <button
+                                                    onClick={() => {
+                                                        setConfirmState({
+                                                            isOpen: true,
+                                                            type: 'success',
+                                                            title: 'Approve User',
+                                                            message: `Approve ${pu.email}? They will receive a login link and can access the platform.`,
+                                                            onConfirm: () => {
+                                                                approveMutation.mutate(pu.id);
+                                                                setConfirmState(prev => ({ ...prev, isOpen: false }));
+                                                            },
+                                                        });
+                                                    }}
+                                                    disabled={approveMutation.isPending}
+                                                    className="btn btn-sm"
+                                                    style={{
+                                                        background: 'rgba(16,185,129,0.1)', color: '#10b981',
+                                                        border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8,
+                                                        padding: '7px 16px', fontWeight: 700, fontSize: 12,
+                                                    }}
+                                                >
+                                                    ✓ Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setConfirmState({
+                                                            isOpen: true,
+                                                            type: 'danger',
+                                                            title: 'Deny & Remove User',
+                                                            message: `Deny ${pu.email}? Their account will be permanently deleted.`,
+                                                            onConfirm: () => {
+                                                                denyMutation.mutate(pu.id);
+                                                                setConfirmState(prev => ({ ...prev, isOpen: false }));
+                                                            },
+                                                        });
+                                                    }}
+                                                    disabled={denyMutation.isPending}
+                                                    className="btn btn-sm"
+                                                    style={{
+                                                        background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+                                                        border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8,
+                                                        padding: '7px 16px', fontWeight: 700, fontSize: 12,
+                                                    }}
+                                                >
+                                                    ✕ Deny
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* DIAGNOSTICS */}
                     {activeTab === 'diagnostics' && (

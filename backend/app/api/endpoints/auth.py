@@ -65,9 +65,15 @@ async def verify_magic_link(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    # Update state
-    user.is_active = True
-    user.email_verified = True
+    # For email_verification tokens: verify the email but do NOT auto-activate.
+    # The account must be explicitly approved by a developer admin.
+    # For login/password_reset tokens (existing users already approved): activate normally.
+    if db_token.token_type == TokenType.email_verification:
+        user.email_verified = True
+        # is_active stays False — requires developer approval
+    else:
+        user.is_active = True
+        user.email_verified = True
     db_token.used_at = datetime.utcnow()
     
     await db.commit()
@@ -75,7 +81,7 @@ async def verify_magic_link(
 
     await audit_service.log_action(
         db,
-        action="LOGIN",
+        action="EMAIL_VERIFIED" if db_token.token_type == TokenType.email_verification else "LOGIN",
         user_id=user.id,
         company_id=user.profile.company_id if user.profile else None,
         entity_type="USER",
@@ -84,6 +90,14 @@ async def verify_magic_link(
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent")
     )
+
+    # If the account is still inactive (pending developer approval), return a special status.
+    # The frontend will show the "Pending Approval" screen.
+    if not user.is_active:
+        return {
+            "access_token": "",
+            "token_type": "pending_approval",
+        }
 
     # Issue login token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

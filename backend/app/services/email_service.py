@@ -75,6 +75,70 @@ class EmailService:
         else:
             await self._send_via_smtp(email, subject, html)
 
+    async def send_approval_email(self, email: str, token: EmailVerificationToken, context: dict):
+        """Sends an account approval email with a one-click login link."""
+        frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+        base_url = (frontend_url or "http://localhost:5173").rstrip("/")
+        magic_link_url = f"{base_url}/magic-link/{token.token}"
+        subject = "Your ESGravity Account Has Been Approved!"
+
+        logger.info("=" * 60)
+        logger.info(f"APPROVAL_EMAIL -> To: {email}")
+        logger.info(f"APPROVAL_EMAIL -> Link: {magic_link_url}")
+        logger.info("=" * 60)
+        print(f"[APPROVAL] To: {email} | Link: {magic_link_url}", flush=True)
+
+        name = context.get("name", "User")
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8">
+        <style>
+            .body-wrap {{ background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 48px 20px; }}
+            .container {{ background-color: #ffffff; max-width: 560px; margin: 0 auto; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }}
+            .header {{ background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 32px 40px; text-align: left; }}
+            .logo-text {{ color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: -0.025em; margin: 0; }}
+            .content {{ padding: 40px; }}
+            .title {{ font-size: 24px; font-weight: 700; color: #0f172a; margin: 0 0 16px; }}
+            .text {{ font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 32px; }}
+            .btn {{ display: inline-block; background-color: #10b981; color: #ffffff !important; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; }}
+            .footer {{ padding: 24px 40px; border-top: 1px solid #f1f5f9; background-color: #f8fafc; font-size: 13px; color: #64748b; }}
+        </style>
+        </head>
+        <body>
+            <div class="body-wrap">
+                <div class="container">
+                    <div class="header"><h1 class="logo-text">ESGravity</h1></div>
+                    <div class="content">
+                        <h2 class="title">Your Account Has Been Approved! 🎉</h2>
+                        <p class="text">
+                            Hello {name},<br><br>
+                            Great news! Your ESGravity account has been reviewed and <strong>approved</strong>.
+                            You can now sign in and start your sustainability journey.
+                            Click the button below to access your account — this link is valid for 1 hour.
+                        </p>
+                        <div style="text-align: left;">
+                            <a href="{magic_link_url}" class="btn">Access My Account →</a>
+                        </div>
+                    </div>
+                    <div class="footer">&copy; 2026 ESGravity Platform. All rights reserved.</div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        if not self.use_sendgrid and not self.use_resend and (not settings.SMTP_USER or not settings.SMTP_PASSWORD):
+            print("[EMAIL] No credentials set — approval link logged above (copy from logs)", flush=True)
+            return
+
+        if self.use_sendgrid:
+            await self._send_via_sendgrid(email, subject, html)
+        elif self.use_resend:
+            await self._send_via_resend(email, subject, html)
+        else:
+            await self._send_via_smtp(email, subject, html)
+
     # ─── Resend Provider ───────────────────────────────────────────────────────────
 
     async def _send_via_resend(self, to: str, subject: str, html: str):

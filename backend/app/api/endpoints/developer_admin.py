@@ -1,5 +1,5 @@
 from typing import Any, List, Optional, Union
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -112,6 +112,105 @@ class AuditLogListSchema(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# --- Signup Approval Queue ---
+
+class PendingUserSchema(BaseModel):
+    id: int
+    email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email_verified: bool
+    created_at: Optional[datetime.datetime] = None
+
+    class Config:
+        from_attributes = True
+
+@router.get("/pending-users", response_model=List[PendingUserSchema])
+async def list_pending_users(
+    db: AsyncSession = Depends(get_db),
+    _dev: User = Depends(verify_developer_user),
+) -> Any:
+    """List all users who have verified their email but are awaiting developer approval."""
+    result = await db.execute(
+        select(User)
+        .where(User.is_active == False)
+        .where(User.email_verified == True)
+        .where(User.is_developer == False)
+        .order_by(User.created_at.desc())
+    )
+    return result.scalars().all()
+
+@router.post("/pending-users/{user_id}/approve")
+async def approve_user(
+    user_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    dev: User = Depends(verify_developer_user),
+) -> Any:
+    """Approve a pending user — activates their account and notifies them by email."""
+    result = await db.execute(
+        select(User).where(User.id == user_id).options(selectinload(User.profile))
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.is_active:
+        return {"detail": "User is already active."}
+
+    user.is_active = True
+    await db.commit()
+    await db.refresh(user)
+
+    await audit_service.log_action(
+        db, user_id=dev.id, action="APPROVE_USER",
+        entity_type="USER", entity_id=str(user_id),
+        details={"email": user.email, "approved_by": dev.email}
+    )
+
+    # Notify user that they are approved — send a magic login link
+    from app.models.token import EmailVerificationToken, TokenType
+    from app.services.email_service import email_service
+    token_obj = EmailVerificationToken(user_id=user.id, token_type=TokenType.login)
+    db.add(token_obj)
+    await db.commit()
+    await db.refresh(token_obj)
+
+    background_tasks.add_task(
+        email_service.send_approval_email,
+        email=user.email,
+        token=token_obj,
+        context={"name": user.first_name or user.email}
+    )
+
+    return {"detail": f"User {user.email} approved and notified."}
+
+@router.post("/pending-users/{user_id}/deny")
+async def deny_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    dev: User = Depends(verify_developer_user),
+) -> Any:
+    """Deny a pending user — deletes their account entirely."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.is_active:
+        raise HTTPException(status_code=400, detail="Cannot deny an already active user. Use Delete instead.")
+
+    email = user.email
+    await db.delete(user)
+    await db.commit()
+
+    await audit_service.log_action(
+        db, user_id=dev.id, action="DENY_USER",
+        entity_type="USER", entity_id=str(user_id),
+        details={"email": email, "denied_by": dev.email}
+    )
+
+    return {"detail": f"User {email} has been denied and removed."}
 
 
 # --- System Health & Diagnostics ---

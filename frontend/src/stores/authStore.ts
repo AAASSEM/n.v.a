@@ -97,10 +97,20 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     const data = await response.json();
+
+                    // Backend signals account is awaiting developer approval
+                    if (data.token_type === 'pending_approval') {
+                        set({ isLoading: false });
+                        // Throw a special error that MagicLinkVerify can detect
+                        throw new Error('PENDING_APPROVAL');
+                    }
+
                     set({ accessToken: data.access_token, isAuthenticated: true });
                 } catch (error: unknown) {
                     const errMessage = error instanceof Error ? error.message : 'Login failed';
-                    set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
+                    if (errMessage !== 'PENDING_APPROVAL') {
+                        set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
+                    }
                     throw error;
                 } finally {
                     set({ isLoading: false });

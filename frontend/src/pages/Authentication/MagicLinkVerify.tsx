@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, AlertCircle } from 'lucide-react';
+import { ShieldCheck, AlertCircle, Clock } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
 const MagicLinkVerify: React.FC = () => {
@@ -8,7 +8,7 @@ const MagicLinkVerify: React.FC = () => {
   const navigate = useNavigate();
   const { magicLinkLogin, user, fetchUser } = useAuthStore();
   
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'pending' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const hasFetched = useRef(false);
 
@@ -28,8 +28,12 @@ const MagicLinkVerify: React.FC = () => {
         await fetchUser();
         setStatus('success');
       } catch (err: any) {
-        setStatus('error');
-        setErrorMessage(err.response?.data?.detail || 'Failed to verify the magic link. It may be expired or already used.');
+        if (err?.message === 'PENDING_APPROVAL') {
+          setStatus('pending');
+        } else {
+          setStatus('error');
+          setErrorMessage(err.response?.data?.detail || err?.message || 'Failed to verify the magic link. It may be expired or already used.');
+        }
       }
     };
 
@@ -106,6 +110,49 @@ const MagicLinkVerify: React.FC = () => {
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Success!</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: 13.5, marginTop: 8 }}>Authentication complete. Launching platform...</p>
+            </div>
+          )}
+
+          {status === 'pending' && (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{
+                width: 72, height: 72,
+                background: 'rgba(245, 158, 11, 0.1)',
+                color: '#f59e0b',
+                borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 20,
+                boxShadow: '0 0 28px rgba(245,158,11,0.15)',
+                animation: 'pulse 2s ease-in-out infinite',
+              }}>
+                <Clock size={32} />
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
+                Email Verified — Pending Approval
+              </h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.65, maxWidth: 320, margin: '0 auto 24px' }}>
+                Your email has been confirmed. Your account is now in the <strong style={{ color: '#f59e0b' }}>review queue</strong> and will be activated once a developer admin approves your request.
+              </p>
+              <div style={{
+                background: 'rgba(245,158,11,0.06)',
+                border: '1px solid rgba(245,158,11,0.2)',
+                borderRadius: 12,
+                padding: '14px 20px',
+                display: 'flex', alignItems: 'center', gap: 10,
+                marginBottom: 24,
+              }}>
+                <Clock size={16} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'left' }}>
+                  You will receive an email with a login link once your account is approved.
+                </span>
+              </div>
+              <button
+                onClick={() => navigate('/login')}
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                Back to Login
+              </button>
             </div>
           )}
 
