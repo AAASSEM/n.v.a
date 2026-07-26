@@ -51,5 +51,6 @@ class Token(BaseModel):
 class TokenPayload(BaseModel):
     sub: Optional[int] = None
     role: Optional[str] = None
+    type: Optional[str] = "access"
 
 

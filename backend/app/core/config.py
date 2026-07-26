@@ -52,9 +52,12 @@ class Settings(BaseSettings):
             origins = list(v)
 
         if self.ENVIRONMENT == "production":
+            # Add known production domains
             for domain in ["https://esg-compass.onrender.com", "https://esg-compass-3vkg.onrender.com", "https://n-v-a.onrender.com"]:
                 if domain not in origins:
                     origins.append(domain)
+            # Remove localhost origins for security
+            origins = [o for o in origins if "localhost" not in o and "127.0.0.1" not in o]
 
         frontend = self.FRONTEND_URL
         if frontend and frontend not in origins:

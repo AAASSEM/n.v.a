@@ -18,3 +18,4 @@ psycopg2-binary>=2.9.9
 reportlab>=4.2.0
 xlsxwriter>=3.2.0
 pandas>=2.0.0
+slowapi>=0.1.9

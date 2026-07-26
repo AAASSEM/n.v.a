@@ -19,11 +19,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.api import api_router
 
+# Rate limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json" if settings.ENVIRONMENT != "production" else None,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Request logging middleware
 from fastapi import Request
@@ -34,8 +44,17 @@ async def log_requests(request: Request, call_next):
     # Get a logger inside the middleware to avoid any scoping/initialization issues
     m_logger = logging.getLogger("app.main")
     
-    # Hard print to bypass logging configuration issues
-    print(f"DEBUG: REQUEST RECEIVED - METHOD: {request.method} - PATH: {request.url.path}", flush=True)
+    # Restrict request size to 10MB to prevent memory exhaustion attacks
+    MAX_REQUEST_SIZE = 10 * 1024 * 1024
+    if "content-length" in request.headers:
+        try:
+            content_length = int(request.headers["content-length"])
+            if content_length > MAX_REQUEST_SIZE:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=413, content={"detail": "Request payload too large"})
+        except ValueError:
+            pass
+            
     start_time = time.time()
     origin = request.headers.get("origin")
     host = request.headers.get("host")
@@ -45,10 +64,8 @@ async def log_requests(request: Request, call_next):
         process_time = (time.time() - start_time) * 1000
         formatted_process_time = "{0:.2f}".format(process_time)
         m_logger.info(f"REQUEST: {request.method} {request.url.path} - FROM: {origin} (via {host}) - STATUS: {response.status_code} - TIME: {formatted_process_time}ms")
-        print(f"DEBUG: RESPONSE SENT - STATUS: {response.status_code}", flush=True)
     except Exception as e:
         m_logger.exception(f"CRASH: {request.method} {request.url.path} - FROM: {origin} - ERROR: {str(e)}")
-        print(f"DEBUG: REQUEST CRASHED - ERROR: {e}", flush=True)
         raise e
     return response
 

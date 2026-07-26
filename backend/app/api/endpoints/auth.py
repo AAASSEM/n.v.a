@@ -21,12 +21,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
+
 
 
 from datetime import datetime
 from app.models.token import EmailVerificationToken
 
 @router.post("/magic-link/{token}", response_model=Token)
+@limiter.limit("10/minute")
 async def verify_magic_link(
     token: str,
     request: Request,
@@ -131,6 +136,7 @@ async def read_users_me(
 from app.services.platform_service import platform_service
 
 @router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register_user(
     *,
     request: Request,
@@ -262,8 +268,10 @@ class LoginLinkRequest(BaseModel):
     email: EmailStr
 
 @router.post("/developer/request-login-link")
+@limiter.limit("5/minute")
 async def request_developer_login_link(
-    request: LoginLinkRequest,
+    request: Request,
+    payload: LoginLinkRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
@@ -272,17 +280,17 @@ async def request_developer_login_link(
     Only authorized developer emails are allowed.
     """
     allowed_emails = ["aami.abdelfattah@gmail.com", "aaaibrahim.1104@gamil.com", "aaaibrahim.1104@gmail.com"]
-    if request.email not in allowed_emails:
+    if payload.email not in allowed_emails:
         # Standardize generic response to prevent email enumeration
         return {"detail": "If authorized, a magic link will be sent."}
         
-    result = await db.execute(select(User).where(User.email == request.email))
+    result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalars().first()
     
     if not user:
         # Auto-create developer
         user = User(
-            email=request.email,
+            email=payload.email,
             password_hash="DEVELOPER_NO_PASSWORD",
             first_name="Admin",
             last_name="Developer",
@@ -320,8 +328,10 @@ async def request_developer_login_link(
     return {"detail": "If authorized, a magic link will be sent."}
 
 @router.post("/request-login-link")
+@limiter.limit("5/minute")
 async def request_login_link(
-    request: LoginLinkRequest,
+    request: Request,
+    payload: LoginLinkRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
@@ -329,7 +339,7 @@ async def request_login_link(
     Send a login magic link to the user's email if they exist.
     If the user exists but is not active, resend the verification link.
     """
-    result = await db.execute(select(User).where(User.email == request.email))
+    result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalars().first()
     
     if user:

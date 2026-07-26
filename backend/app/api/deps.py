@@ -43,10 +43,24 @@ async def get_current_user(
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+        
+    if token_data.type != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type. Expected access token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     result = await db.execute(select(User).options(selectinload(User.profile)).where(User.id == int(token_data.sub)))
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Block inactive/pending/denied users from all authenticated endpoints
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is not active. Please contact support.",
+        )
         
     # Check maintenance mode (cached for 30s to avoid per-request DB hit)
     import time
