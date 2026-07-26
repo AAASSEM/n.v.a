@@ -400,8 +400,6 @@ def monthly_value(code: str, base: float, year: int, month: int) -> float:
                           5:1.10, 6:1.15, 7:1.12, 8:1.12,
                           9:1.05, 10:0.95, 11:0.82, 12:0.78}
         val = base * solar_years.get(year, 0) * solar_seasonal[month]
-        if year == 2026 and month > 6:
-            val = 0  # data not yet available
         return round(val * random.uniform(0.97, 1.03), 2)
 
     # Recycling rate — improves year on year regardless of occupancy
@@ -520,7 +518,7 @@ async def main():
             scale = 1.0 if site_key == 'A' else 0.80
 
             for year in range(2019, 2027):
-                max_month = 6 if year == 2026 else 12
+                max_month = 12
 
                 for month in range(1, max_month + 1):
                     for code, base in bases.items():
@@ -555,7 +553,7 @@ async def main():
                     await db.flush()
 
         await db.commit()
-        print(f"  → Monthly E submissions: {total_inserted} rows")
+        print(f"  -> Monthly E submissions: {total_inserted} rows")
 
         # ─────────────────────────────────────────────────────────────────
         # ANNUAL ENVIRONMENTAL ELEMENTS — 2019 to 2025 (+ 2026 partial)
@@ -568,7 +566,7 @@ async def main():
             scale = 1.0 if site_key == 'A' else 0.80
 
             for year in range(2019, 2027):
-                ym = 6 if year == 2026 else report_month
+                ym = report_month
 
                 # Numeric annual E values
                 vals = annual_E_values(year, site_key)
@@ -614,7 +612,7 @@ async def main():
                     annual_E_count += 1
 
         await db.commit()
-        print(f"  → Annual E submissions: {annual_E_count} rows")
+        print(f"  -> Annual E submissions: {annual_E_count} rows")
 
         # ─────────────────────────────────────────────────────────────────
         # ANNUAL SOCIAL ELEMENTS — 2019 to 2026
@@ -624,7 +622,7 @@ async def main():
 
         for site_key, site in site_map.items():
             for year in range(2019, 2027):
-                ym = 6 if year == 2026 else report_month
+                ym = report_month
 
                 # Numeric S values
                 s_vals = annual_S_values(year, site_key)
@@ -669,7 +667,7 @@ async def main():
                     social_count += 1
 
         await db.commit()
-        print(f"  → Social submissions: {social_count} rows")
+        print(f"  -> Social submissions: {social_count} rows")
 
         # ─────────────────────────────────────────────────────────────────
         # ANNUAL GOVERNANCE ELEMENTS — 2019 to 2026
@@ -679,7 +677,7 @@ async def main():
 
         for site_key, site in site_map.items():
             for year in range(2019, 2027):
-                ym = 6 if year == 2026 else report_month
+                ym = report_month
 
                 # Numeric G values
                 g_vals = annual_G_values(year, site_key)
@@ -724,7 +722,7 @@ async def main():
                     gov_count += 1
 
         await db.commit()
-        print(f"  → Governance submissions: {gov_count} rows")
+        print(f"  -> Governance submissions: {gov_count} rows")
 
         # ─────────────────────────────────────────────────────────────────
         # SUMMARY
@@ -737,7 +735,7 @@ async def main():
         print("\n" + "=" * 60)
         print(f"SEED COMPLETE")
         print(f"  Total submissions in DB:  {final_count}")
-        print(f"  Date range:               Jan 2019 → Jun 2026")
+        print(f"  Date range:               Jan 2019 -> Dec 2026")
         print(f"  Sites:                    {site_A.name}, {site_B.name}")
         print(f"  Monthly E rows/site:      {17 * 90} months × 2 sites")
         print(f"  Annual E+S+G rows/site:   ~{(len(annual_E_values(2025,'A')) + len(annual_E_boolean(2025)) + len(annual_S_values(2025,'A')) + len(annual_S_boolean(2025)) + len(annual_G_values(2025,'A')) + len(annual_G_boolean(2025)))} elements × 8 years × 2 sites")

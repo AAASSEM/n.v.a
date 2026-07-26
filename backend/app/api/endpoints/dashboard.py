@@ -982,7 +982,10 @@ async def get_completeness(
         DataSubmission.company_id == company_id,
         DataSubmission.value.isnot(None),
         DataSubmission.year == year,
-        DataSubmission.month == month
+        or_(
+            DataSubmission.month == month,
+            ~DataElement.collection_frequency.ilike('%month%')
+        )
     ]
     if effective_site_id is not None:
         sub_filters.append(DataSubmission.site_id == effective_site_id)
