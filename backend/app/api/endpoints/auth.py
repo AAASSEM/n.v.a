@@ -1,11 +1,13 @@
 from datetime import timedelta
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core import security
+from app.core.security import set_auth_cookies, clear_auth_cookies, generate_csrf_token
 from app.core.config import settings
 from app.api.deps import get_db, get_current_user
 from app.models.user import User, UserProfile
@@ -30,7 +32,35 @@ limiter = Limiter(key_func=get_remote_address)
 from datetime import datetime
 from app.models.token import EmailVerificationToken
 
-@router.post("/magic-link/{token}", response_model=Token)
+def _build_auth_response(access_token: str, token_type: str = "bearer") -> JSONResponse:
+    """
+    Build a JSON response that:
+    1. Returns the access_token in the body (backward compat)
+    2. Sets the httpOnly access_token cookie
+    3. Generates a CSRF token → sets it as a non-httpOnly cookie AND returns it in the body
+    """
+    csrf_token = generate_csrf_token()
+    response = JSONResponse(content={
+        "access_token": access_token,
+        "token_type": token_type,
+        "csrf_token": csrf_token,
+    })
+    set_auth_cookies(response, access_token)
+    # CSRF cookie: JS-readable (httponly=False) so the frontend can read and echo it
+    is_prod = settings.ENVIRONMENT == "production"
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=is_prod,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    return response
+
+
+@router.post("/magic-link/{token}")
 @limiter.limit("10/minute")
 async def verify_magic_link(
     token: str,
@@ -106,12 +136,10 @@ async def verify_magic_link(
 
     # Issue login token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return {
-        "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        ),
-        "token_type": "bearer",
-    }
+    access_token = security.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
+    return _build_auth_response(access_token)
 
 
 @router.get("/me", response_model=UserSchema)
@@ -214,8 +242,7 @@ async def register_user(
     )
 
     # Notify developer admins about the new signup
-    DEVELOPER_EMAILS = ["aami.abdelfattah@gmail.com", "aaaibrahim.1104@gmail.com"]
-    for dev_email in DEVELOPER_EMAILS:
+    for dev_email in settings.parsed_developer_emails:
         # Create or fetch dev user to generate login token
         result_dev = await db.execute(select(User).where(User.email == dev_email))
         dev_user = result_dev.scalars().first()
@@ -279,8 +306,7 @@ async def request_developer_login_link(
     Send a login magic link specifically for the developer panel.
     Only authorized developer emails are allowed.
     """
-    allowed_emails = ["aami.abdelfattah@gmail.com", "aaaibrahim.1104@gamil.com", "aaaibrahim.1104@gmail.com"]
-    if payload.email not in allowed_emails:
+    if payload.email not in settings.parsed_developer_emails:
         # Standardize generic response to prevent email enumeration
         return {"detail": "If authorized, a magic link will be sent."}
         
@@ -377,7 +403,7 @@ async def request_login_link(
 class DemoLoginRequest(BaseModel):
     email: EmailStr
 
-@router.post("/demo-login", response_model=Token)
+@router.post("/demo-login")
 async def demo_login(
     request: DemoLoginRequest,
     background_tasks: BackgroundTasks,
@@ -428,16 +454,13 @@ async def demo_login(
     db.add(log)
     await db.commit()
 
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-    }
+    return _build_auth_response(token)
 
 class ResetPasswordRequest(BaseModel):
     token: str
     password: str
 
-@router.post("/reset-password", response_model=Token)
+@router.post("/reset-password")
 async def reset_password(
     request_data: ResetPasswordRequest,
     request: Request,
@@ -507,9 +530,18 @@ async def reset_password(
     
     # Issue login token on success
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    return {
-        "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
-        ),
-        "token_type": "bearer",
-    }
+    access_token = security.create_access_token(
+        user.id, expires_delta=access_token_expires
+    )
+    return _build_auth_response(access_token)
+
+
+@router.post("/logout")
+async def logout(request: Request) -> Any:
+    """
+    Clear the httpOnly access_token and csrf_token cookies.
+    """
+    response = JSONResponse(content={"detail": "Logged out successfully"})
+    clear_auth_cookies(response)
+    response.delete_cookie(key="csrf_token", path="/")
+    return response

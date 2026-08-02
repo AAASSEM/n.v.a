@@ -1,5 +1,5 @@
 from typing import Generator, Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from pydantic import ValidationError
@@ -14,7 +14,8 @@ from app.models.user import User
 from app.schemas.user import TokenPayload
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    auto_error=False,  # Don't auto-raise 401; we check cookie first
 )
 
 async def get_db() -> Generator:
@@ -30,8 +31,18 @@ _maint_cache: dict = {"value": None, "expires": 0}
 _trial_cache: dict = {}  # company_id -> (trial_expires_at, cache_expires_epoch)
 
 async def get_current_user(
-    db: AsyncSession = Depends(get_db), token: str = Depends(reusable_oauth2)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    header_token: Optional[str] = Depends(reusable_oauth2),
 ) -> User:
+    # 1. Try cookie first, then fall back to Authorization header
+    token = request.cookies.get("access_token") or header_token
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -157,3 +168,21 @@ async def verify_developer_user(
     if not getattr(current_user, 'is_developer', False):
         raise HTTPException(status_code=403, detail="Developer access required")
     return current_user
+
+
+async def verify_csrf(request: Request) -> None:
+    """
+    Double-submit CSRF protection for cookie-based auth.
+    Reads the csrf_token from the cookie and compares it to the
+    X-CSRF-Token header the frontend sends on mutating requests.
+    Safe methods (GET, HEAD, OPTIONS) are exempt.
+    """
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return
+    cookie_csrf = request.cookies.get("csrf_token")
+    header_csrf = request.headers.get("x-csrf-token")
+    if not cookie_csrf or not header_csrf or cookie_csrf != header_csrf:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CSRF token missing or invalid",
+        )

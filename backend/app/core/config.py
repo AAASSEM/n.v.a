@@ -71,6 +71,15 @@ class Settings(BaseSettings):
             db_url = db_url.replace("?pgbouncer=true", "")
             db_url = db_url.replace("&pgbouncer=true", "")
             self.SQLALCHEMY_DATABASE_URI = db_url
+        # 3. Parse Developer Emails
+        if self.DEVELOPER_EMAILS:
+            self.parsed_developer_emails = [
+                e.strip().lower() 
+                for e in self.DEVELOPER_EMAILS.split(",") 
+                if e.strip()
+            ]
+        else:
+            self.parsed_developer_emails = []
             
         return self
 
@@ -80,8 +89,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # Developer Admin
-    DEVELOPER_ADMIN_SECRET: str = "super_secret_developer_key_change_me"
+    # Developer Admin Emails (comma-separated list in env)
+    DEVELOPER_EMAILS: str = ""
+    parsed_developer_emails: List[str] = []
 
     # Email — SMTP (development) or Resend (production) or Sendgrid
     SENDGRID_API_KEY: Optional[str] = None

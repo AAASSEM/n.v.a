@@ -12,6 +12,7 @@ from app.models.checklist import CompanyChecklist
 from app.models.data_element import DataElement
 from app.models.meter import Meter
 from app.models.user import User
+from app.core.permissions import has_permission, Permission
 
 from app.models.report import GeneratedReport
 
@@ -171,6 +172,9 @@ async def generate_report(
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
 ) -> Any:
+    if not has_permission(current_user.profile.role, "reports", Permission.CREATE):
+        raise HTTPException(status_code=403, detail="Not authorized to generate reports")
+
     status = await check_report_completion(year, db, current_user, site_id, framework, period)
     if not status["is_complete"] and not allow_incomplete:
         raise HTTPException(
@@ -220,6 +224,9 @@ async def delete_report(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
+    if not has_permission(current_user.profile.role, "reports", Permission.DELETE):
+        raise HTTPException(status_code=403, detail="Not authorized to delete reports")
+
     company_id = current_user.profile.company_id
     stmt = select(GeneratedReport).where(
         GeneratedReport.id == report_id,

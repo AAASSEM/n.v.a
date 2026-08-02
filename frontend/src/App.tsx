@@ -51,8 +51,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   useEffect(() => {
-    // If we have a token from persist but no user, fetch the user!
-    if (useAuthStore.getState().accessToken && !user) {
+    // If we have an auth session from persist but no user, fetch the user!
+    if (useAuthStore.getState().isAuthenticated && !user) {
       fetchUser();
     }
   }, [user, fetchUser]);

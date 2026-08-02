@@ -8,6 +8,7 @@ from app.models.checklist import CompanyChecklist
 from app.models.data_element import DataElement
 from app.models.company import Company
 from app.models.user import User
+from app.core.permissions import has_permission, Permission
 from app.services.profiling_service import ProfilingService
 from pydantic import BaseModel
 from sqlalchemy.orm import selectinload
@@ -253,6 +254,9 @@ async def assign_checklist_item(
     assign_req: AssignElementRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
+    if not has_permission(current_user.profile.role, "profiling", Permission.UPDATE):
+        raise HTTPException(status_code=403, detail="Not authorized to reassign checklist items")
+
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not associated with a company")
 
@@ -278,6 +282,9 @@ async def bulk_assign_category(
     current_user: User = Depends(get_current_active_user),
     site_id: Optional[int] = Query(None),
 ) -> Any:
+    if not has_permission(current_user.profile.role, "profiling", Permission.UPDATE):
+        raise HTTPException(status_code=403, detail="Not authorized to reassign checklist items")
+
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not associated with a company")
 

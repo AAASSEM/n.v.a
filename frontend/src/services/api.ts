@@ -9,6 +9,7 @@ export const api = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true,  // Send httpOnly cookies with every request
 });
 
 /**
@@ -36,12 +37,16 @@ function pathIsSiteScoped(url: string | undefined): boolean {
     return SITE_SCOPED_PATH_PREFIXES.some((p) => path === p || path.startsWith(p + '/'));
 }
 
-// Request interceptor: auth + auto site_id injection
+// Request interceptor: CSRF header + auto site_id injection
 api.interceptors.request.use(
     (config) => {
-        const token = useAuthStore.getState().accessToken;
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        // Attach CSRF token from authStore (in-memory) for all mutating requests
+        const method = (config.method || 'get').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+            const csrfToken = useAuthStore.getState().csrfToken;
+            if (csrfToken) {
+                config.headers['X-CSRF-Token'] = csrfToken;
+            }
         }
 
         // Auto-attach current site_id for site-scoped endpoints, unless the

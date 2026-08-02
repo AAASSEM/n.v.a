@@ -88,8 +88,45 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=allow_creds,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-CSRF-Token"],
 )
+
+# ── CSRF protection middleware (double-submit cookie pattern) ────────────
+# Skips safe methods (GET/HEAD/OPTIONS) and unauthenticated routes (login, register, etc.)
+_CSRF_EXEMPT_PATHS = {
+    "/health", "/api", "/docs", "/openapi.json",
+    f"{settings.API_V1_STR}/auth/magic-link",
+    f"{settings.API_V1_STR}/auth/register",
+    f"{settings.API_V1_STR}/auth/request-login-link",
+    f"{settings.API_V1_STR}/auth/developer/request-login-link",
+    f"{settings.API_V1_STR}/auth/demo-login",
+    f"{settings.API_V1_STR}/auth/reset-password",
+    f"{settings.API_V1_STR}/auth/logout",
+}
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return await call_next(request)
+
+    path = request.url.path
+    # Skip CSRF check for exempt paths (auth endpoints that set cookies)
+    if any(path.startswith(exempt) for exempt in _CSRF_EXEMPT_PATHS):
+        return await call_next(request)
+
+    # Only enforce CSRF when the request carries an access_token cookie
+    # (header-based Bearer token auth is not vulnerable to CSRF)
+    if "access_token" in request.cookies:
+        cookie_csrf = request.cookies.get("csrf_token")
+        header_csrf = request.headers.get("x-csrf-token")
+        if not cookie_csrf or not header_csrf or cookie_csrf != header_csrf:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF token missing or invalid"},
+            )
+
+    return await call_next(request)
 
 # ── Auto-run database migrations on startup ─────────────────────────────
 @app.on_event("startup")

@@ -2,8 +2,34 @@ from datetime import datetime, timedelta
 from typing import Any, Union
 from jose import jwt
 import bcrypt
+import secrets
 
 from app.core.config import settings
+
+
+def generate_csrf_token() -> str:
+    """Generate a cryptographically random CSRF token (double-submit pattern)."""
+    return secrets.token_urlsafe(32)
+
+
+def set_auth_cookies(response, access_token: str) -> None:
+    """Set the httpOnly access_token cookie on a FastAPI Response."""
+    is_prod = settings.ENVIRONMENT == "production"
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=is_prod,       # True in production (HTTPS), False in dev (HTTP)
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
+
+def clear_auth_cookies(response) -> None:
+    """Remove the access_token cookie from a FastAPI Response."""
+    response.delete_cookie(key="access_token", path="/")
+
 
 def create_access_token(
     subject: Union[str, Any], expires_delta: timedelta = None

@@ -41,7 +41,9 @@ ROLE_PERMISSIONS = {
         "frameworks": {Permission.READ, Permission.UPDATE},
         "meters": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
         "data_submissions": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
-        "dashboard": {Permission.READ}
+        "dashboard": {Permission.READ},
+        "reports": {Permission.CREATE, Permission.READ, Permission.DELETE},
+        "profiling": {Permission.UPDATE}
     },
     Role.ADMIN: {
         "users": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
@@ -49,13 +51,17 @@ ROLE_PERMISSIONS = {
         "frameworks": {Permission.READ},
         "meters": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
         "data_submissions": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
-        "dashboard": {Permission.READ}
+        "dashboard": {Permission.READ},
+        "reports": {Permission.CREATE, Permission.READ, Permission.DELETE},
+        "profiling": {Permission.UPDATE}
     },
     Role.SITE_MANAGER: {
         "users": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
         "meters": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
         "data_submissions": {Permission.CREATE, Permission.READ, Permission.UPDATE, Permission.DELETE},
-        "dashboard": {Permission.READ}
+        "dashboard": {Permission.READ},
+        "reports": {Permission.CREATE, Permission.READ, Permission.DELETE},
+        "profiling": {Permission.UPDATE}
     },
     Role.UPLOADER: {
         "data_submissions": {Permission.CREATE, Permission.READ, Permission.UPDATE},

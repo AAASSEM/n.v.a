@@ -6,16 +6,25 @@ import { useSiteStore } from './siteStore.ts';
 import type { Site } from '../types/site';
 
 
+/**
+ * Helper: read a cookie value by name from document.cookie.
+ * Used to grab the csrf_token cookie (which is JS-readable).
+ */
+function getCookie(name: string): string | null {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
 
 interface AuthState {
     user: User | null;
-    accessToken: string | null;
+    csrfToken: string | null;       // In-memory only, NOT persisted
     isAuthenticated: boolean;
     isLoading: boolean;
     isTrialExpired: boolean;
     error: string | null;
     requestLoginLink: (email: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
     fetchUser: () => Promise<void>;
     magicLinkLogin: (token: string) => Promise<void>;
     demoLogin: (email: string) => Promise<void>;
@@ -26,7 +35,7 @@ export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
             user: null,
-            accessToken: null,
+            csrfToken: null,
             isAuthenticated: false,
             isLoading: false,
             isTrialExpired: false,
@@ -40,6 +49,7 @@ export const useAuthStore = create<AuthState>()(
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'include',
                         body: JSON.stringify({ email }),
                     });
 
@@ -64,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'include',
                         body: JSON.stringify({ email }),
                     });
 
@@ -73,11 +84,14 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     const data = await response.json();
-                    set({ accessToken: data.access_token, isAuthenticated: true });
+                    // Store the CSRF token in memory (from JSON body)
+                    // Also read it from the cookie as a fallback
+                    const csrf = data.csrf_token || getCookie('csrf_token');
+                    set({ csrfToken: csrf, isAuthenticated: true });
                     await get().fetchUser();
                 } catch (error: unknown) {
                     const errMessage = error instanceof Error ? error.message : 'Demo login failed';
-                    set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
+                    set({ error: errMessage, isAuthenticated: false, csrfToken: null, user: null });
                     throw error;
                 } finally {
                     set({ isLoading: false });
@@ -89,6 +103,7 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const response = await fetch(`${API_URL}/auth/magic-link/${token}`, {
                         method: 'POST',
+                        credentials: 'include',
                     });
 
                     if (!response.ok) {
@@ -105,11 +120,12 @@ export const useAuthStore = create<AuthState>()(
                         throw new Error('PENDING_APPROVAL');
                     }
 
-                    set({ accessToken: data.access_token, isAuthenticated: true });
+                    const csrf = data.csrf_token || getCookie('csrf_token');
+                    set({ csrfToken: csrf, isAuthenticated: true });
                 } catch (error: unknown) {
                     const errMessage = error instanceof Error ? error.message : 'Login failed';
                     if (errMessage !== 'PENDING_APPROVAL') {
-                        set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
+                        set({ error: errMessage, isAuthenticated: false, csrfToken: null, user: null });
                     }
                     throw error;
                 } finally {
@@ -125,6 +141,7 @@ export const useAuthStore = create<AuthState>()(
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'include',
                         body: JSON.stringify({ token, password }),
                     });
 
@@ -134,31 +151,52 @@ export const useAuthStore = create<AuthState>()(
                     }
 
                     const data = await response.json();
-                    set({ accessToken: data.access_token, isAuthenticated: true });
+                    const csrf = data.csrf_token || getCookie('csrf_token');
+                    set({ csrfToken: csrf, isAuthenticated: true });
                     await get().fetchUser();
                 } catch (error: unknown) {
                     const errMessage = error instanceof Error ? error.message : 'Password reset failed';
-                    set({ error: errMessage, isAuthenticated: false, accessToken: null, user: null });
+                    set({ error: errMessage, isAuthenticated: false, csrfToken: null, user: null });
                     throw error;
                 } finally {
                     set({ isLoading: false });
                 }
             },
 
-            logout: () => {
-                set({ user: null, accessToken: null, isAuthenticated: false, isTrialExpired: false });
+            logout: async () => {
+                try {
+                    await fetch(`${API_URL}/auth/logout`, {
+                        method: 'POST',
+                        credentials: 'include',
+                    });
+                } catch {
+                    // Best-effort: if the server is down, still clear local state
+                }
+                set({ user: null, csrfToken: null, isAuthenticated: false, isTrialExpired: false });
                 useSiteStore.getState().reset();
             },
 
             fetchUser: async () => {
                 try {
-                    const token = get().accessToken;
-                    if (!token) throw new Error("No token");
-                    
+                    // On page load, try to recover CSRF token from cookie if not in memory
+                    if (!get().csrfToken) {
+                        const cookieCsrf = getCookie('csrf_token');
+                        if (cookieCsrf) {
+                            set({ csrfToken: cookieCsrf });
+                        }
+                    }
+
+                    // Cookie is sent automatically via credentials: 'include'
+                    const csrfToken = get().csrfToken;
+                    const headers: Record<string, string> = {};
+                    if (csrfToken) {
+                        headers['X-CSRF-Token'] = csrfToken;
+                    }
+
                     // Run both requests in parallel to save network latency
                     const [meRes, sitesRes] = await Promise.all([
-                        fetch(`${API_URL}/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                        fetch(`${API_URL}/sites/`, { headers: { 'Authorization': `Bearer ${token}` } })
+                        fetch(`${API_URL}/auth/me`, { credentials: 'include', headers }),
+                        fetch(`${API_URL}/sites/`, { credentials: 'include', headers })
                     ]);
                     
                     if (!meRes.ok) {
@@ -200,15 +238,15 @@ export const useAuthStore = create<AuthState>()(
                     }
                     siteStore.setHydrated(true);
                 } catch {
-                    set({ user: null, accessToken: null, isAuthenticated: false });
+                    set({ user: null, csrfToken: null, isAuthenticated: false });
                     useSiteStore.getState().reset();
                 }
             },
         }),
         {
             name: 'auth-storage',
-            // only persist the token, we can refetch the user on load
-            partialize: (state) => ({ accessToken: state.accessToken, isAuthenticated: state.isAuthenticated }),
+            // Only persist isAuthenticated flag — NO tokens in localStorage
+            partialize: (state) => ({ isAuthenticated: state.isAuthenticated }),
         }
     )
 );
