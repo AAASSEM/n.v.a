@@ -92,9 +92,11 @@ app.add_middleware(
 )
 
 # ── CSRF protection middleware (double-submit cookie pattern) ────────────
-# Skips safe methods (GET/HEAD/OPTIONS) and unauthenticated routes (login, register, etc.)
+# Skips safe methods (GET/HEAD/OPTIONS) and unauthenticated auth routes that
+# set cookies. /health is GET-only but listed for clarity.
+# NOTE: /docs and /openapi.json are GET-only → already skipped by method check.
 _CSRF_EXEMPT_PATHS = {
-    "/health", "/api", "/docs", "/openapi.json",
+    "/health",
     f"{settings.API_V1_STR}/auth/magic-link",
     f"{settings.API_V1_STR}/auth/register",
     f"{settings.API_V1_STR}/auth/request-login-link",
