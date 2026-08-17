@@ -45,9 +45,12 @@ async def create_user(
     """
     Create new user.
     """
-    if not current_user.profile or not has_permission(current_user.profile.role, "users", Permission.CREATE):
+    # This bare create makes a profile-less, company-less user and is NOT the normal
+    # onboarding path (use POST /users/invite, which scopes to the caller's company).
+    # Restrict it to platform developers so it can't be used to mint arbitrary accounts.
+    if not getattr(current_user, "is_developer", False):
         raise HTTPException(status_code=403, detail="Not enough permissions")
-        
+
     result = await db.execute(select(User).where(User.email == user_in.email))
     if result.scalars().first():
         raise HTTPException(
@@ -78,9 +81,17 @@ async def read_users(
     """
     if not current_user.profile or not has_permission(current_user.profile.role, "users", Permission.READ):
         raise HTTPException(status_code=403, detail="Not enough permissions")
-        
-    # In a real app we'd scope this down to the company, omitted for brevity
-    result = await db.execute(select(User).offset(skip).limit(limit))
+
+    # Platform developers may enumerate all users; everyone else is scoped to their company.
+    stmt = select(User).options(selectinload(User.profile))
+    if not getattr(current_user, "is_developer", False):
+        if not current_user.profile.company_id:
+            return [current_user]
+        stmt = stmt.join(UserProfile, User.id == UserProfile.user_id).where(
+            UserProfile.company_id == current_user.profile.company_id
+        )
+    stmt = stmt.offset(skip).limit(limit)
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 @router.get("/company/me", response_model=List[UserSchema])

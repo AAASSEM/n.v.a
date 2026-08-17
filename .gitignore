@@ -39,6 +39,15 @@ backend/uploads/
 # Logs
 *.log
 uvicorn_log.txt
+logs.txt
+errors.txt
 
 # Temp
 tmp/
+
+# Debug/scratch scripts and dumps — not part of the shipped app
+backend/debug_*.py
+backend/scratch_*.py
+debug_tags.txt
+diff.txt
+prompt.txt

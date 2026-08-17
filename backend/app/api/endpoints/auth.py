@@ -404,26 +404,32 @@ class DemoLoginRequest(BaseModel):
     email: EmailStr
 
 @router.post("/demo-login")
+@limiter.limit("20/minute")
 async def demo_login(
-    request: DemoLoginRequest,
+    request: Request,
+    payload: DemoLoginRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ) -> Any:
     """
     Direct login endpoint for pre-seeded demo personas.
     Only allows emails ending in @apex.demo.
+
+    Rate-limited per client IP: the demo is shared and frictionless, so the cap is
+    generous (20/min) — enough to block automated floods (each call writes an audit
+    row) without blocking real visitors who may share a public IP.
     """
-    if not request.email.endswith("@apex.demo"):
+    if not payload.email.endswith("@apex.demo"):
         raise HTTPException(
             status_code=400,
             detail="Demo login is only available for @apex.demo accounts."
         )
-        
+
     # Get user with profile loaded
     from sqlalchemy.orm import selectinload
     result = await db.execute(
         select(User)
-        .where(User.email == request.email)
+        .where(User.email == payload.email)
         .options(selectinload(User.profile))
     )
     user = result.scalars().first()

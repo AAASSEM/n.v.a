@@ -80,7 +80,11 @@ export const useAuthStore = create<AuthState>()(
 
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({}));
-                        throw new Error(errorData.detail || 'Demo login failed');
+                        // slowapi returns {"error": ...} on 429; the rest of the API uses {"detail": ...}.
+                        // Attach the HTTP status so callers can distinguish rate-limiting (429) from other failures.
+                        const err = new Error(errorData.detail || errorData.error || 'Demo login failed') as Error & { status?: number };
+                        err.status = response.status;
+                        throw err;
                     }
 
                     const data = await response.json();

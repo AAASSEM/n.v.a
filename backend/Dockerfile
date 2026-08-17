@@ -46,5 +46,6 @@ CMD exec gunicorn app.main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --workers 2 \
     --timeout 120 \
+    --forwarded-allow-ips="*" \
     --access-logfile - \
     --error-logfile -
