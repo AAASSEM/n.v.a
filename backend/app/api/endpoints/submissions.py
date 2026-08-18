@@ -328,6 +328,14 @@ UPLOAD_DIR = "uploads"
 # Ensure the upload directory exists
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# Evidence files are served back to browsers (see /uploads mount in main.py).
+# Only allow types that can't carry active content (no .html/.svg/.js/etc.)
+ALLOWED_EVIDENCE_EXTENSIONS = {
+    ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp",
+    ".doc", ".docx", ".xls", ".xlsx", ".csv",
+}
+MAX_EVIDENCE_SIZE = 10 * 1024 * 1024  # 10MB, matches the global request-body cap
+
 @router.post("/evidence")
 async def upload_evidence_file(
     file: UploadFile = File(...),
@@ -338,18 +346,35 @@ async def upload_evidence_file(
     """
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
-        
-    # Generate unique filename
-    ext = os.path.splitext(file.filename)[1]
+
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EVIDENCE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' is not allowed. Allowed types: {', '.join(sorted(ALLOWED_EVIDENCE_EXTENSIONS))}",
+        )
+
     unique_filename = f"{uuid.uuid4().hex}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
-    # Save file Locally
+
+    # Save file locally, enforcing the size cap while streaming (avoids buffering an
+    # oversized file fully into memory/disk before rejecting it).
+    size = 0
     try:
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            while chunk := file.file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_EVIDENCE_SIZE:
+                    raise HTTPException(status_code=413, detail="File exceeds the 10MB size limit")
+                buffer.write(chunk)
+    except HTTPException:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise
     except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
-        
+
     # Return the URL path
     return {"url": f"/uploads/{unique_filename}", "filename": file.filename}

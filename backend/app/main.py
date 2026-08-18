@@ -13,7 +13,7 @@ print(f"ENVIRONMENT: {os.environ.get('ENVIRONMENT', 'not set')}", flush=True)
 print(f"DATABASE_URL set: {bool(os.environ.get('DATABASE_URL'))}", flush=True)
 print("=" * 60, flush=True)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -263,11 +263,49 @@ async def api_root():
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Uploads directory
-os.makedirs("uploads", exist_ok=True)
-try:
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-except Exception as e:
-    m_logger.warning(f"Uploads mount warning: {e}")
+# Served through a dedicated route (not a raw StaticFiles mount) so we control
+# Content-Type/Content-Disposition ourselves — the upload endpoint only accepts
+# a fixed whitelist of extensions, but this is defense-in-depth: it stops the
+# browser from ever rendering a served file as HTML/script regardless of content.
+UPLOAD_DIR = os.path.abspath("uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+_UPLOAD_INLINE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf"}
+_UPLOAD_MEDIA_TYPES = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".csv": "text/csv",
+}
+
+@app.get("/uploads/{filename}")
+async def serve_upload(filename: str):
+    # Uploaded filenames are always <uuid4hex><ext>, generated server-side —
+    # reject anything else to prevent path traversal.
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=404, detail="Not found")
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    ext = os.path.splitext(filename)[1].lower()
+    media_type = _UPLOAD_MEDIA_TYPES.get(ext, "application/octet-stream")
+    disposition = "inline" if ext in _UPLOAD_INLINE_EXTENSIONS else "attachment"
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{filename}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 # Serve Frontend Static Files
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "frontend", "dist")

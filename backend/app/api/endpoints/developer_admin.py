@@ -243,10 +243,10 @@ async def update_setting(
     key: str,
     data: SystemSettingUpdate,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     setting = await platform_service.set_system_setting(db, key, data.value, data.description)
-    await audit_service.log_action(db, user_id=None, action="UPDATE_SETTING", entity_type="SYSTEM", entity_id=key, details={"value": data.value})
+    await audit_service.log_action(db, user_id=dev.id, action="UPDATE_SETTING", entity_type="SYSTEM", entity_id=key, details={"value": data.value, "by": dev.email})
     return {"id": setting.id, "key": setting.key, "value": setting.value, "description": setting.description}
 
 # --- Audit Logs ---
@@ -282,14 +282,14 @@ async def list_audit_logs(
 async def impersonate_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
-    await audit_service.log_action(db, user_id=None, action="IMPERSONATE", entity_type="USER", entity_id=str(user_id))
+
+    await audit_service.log_action(db, user_id=dev.id, action="IMPERSONATE", entity_type="USER", entity_id=str(user_id), details={"impersonated_email": user.email, "by": dev.email})
     
     access_token_expires = datetime.timedelta(minutes=15)
     token = security.create_access_token(user.id, expires_delta=access_token_expires)
@@ -305,15 +305,15 @@ async def seed_demo(
     name: str = "Demo Site Alpha",
     email: str = "demo.alpha@esgravity.com",
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
-    await audit_service.log_action(db, user_id=None, action="SEED_DEMO", entity_type="SYSTEM", entity_id=name)
+    await audit_service.log_action(db, user_id=dev.id, action="SEED_DEMO", entity_type="SYSTEM", entity_id=name, details={"by": dev.email})
     return await platform_service.seed_demo_property(db, name, email)
 
 @router.post("/seed-system-defaults")
 async def seed_system_defaults(
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     """Populate Frameworks, MeterTypes, ProfilingQuestions, and Data Elements with the full library."""
     from app.core.seed_data import SEED_DATA
@@ -376,7 +376,8 @@ async def seed_system_defaults(
         msg += " Demo company (Apex) seeded successfully!"
     else:
         msg += f" (Note: Demo company seeding skipped/failed: {demo_error})"
-        
+
+    await audit_service.log_action(db, user_id=dev.id, action="SEED_SYSTEM_DEFAULTS", entity_type="SYSTEM", entity_id="defaults", details={"by": dev.email, "msg": msg})
     return {"msg": msg}
 
 # --- User & Company Management ---
@@ -394,13 +395,13 @@ async def list_companies(
 async def delete_company(
     company_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(Company).where(Company.id == company_id))
     company = result.scalars().first()
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
-    await audit_service.log_action(db, user_id=None, action="DELETE_COMPANY", entity_type="COMPANY", entity_id=str(company_id), details={"name": company.name})
+    await audit_service.log_action(db, user_id=dev.id, action="DELETE_COMPANY", entity_type="COMPANY", entity_id=str(company_id), details={"name": company.name, "by": dev.email})
     await db.delete(company)
     await db.commit()
     return {"msg": "Company deleted successfully"}
@@ -413,7 +414,7 @@ async def extend_trial(
     company_id: int,
     data: TrialUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     """Extend (or set) the trial expiry to N days from now."""
     company = await db.get(Company, company_id)
@@ -422,14 +423,14 @@ async def extend_trial(
     company.trial_expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=data.days or 90)
     db.add(company)
     await db.commit()
-    await audit_service.log_action(db, user_id=None, action="EXTEND_TRIAL", entity_type="COMPANY", entity_id=str(company_id), details={"days": data.days, "new_expiry": company.trial_expires_at.isoformat()})
+    await audit_service.log_action(db, user_id=dev.id, action="EXTEND_TRIAL", entity_type="COMPANY", entity_id=str(company_id), details={"days": data.days, "new_expiry": company.trial_expires_at.isoformat(), "by": dev.email})
     return {"msg": f"Trial extended to {company.trial_expires_at.isoformat()}", "trial_expires_at": company.trial_expires_at}
 
 @router.post("/companies/{company_id}/remove-trial")
 async def remove_trial(
     company_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     """Remove trial limit — marks account as fully paid (NULL = no expiry)."""
     company = await db.get(Company, company_id)
@@ -438,7 +439,7 @@ async def remove_trial(
     company.trial_expires_at = None
     db.add(company)
     await db.commit()
-    await audit_service.log_action(db, user_id=None, action="REMOVE_TRIAL", entity_type="COMPANY", entity_id=str(company_id))
+    await audit_service.log_action(db, user_id=dev.id, action="REMOVE_TRIAL", entity_type="COMPANY", entity_id=str(company_id), details={"by": dev.email})
     return {"msg": "Trial removed — account is now fully paid (no expiry)"}
 
 
@@ -466,7 +467,7 @@ async def list_users(
 async def delete_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(User).options(selectinload(User.profile)).where(User.id == user_id))
     local_user = result.scalars().first()
@@ -491,12 +492,12 @@ async def delete_user(
         # 2. Delete the company (this cascades to sites, meters, user_profiles, etc)
         company = await db.get(Company, company_id)
         if company:
-            await audit_service.log_action(db, user_id=None, action="DELETE_COMPANY", entity_type="COMPANY", entity_id=str(company_id), details={"reason": "Super user deleted", "user_id": user_id, "name": company.name})
+            await audit_service.log_action(db, user_id=dev.id, action="DELETE_COMPANY", entity_type="COMPANY", entity_id=str(company_id), details={"reason": "Super user deleted", "user_id": user_id, "name": company.name, "by": dev.email})
             await db.delete(company)
             company_deleted = True
     else:
         # Just delete the single user
-        await audit_service.log_action(db, user_id=None, action="DELETE_USER", entity_type="USER", entity_id=str(user_id), details={"email": local_user.email})
+        await audit_service.log_action(db, user_id=dev.id, action="DELETE_USER", entity_type="USER", entity_id=str(user_id), details={"email": local_user.email, "by": dev.email})
         await db.delete(local_user)
         
     await db.commit()
@@ -531,26 +532,26 @@ async def list_data_elements(
 async def create_data_element(
     data: DataElementCreate,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_el = DataElement(**data.dict())
     db.add(new_el)
     await db.commit()
     await db.refresh(new_el)
-    await audit_service.log_action(db, user_id=None, action="CREATE_ELEMENT", entity_type="DATA_ELEMENT", entity_id=str(new_el.id))
+    await audit_service.log_action(db, user_id=dev.id, action="CREATE_ELEMENT", entity_type="DATA_ELEMENT", entity_id=str(new_el.id), details={"by": dev.email})
     return new_el
 
 @router.delete("/data-elements/{element_id}")
 async def delete_data_element(
     element_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(DataElement).where(DataElement.id == element_id))
     element = result.scalars().first()
     if not element:
         raise HTTPException(status_code=404, detail="Data Element not found")
-    await audit_service.log_action(db, user_id=None, action="DELETE_ELEMENT", entity_type="DATA_ELEMENT", entity_id=str(element_id))
+    await audit_service.log_action(db, user_id=dev.id, action="DELETE_ELEMENT", entity_type="DATA_ELEMENT", entity_id=str(element_id), details={"by": dev.email})
     await db.delete(element)
     await db.commit()
     return {"msg": "Data Element deleted successfully"}
@@ -579,24 +580,26 @@ async def list_frameworks(
 async def create_framework(
     data: FrameworkCreate,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_fw = Framework(**data.dict())
     db.add(new_fw)
     await db.commit()
     await db.refresh(new_fw)
+    await audit_service.log_action(db, user_id=dev.id, action="CREATE_FRAMEWORK", entity_type="FRAMEWORK", entity_id=str(new_fw.id), details={"by": dev.email, "name": new_fw.name})
     return new_fw
 
 @router.delete("/frameworks/{fw_id}")
 async def delete_framework(
     fw_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(Framework).where(Framework.id == fw_id))
     fw = result.scalars().first()
     if not fw:
         raise HTTPException(status_code=404, detail="Framework not found")
+    await audit_service.log_action(db, user_id=dev.id, action="DELETE_FRAMEWORK", entity_type="FRAMEWORK", entity_id=str(fw_id), details={"by": dev.email, "name": fw.name})
     await db.delete(fw)
     await db.commit()
     return {"msg": "Framework deleted successfully"}
@@ -623,24 +626,26 @@ async def list_profiling_questions(
 async def create_profiling_question(
     data: ProfilingQuestionCreate,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_pq = ProfilingQuestion(**data.dict())
     db.add(new_pq)
     await db.commit()
     await db.refresh(new_pq)
+    await audit_service.log_action(db, user_id=dev.id, action="CREATE_PROFILING_QUESTION", entity_type="PROFILING_QUESTION", entity_id=str(new_pq.id), details={"by": dev.email})
     return new_pq
 
 @router.delete("/profiling-questions/{pq_id}")
 async def delete_profiling_question(
     pq_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(ProfilingQuestion).where(ProfilingQuestion.id == pq_id))
     pq = result.scalars().first()
     if not pq:
         raise HTTPException(status_code=404, detail="Profiling Question not found")
+    await audit_service.log_action(db, user_id=dev.id, action="DELETE_PROFILING_QUESTION", entity_type="PROFILING_QUESTION", entity_id=str(pq_id), details={"by": dev.email})
     await db.delete(pq)
     await db.commit()
     return {"msg": "Profiling Question deleted successfully"}
@@ -666,24 +671,26 @@ async def list_meter_types(
 async def create_meter_type(
     data: MeterTypeCreate,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     new_mt = MeterType(**data.dict())
     db.add(new_mt)
     await db.commit()
     await db.refresh(new_mt)
+    await audit_service.log_action(db, user_id=dev.id, action="CREATE_METER_TYPE", entity_type="METER_TYPE", entity_id=str(new_mt.id), details={"by": dev.email, "name": new_mt.name})
     return new_mt
 
 @router.delete("/meter-types/{mt_id}")
 async def delete_meter_type(
     mt_id: int,
     db: AsyncSession = Depends(get_db),
-    _dev: User = Depends(verify_developer_user),
+    dev: User = Depends(verify_developer_user),
 ) -> Any:
     result = await db.execute(select(MeterType).where(MeterType.id == mt_id))
     mt = result.scalars().first()
     if not mt:
         raise HTTPException(status_code=404, detail="Meter Type not found")
+    await audit_service.log_action(db, user_id=dev.id, action="DELETE_METER_TYPE", entity_type="METER_TYPE", entity_id=str(mt_id), details={"by": dev.email, "name": mt.name})
     await db.delete(mt)
     await db.commit()
     return {"msg": "Meter Type deleted successfully"}

@@ -191,9 +191,13 @@ async def update_company(
     Update a company.
     """
     # RBAC check
-    if not has_permission(current_user.profile.role, "companies", Permission.UPDATE):
+    if not current_user.profile or not has_permission(current_user.profile.role, "companies", Permission.UPDATE):
         raise HTTPException(status_code=403, detail="Not enough permissions to update company profile")
-        
+
+    # Tenant isolation: you can only update your OWN company (developers exempt).
+    if not getattr(current_user, "is_developer", False) and company_id != current_user.profile.company_id:
+        raise HTTPException(status_code=404, detail="Company not found")
+
     company = await db.get(Company, company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -240,7 +244,16 @@ async def read_companies(
 ) -> Any:
     """
     Retrieve companies.
+
+    Tenant isolation: a normal user only ever sees their own company.
+    Platform developers (dev panel) may enumerate all companies.
     """
-    # Simplification: return all companies for dev user, normally scope to user profile
-    result = await db.execute(select(Company).offset(skip).limit(limit))
-    return result.scalars().all()
+    if getattr(current_user, "is_developer", False):
+        result = await db.execute(select(Company).offset(skip).limit(limit))
+        return result.scalars().all()
+
+    # Non-developer: scope strictly to the caller's own company
+    if not current_user.profile or not current_user.profile.company_id:
+        return []
+    company = await db.get(Company, current_user.profile.company_id)
+    return [company] if company else []

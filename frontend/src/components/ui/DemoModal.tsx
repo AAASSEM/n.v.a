@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useTranslation } from '../../i18n';
 
 interface DemoModalProps {
     isOpen: boolean;
@@ -9,14 +10,17 @@ interface DemoModalProps {
 
 export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
     const { demoLogin } = useAuthStore();
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [loadingEmail, setLoadingEmail] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'roles' | 'data'>('roles');
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     if (!isOpen) return null;
 
     const handleDemoLogin = async (email: string) => {
         try {
+            setErrorMsg(null);
             setLoadingEmail(email);
             await demoLogin(email);
             // Navigate immediately — the dashboard has its own loading state
@@ -24,6 +28,12 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
             navigate('/dashboard');
         } catch (err) {
             console.error(err);
+            const status = (err as { status?: number } | null)?.status;
+            setErrorMsg(
+                status === 429
+                    ? t('demo.errRateLimited', 'Too many attempts. Please wait a minute and try again.')
+                    : t('demo.errGeneric', "Couldn't start the demo. Please try again.")
+            );
             setLoadingEmail(null);
         }
     };
@@ -122,6 +132,8 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
 
           .dm-data-list { margin: 0; padding-left: 20px; color: #9ca3af; }
           .dm-data-list li { margin-bottom: 6px; }
+
+          .dm-error { margin: 4px 0 16px; padding: 10px 14px; border-radius: 10px; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; font-size: 13px; text-align: center; }
             `}</style>
             <div className="dm-modal" onClick={e => e.stopPropagation()}>
                 <button className="dm-close" onClick={onClose}>✕</button>
@@ -132,6 +144,10 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
                     <button className={`dm-tab ${activeTab === 'roles' ? 'active' : ''}`} onClick={() => setActiveTab('roles')}>Select Persona</button>
                     <button className={`dm-tab ${activeTab === 'data' ? 'active' : ''}`} onClick={() => setActiveTab('data')}>Data Sandbox Overview</button>
                 </div>
+
+                {errorMsg && (
+                    <div className="dm-error" role="alert">{errorMsg}</div>
+                )}
 
                 {activeTab === 'roles' ? (
                     <div className="dm-grid">
@@ -184,7 +200,7 @@ export default function DemoModal({ isOpen, onClose }: DemoModalProps) {
                                 <div className="dm-icon-wrap">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 </div>
-                                Historical Depth (Jan 2019 – Jun 2026)
+                                Historical Depth (Jan 2019 – Dec 2026)
                             </div>
                             <div style={{ marginLeft: 32 }}>The database is pre-loaded with over 7 years of realistic hospitality telemetry. It models historical trends, including 2020-2021 COVID occupancy drops, subsequent recovery, and annual efficiency improvements.</div>
                         </div>

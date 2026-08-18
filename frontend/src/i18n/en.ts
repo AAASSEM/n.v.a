@@ -134,6 +134,8 @@ export const en = {
     // 4. Demo Modal
     'demo.title': 'Explore ESGravity Demo',
     'demo.sub': 'Apex Hospitality — Realistic 4-Star Hotel Sustainability Model',
+    'demo.errRateLimited': 'Too many attempts. Please wait a minute and try again.',
+    'demo.errGeneric': "Couldn't start the demo. Please try again.",
     'demo.tabRoles': 'Select Persona',
     'demo.tabData': 'Data Sandbox Overview',
     'demo.samName': 'Sam Super (super@apex.demo)',
@@ -145,7 +147,7 @@ export const en = {
     'demo.usamaName': 'Usama Upload (uploader.a1@apex.demo)',
     'demo.usamaBadge': 'Data Entry',
     'demo.usamaDesc': 'Assigned to Dubai Marina Resort. Restricted access to enter and upload monthly ESG telemetry metrics.',
-    'demo.histTitle': 'Historical Depth (Jan 2019 – Jun 2026)',
+    'demo.histTitle': 'Historical Depth (Jan 2019 – Dec 2026)',
     'demo.histBody': 'The database is pre-loaded with over 7 years of realistic hospitality telemetry. It models historical trends, including 2020-2021 COVID occupancy drops, subsequent recovery, and annual efficiency improvements.',
     'demo.portfolioTitle': 'Property Portfolio',
     'demo.marina': 'Dubai Marina Resort:',
