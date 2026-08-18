@@ -424,6 +424,8 @@ export const en = {
     'data.entryLabel': 'Data Entry',
     'data.dropFile': 'Drop file or click',
     'data.noFile': 'No file uploaded',
+    'data.acceptedFileTypes': 'PDF, JPG, PNG, GIF, WEBP, DOC(X), XLS(X), CSV — max 10MB',
+    'data.uploadFailed': 'Failed to upload evidence file.',
     'data.deleteFile': 'Delete file',
     'data.assignedTo': 'Assigned To',
     'data.unassigned': 'Unassigned',

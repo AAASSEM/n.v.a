@@ -284,9 +284,10 @@ export default function DataEntryView() {
                 });
                 bulkSaveMutation.mutate({ isAutoSave: true, overrideEntries: entries });
             }
-        } catch {
-            setSaveMessage({ type: 'error', text: 'Failed to upload evidence file.' });
-            setTimeout(() => setSaveMessage(null), 4000);
+        } catch (error: any) {
+            const detail = error.response?.data?.detail;
+            setSaveMessage({ type: 'error', text: detail || t('data.uploadFailed') });
+            setTimeout(() => setSaveMessage(null), 6000);
         }
     };
 
@@ -825,10 +826,14 @@ export default function DataEntryView() {
                                                             <div className="evidence-zone" style={{ opacity: canUpdate ? 1 : 0.6 }}>
                                                                 <div className="evidence-zone-icon">⬆</div>
                                                                 <div className="evidence-zone-text">{canUpdate ? t('data.dropFile') : t('data.noFile')}</div>
+                                                                {canUpdate && (
+                                                                    <div className="evidence-zone-hint">{t('data.acceptedFileTypes')}</div>
+                                                                )}
                                                             </div>
                                                             {canUpdate && (
                                                                 <input
                                                                     type="file"
+                                                                    accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx,.csv"
                                                                     style={{ display: 'none' }}
                                                                     value=""
                                                                     onChange={e => {

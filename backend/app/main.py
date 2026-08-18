@@ -248,13 +248,18 @@ async def run_migrations():
 # ── Routes ──────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health_check():
+    from app.services.storage_service import is_durable
     return {
         "status": "healthy",
         "version": settings.VERSION,
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
+        # False means evidence uploads are on the app's own ephemeral disk, which does
+        # NOT survive a redeploy/restart on Render — attach a persistent Disk and set
+        # UPLOAD_DIR to its mount path to fix this.
+        "uploads_durable": is_durable(),
     }
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 @app.get("/api")
 async def api_root():
@@ -262,14 +267,12 @@ async def api_root():
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# Uploads directory
+# Uploads
 # Served through a dedicated route (not a raw StaticFiles mount) so we control
 # Content-Type/Content-Disposition ourselves — the upload endpoint only accepts
 # a fixed whitelist of extensions, but this is defense-in-depth: it stops the
 # browser from ever rendering a served file as HTML/script regardless of content.
-UPLOAD_DIR = os.path.abspath("uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
+# Content is read via storage_service — GCS if configured, local disk otherwise.
 _UPLOAD_INLINE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf"}
 _UPLOAD_MEDIA_TYPES = {
     ".pdf": "application/pdf",
@@ -291,15 +294,17 @@ async def serve_upload(filename: str):
     # reject anything else to prevent path traversal.
     if "/" in filename or "\\" in filename or ".." in filename:
         raise HTTPException(status_code=404, detail="Not found")
-    file_path = os.path.join(UPLOAD_DIR, filename)
-    if not os.path.isfile(file_path):
+
+    from app.services.storage_service import read_file
+    content = read_file(filename)
+    if content is None:
         raise HTTPException(status_code=404, detail="Not found")
 
     ext = os.path.splitext(filename)[1].lower()
     media_type = _UPLOAD_MEDIA_TYPES.get(ext, "application/octet-stream")
     disposition = "inline" if ext in _UPLOAD_INLINE_EXTENSIONS else "attachment"
-    return FileResponse(
-        file_path,
+    return Response(
+        content=content,
         media_type=media_type,
         headers={
             "Content-Disposition": f'{disposition}; filename="{filename}"',

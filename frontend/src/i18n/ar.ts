@@ -424,6 +424,8 @@ export const ar = {
     'data.entryLabel': 'إدخال البيانات',
     'data.dropFile': 'قم بإفلات الملف أو انقر هنا',
     'data.noFile': 'لم يتم تحميل أي ملف',
+    'data.acceptedFileTypes': 'PDF، JPG، PNG، GIF، WEBP، DOC(X)، XLS(X)، CSV — بحد أقصى 10 ميجابايت',
+    'data.uploadFailed': 'فشل تحميل ملف الإثبات.',
     'data.deleteFile': 'حذف الملف',
     'data.assignedTo': 'مخصص لـ',
     'data.unassigned': 'غير مخصص',

@@ -52,8 +52,11 @@ class Settings(BaseSettings):
             origins = list(v)
 
         if self.ENVIRONMENT == "production":
-            # Add known production domains
-            for domain in ["https://esg-compass.onrender.com", "https://esg-compass-3vkg.onrender.com", "https://n-v-a.onrender.com"]:
+            # Add known production domains.
+            # NOTE: esg-compass.onrender.com (unclaimed/404) and esg-compass-3vkg.onrender.com
+            # (suspended/503) were removed — dead domains have no business being trusted
+            # CORS origins, since either could be reclaimed by someone else later.
+            for domain in ["https://n-v-a.onrender.com"]:
                 if domain not in origins:
                     origins.append(domain)
             # Remove localhost origins for security
@@ -105,8 +108,11 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: Optional[str] = "noreply@esgportal.com"
     EMAILS_FROM_NAME: str = "ESGravity"
     
-    # Google Cloud Storage (production uploads)
-    GCS_BUCKET: Optional[str] = None
+    # Evidence-upload storage directory. Leave unset for local dev (writes to ./uploads,
+    # relative to the app's working directory). On Render, set this to the mount path of
+    # an attached persistent Disk (e.g. "/var/data/uploads") so uploaded files survive
+    # deploys/restarts — Render's default filesystem is ephemeral otherwise.
+    UPLOAD_DIR: Optional[str] = None
 
     class Config:
         case_sensitive = True

@@ -2,7 +2,6 @@ from typing import Any, List, Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Request
 from app.services.audit_service import audit_service
 import os
-import shutil
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -323,12 +322,7 @@ async def bulk_upsert_submissions(
         "updated": updated_count
     }
 
-UPLOAD_DIR = "uploads"
-
-# Ensure the upload directory exists
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-# Evidence files are served back to browsers (see /uploads mount in main.py).
+# Evidence files are served back to browsers (see /uploads route in main.py).
 # Only allow types that can't carry active content (no .html/.svg/.js/etc.)
 ALLOWED_EVIDENCE_EXTENSIONS = {
     ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp",
@@ -342,7 +336,8 @@ async def upload_evidence_file(
     current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
-    Upload a file (PDF, Image, etc.) and return its local path to be saved as evidence.
+    Upload a file (PDF, Image, etc.) and return its URL to be saved as evidence.
+    Stored via storage_service — GCS if configured, local disk otherwise.
     """
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
@@ -355,25 +350,23 @@ async def upload_evidence_file(
         )
 
     unique_filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
-    # Save file locally, enforcing the size cap while streaming (avoids buffering an
-    # oversized file fully into memory/disk before rejecting it).
+    # Read into memory in chunks, enforcing the size cap while streaming (avoids
+    # buffering an oversized file fully before rejecting it). Bounded at 10MB, so
+    # holding the validated content in memory before handing it to storage_service
+    # (which may need full bytes for a GCS upload) is not a concern at this scale.
+    chunks = []
     size = 0
+    while chunk := file.file.read(1024 * 1024):
+        size += len(chunk)
+        if size > MAX_EVIDENCE_SIZE:
+            raise HTTPException(status_code=413, detail="File exceeds the 10MB size limit")
+        chunks.append(chunk)
+
     try:
-        with open(file_path, "wb") as buffer:
-            while chunk := file.file.read(1024 * 1024):
-                size += len(chunk)
-                if size > MAX_EVIDENCE_SIZE:
-                    raise HTTPException(status_code=413, detail="File exceeds the 10MB size limit")
-                buffer.write(chunk)
-    except HTTPException:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        raise
+        from app.services.storage_service import save_file
+        save_file(unique_filename, b"".join(chunks))
     except Exception as e:
-        if os.path.exists(file_path):
-            os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
 
     # Return the URL path
