@@ -27,6 +27,8 @@ class UserInvite(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: str
+    first_name: str | None = None
+    last_name: str | None = None
 
 class PasswordUpdate(BaseModel):
     password: str
@@ -280,30 +282,39 @@ async def update_user_role(
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
     """
-    Change a user's role within the same company.
+    Change a user's role (and optionally their name) within the same company.
     """
     if not current_user.profile or not current_user.profile.company_id:
         raise HTTPException(status_code=403, detail="Not assigned to a company")
-        
+
     if not has_permission(current_user.profile.role, "users", Permission.UPDATE):
         raise HTTPException(status_code=403, detail="Not enough permissions to update users")
-        
+
     if not can_manage_role(current_user.profile.role, role_in.role):
         raise HTTPException(status_code=403, detail=f"You do not have clearance to assign the role: {role_in.role}")
-        
+
     result = await db.execute(select(User).where(User.id == user_id).options(selectinload(User.profile)))
     target_user = result.scalars().first()
-    
+
     if not target_user or not target_user.profile or target_user.profile.company_id != current_user.profile.company_id:
         raise HTTPException(status_code=404, detail="User not found in your company")
-        
+
     if not can_manage_role(current_user.profile.role, target_user.profile.role):
         raise HTTPException(status_code=403, detail="You cannot modify this user's role because they have equal or higher privileges")
 
     old_role = target_user.profile.role
     target_user.profile.role = role_in.role
+
+    name_changed = False
+    if role_in.first_name is not None and role_in.first_name.strip():
+        target_user.first_name = role_in.first_name.strip()
+        name_changed = True
+    if role_in.last_name is not None and role_in.last_name.strip():
+        target_user.last_name = role_in.last_name.strip()
+        name_changed = True
+
     await db.commit()
-    
+
     await audit_service.log_action(
         db,
         action="UPDATE_ROLE",
@@ -311,11 +322,16 @@ async def update_user_role(
         company_id=current_user.profile.company_id,
         entity_type="USER",
         entity_id=str(target_user.id),
-        details={"email": target_user.email, "old_role": old_role, "new_role": role_in.role},
+        details={
+            "email": target_user.email,
+            "old_role": old_role,
+            "new_role": role_in.role,
+            **({"name_updated": True, "first_name": target_user.first_name, "last_name": target_user.last_name} if name_changed else {}),
+        },
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent")
     )
-    
+
     result = await db.execute(select(User).where(User.id == user_id).options(selectinload(User.profile)))
     return result.scalars().first()
 
