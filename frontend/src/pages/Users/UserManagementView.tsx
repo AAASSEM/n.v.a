@@ -6,7 +6,6 @@ import { useSiteStore } from '../../stores/siteStore';
 import AppLayout from '../../components/layout/AppLayout';
 import AccessDenied from '../../components/ui/AccessDenied';
 import ConfirmModal from '../../components/ui/ConfirmModal';
-import CustomDropdown from '../../components/ui/CustomDropdown';
 import { useTranslation } from '../../i18n';
 
 interface UserProfile { role: string; company_id: number | null; }
@@ -139,6 +138,8 @@ export default function UserManagementView() {
         email: '', first_name: '', last_name: '', password: '', role: ''
     });
     const [editRole, setEditRole] = useState('');
+    const [editFirstName, setEditFirstName] = useState('');
+    const [editLastName, setEditLastName] = useState('');
 
     const { data: users, isLoading, error } = useQuery<User[]>({
         queryKey: ['users', 'company', currentSiteId],
@@ -171,8 +172,8 @@ export default function UserManagementView() {
     });
 
     const updateRoleMutation = useMutation({
-        mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
-            const res = await api.put(`/users/${userId}/role`, { role });
+        mutationFn: async ({ userId, role, first_name, last_name }: { userId: number; role: string; first_name?: string; last_name?: string }) => {
+            const res = await api.put(`/users/${userId}/role`, { role, first_name, last_name });
             return res.data;
         },
         onSuccess: () => {
@@ -481,6 +482,8 @@ export default function UserManagementView() {
                                                             onClick={() => {
                                                                 setSelectedUser(user);
                                                                 setEditRole(userRole);
+                                                                setEditFirstName(user.first_name || '');
+                                                                setEditLastName(user.last_name || '');
                                                                 setErrorMessage(null);
                                                                 setIsEditModalOpen(true);
                                                             }}
@@ -639,17 +642,78 @@ export default function UserManagementView() {
                             <span className="modal-title">{t('users.editRole')}</span>
                             <button className="modal-close" onClick={() => setIsEditModalOpen(false)}>✕</button>
                         </div>
-                        <form onSubmit={e => { e.preventDefault(); setErrorMessage(null); if (selectedUser) updateRoleMutation.mutate({ userId: selectedUser.id, role: editRole }); }}>
+                        <form onSubmit={e => {
+                            e.preventDefault();
+                            setErrorMessage(null);
+                            if (selectedUser) {
+                                updateRoleMutation.mutate({
+                                    userId: selectedUser.id,
+                                    role: editRole,
+                                    first_name: editFirstName.trim(),
+                                    last_name: editLastName.trim(),
+                                });
+                            }
+                        }}>
                             <div className="modal-body">
-                                <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
-                                    {t('users.updateRoleFor')} <strong style={{ color: 'var(--text-primary)' }}>{selectedUser.first_name} {selectedUser.last_name}</strong>
-                                </p>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                                    <div>
+                                        <label className="form-label">{t('signup.firstName')}</label>
+                                        <input required type="text" className="form-input" value={editFirstName}
+                                            onChange={e => setEditFirstName(e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">{t('signup.lastName')}</label>
+                                        <input required type="text" className="form-input" value={editLastName}
+                                            onChange={e => setEditLastName(e.target.value)} />
+                                    </div>
+                                </div>
                                 <label className="form-label">{t('users.newRole')}</label>
-                                <CustomDropdown
-                                    options={availableRolesToAssign.map(r => ({ value: r, label: t(`roles.${r}` as any) }))}
-                                    value={editRole}
-                                    onChange={setEditRole}
-                                />
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
+                                    {availableRolesToAssign.map(role => {
+                                        const cfg = getRoleConfig(role);
+                                        const isSelected = editRole === role;
+                                        return (
+                                            <button
+                                                key={role}
+                                                type="button"
+                                                onClick={() => setEditRole(role)}
+                                                style={{
+                                                    background: isSelected ? cfg.bg : 'rgba(255,255,255,0.03)',
+                                                    border: `1.5px solid ${isSelected ? cfg.color : 'var(--border-subtle)'}`,
+                                                    borderRadius: 16,
+                                                    padding: '14px 10px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: 8,
+                                                    cursor: 'pointer',
+                                                    position: 'relative',
+                                                    transition: 'all 0.2s ease',
+                                                    textAlign: 'center',
+                                                }}
+                                                className="hover-scale"
+                                            >
+                                                {isSelected && (
+                                                    <div style={{ position: 'absolute', top: 8, insetInlineEnd: 8, color: cfg.color, display: 'flex' }}>
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                            <polyline points="20 6 9 17 4 12" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                                <div style={{
+                                                    fontSize: 20, width: 40, height: 40, borderRadius: 12,
+                                                    background: cfg.bg, color: cfg.color, display: 'flex',
+                                                    alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    {cfg.icon}
+                                                </div>
+                                                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 12.5 }}>
+                                                    {t(`roles.${role}` as any)}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={() => setIsEditModalOpen(false)}>{t('confirm.cancel')}</button>

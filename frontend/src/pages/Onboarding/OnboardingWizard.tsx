@@ -43,6 +43,7 @@ export default function OnboardingWizard() {
     const [step, setStep] = useState(1);
     const [companyId, setCompanyId] = useState<number | null>(null);
     const [answers, setAnswers] = useState<Record<number, boolean>>({});
+    const [openWhy, setOpenWhy] = useState<Record<number, boolean>>({});
 
     const [companyData, setCompanyData] = useState<CompanyData>({
         name: '', registration_number: '', trade_license_number: '',
@@ -635,9 +636,32 @@ export default function OnboardingWizard() {
                                             borderRadius: 'var(--radius-md)',
                                             padding: '16px',
                                         }}>
-                                            <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 4 }}>
-                                                {idx + 1}. {q.question_text}
+                                            <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                                                <span>{idx + 1}. {t(q.question_text)}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setOpenWhy(prev => ({ ...prev, [q.id]: !prev[q.id] }))}
+                                                    aria-label={t('onboarding.whyAsking')}
+                                                    aria-expanded={!!openWhy[q.id]}
+                                                    style={{
+                                                        flexShrink: 0,
+                                                        width: 18, height: 18, borderRadius: '50%',
+                                                        border: '1px solid var(--border-subtle)',
+                                                        background: openWhy[q.id] ? 'var(--accent-green)' : 'var(--bg-card)',
+                                                        color: openWhy[q.id] ? '#04140d' : 'var(--text-muted)',
+                                                        fontSize: 11, fontWeight: 800, lineHeight: 1,
+                                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                        cursor: 'pointer', padding: 0,
+                                                    }}
+                                                >
+                                                    i
+                                                </button>
                                             </p>
+                                            {openWhy[q.id] && (
+                                                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
+                                                    {t(`onboarding.why:${q.question_text}`, t('onboarding.activatesDataElements'))}
+                                                </p>
+                                            )}
                                             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>{t('onboarding.activatesDataElements')}</p>
                                             <div style={{ display: 'flex', gap: 10 }}>
                                                 <label style={{
