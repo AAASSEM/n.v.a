@@ -247,6 +247,27 @@ class BulkAssignCategoryRequest(BaseModel):
     user_id: int | None
 
 
+async def _validate_assignee(
+    db: AsyncSession,
+    user_id: Optional[int],
+    company_id: int,
+    site_id: Optional[int],
+) -> None:
+    """
+    A checklist assignee must be a real user in the caller's company, and either
+    company-wide (no site pin) or pinned to the same site as the item(s) being
+    assigned — otherwise they could never see the task in their own UI.
+    """
+    if user_id is None:
+        return
+    result = await db.execute(select(User).where(User.id == user_id).options(selectinload(User.profile)))
+    target = result.scalars().first()
+    if not target or not target.profile or target.profile.company_id != company_id:
+        raise HTTPException(status_code=404, detail="Assignee not found in your company")
+    if target.profile.site_id is not None and target.profile.site_id != site_id:
+        raise HTTPException(status_code=400, detail="Assignee is not associated with this site")
+
+
 @router.post("/checklist/assign", status_code=status.HTTP_200_OK)
 async def assign_checklist_item(
     *,
@@ -267,6 +288,8 @@ async def assign_checklist_item(
     pinned = current_user.profile.site_id
     if pinned is not None and checklist_item.site_id != pinned:
         raise HTTPException(status_code=403, detail="Cannot modify another site's checklist")
+
+    await _validate_assignee(db, assign_req.user_id, current_user.profile.company_id, checklist_item.site_id)
 
     checklist_item.assigned_to = assign_req.user_id
     db.add(checklist_item)
@@ -289,6 +312,8 @@ async def bulk_assign_category(
         raise HTTPException(status_code=403, detail="Not associated with a company")
 
     effective_site_id = await resolve_site_id(current_user, site_id, db, required=True)
+
+    await _validate_assignee(db, bulk_req.user_id, current_user.profile.company_id, effective_site_id)
 
     from sqlalchemy import update
     stmt = (
