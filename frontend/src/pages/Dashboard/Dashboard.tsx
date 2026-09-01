@@ -325,25 +325,6 @@ function translateValueString(valStr: string, t: (key: string) => string, n: (va
     return formattedNum;
 }
 
-function getAllMonthsSince(startYear: number, lang?: string, n?: (val: any) => string): { label: string; year: number; month: number }[] {
-    const results = [];
-    const now = new Date();
-    const locale = lang === 'ar' ? 'ar-AE' : 'en-US';
-    for (let y = now.getFullYear(); y >= startYear; y--) {
-        const endMonth = y === now.getFullYear() ? now.getMonth() + 1 : 12;
-        for (let m = endMonth; m >= 1; m--) {
-            const d = new Date(y, m - 1, 1);
-            const str = d.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
-            results.push({
-                label: n ? n(str) : str,
-                year: y,
-                month: m,
-            });
-        }
-    }
-    return results;
-}
-
 function formatVal(value: number | null | undefined, unit: string, t: (key: string) => string, n: (val: number | string | null | undefined, options?: any) => string): string {
     if (value === null || value === undefined) return '—';
     if (unit === 'boolean' || BOOLEAN_CODES.has(unit)) return value === 1 ? t('stat.yes') : t('stat.no');
@@ -653,9 +634,6 @@ export default function Dashboard() {
 
     const [frameworkFilter, setFrameworkFilter] = useState<string | null>(null);
     const [chartMode, setChartMode] = useState<'indexed' | 'actual' | 'logarithmic'>('indexed');
-
-    // NEW: Period Range Filter (From → To)
-    const allMonths = useMemo(() => getAllMonthsSince(2019, lang, n), [lang, n]);
 
     const [fromPeriod, setFromPeriod] = useState<{ year: number, month: number } | null>(null);
     const [toPeriod, setToPeriod] = useState<{ year: number, month: number } | null>(null);
