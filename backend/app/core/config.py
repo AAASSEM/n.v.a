@@ -114,6 +114,17 @@ class Settings(BaseSettings):
     # deploys/restarts — Render's default filesystem is ephemeral otherwise.
     UPLOAD_DIR: Optional[str] = None
 
+    # AI chat ("ask your data") — real Claude tool-calling integration.
+    # ANTHROPIC_API_KEY unset = feature is disabled (endpoint returns a clear 503,
+    # never silently falls back to the old fake-brain keyword matcher).
+    ANTHROPIC_API_KEY: Optional[str] = None
+    AI_CHAT_MODEL: str = "claude-haiku-4-5"
+    AI_CHAT_MAX_TOKENS: int = 4096
+    AI_CHAT_MAX_TOOL_ITERATIONS: int = 6
+    AI_CHAT_RATE_LIMIT: str = "10/minute"
+    AI_CHAT_DAILY_QUOTA_PER_COMPANY: int = 50
+    AI_CHAT_DAILY_QUOTA_DEMO: int = 10
+
     class Config:
         case_sensitive = True
         env_file = ".env"

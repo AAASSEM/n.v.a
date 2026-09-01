@@ -27,6 +27,7 @@ const SITE_SCOPED_PATH_PREFIXES = [
     '/users/company',
     '/dashboard',
     '/reports',
+    '/ai-chat/query',
 ];
 
 function pathIsSiteScoped(url: string | undefined): boolean {

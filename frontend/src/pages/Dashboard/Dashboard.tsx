@@ -15,6 +15,12 @@ import { ScoreRing } from './components/ScoreRing';
 import { AnomalyAlerts } from './components/AnomalyAlerts';
 import { PillarMetricsGrid } from './components/PillarMetricsGrid';
 import { useTranslation } from '../../i18n';
+import ChatPanel from '../../components/ChatPanel/ChatPanel';
+import PinnedDashboardItems from '../../components/ChatPanel/PinnedDashboardItems';
+import DynamicChart from '../../components/DynamicChart';
+import { useChatStore } from '../../stores/chatStore';
+import type { ViewDirectives } from '../../types/aiChat';
+import { Pin } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -157,6 +163,41 @@ const CustomTooltipStyle = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function describeDirectives(
+    d: ViewDirectives,
+    t: (key: string, fallback?: string) => string,
+    n: (val: number | string) => string,
+    locale: string,
+): string[] {
+    const parts: string[] = [];
+    const monthLabel = (p: { year: number; month: number }) =>
+        n(new Date(p.year, p.month - 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' }));
+
+    if (d.pillar) {
+        const names: Record<string, string> = {
+            E: t('dash.environmental', 'Environmental'), S: t('dash.social', 'Social'), G: t('dash.gov', 'Governance'),
+        };
+        parts.push(`${t('dash.pillar', 'Pillar')} → ${names[d.pillar] || d.pillar}`);
+    }
+    if (d.framework) parts.push(`${t('dash.framework', 'Framework')} → ${d.framework}`);
+    if (d.from_period || d.to_period) {
+        const from = d.from_period ? monthLabel(d.from_period) : t('dash.start', 'start');
+        const to = d.to_period ? monthLabel(d.to_period) : t('dash.current', 'current');
+        parts.push(`${t('dash.period', 'Period')} → ${from} – ${to}`);
+    }
+    if (d.selected_year != null) parts.push(`${t('dash.year', 'Year')} → ${n(d.selected_year)}`);
+    if (d.chart_mode) parts.push(`${t('dash.chartMode', 'Chart mode')} → ${d.chart_mode}`);
+    if (d.compare_mode) {
+        if (d.compare_a && d.compare_b) {
+            parts.push(`${t('dash.compare', 'Compare')} → ${monthLabel(d.compare_a)} vs ${monthLabel(d.compare_b)}`);
+        } else {
+            parts.push(t('dash.compareMonths', 'Compare months'));
+        }
+    }
+    if (d.site_id != null) parts.push(`${t('dash.site', 'Site')} → #${n(d.site_id)}`);
+    return parts;
+}
 
 function getStatConfig(name: string) {
     const n = name.toLowerCase();
@@ -303,7 +344,6 @@ function getAllMonthsSince(startYear: number, lang?: string, n?: (val: any) => s
     return results;
 }
 
-
 function formatVal(value: number | null | undefined, unit: string, t: (key: string) => string, n: (val: number | string | null | undefined, options?: any) => string): string {
     if (value === null || value === undefined) return '—';
     if (unit === 'boolean' || BOOLEAN_CODES.has(unit)) return value === 1 ? t('stat.yes') : t('stat.no');
@@ -343,9 +383,32 @@ function PillarTab({ pillar, active, onClick }: { pillar: Pillar; active: boolea
 }
 
 
+// ─── Current-period tag ──────────────────────────────────────────────────────
+// Shown next to ScoreRing/AnomalyAlerts/CompletenessTracker whenever the AI has
+// changed the main dashboard view — these three widgets always compute off the
+// real current month server-side regardless of the page's filters, so this is
+// an honesty label rather than a live-following indicator.
+function CurrentPeriodTag({ t, isRtl }: { t: (key: string, fallback?: string) => string; isRtl: boolean }) {
+    return (
+        <span style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+            color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)', borderRadius: 100, padding: '3px 10px',
+            whiteSpace: 'nowrap', direction: isRtl ? 'rtl' : 'ltr',
+        }}>
+            {t('dash.currentPeriodLabel', 'Current period')}
+        </span>
+    );
+}
+
 // ─── Compare Panel ────────────────────────────────────────────────────────────
 
-function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void }) {
+function ComparePanel({ pillar, onClose, monthA: monthAProp, monthB: monthBProp, onMonthsChange }: {
+    pillar: Pillar; onClose: () => void;
+    // Optional controlled pair — lets an AI compare_mode directive drive the two
+    // months. Uncontrolled (the default) when omitted, preserving prior behavior.
+    monthA?: string; monthB?: string; onMonthsChange?: (a: string, b: string) => void;
+}) {
     const { t, lang, n } = useTranslation();
     const isRtl = lang === 'ar';
     const currentSiteId = useSiteStore(s => s.currentSiteId);
@@ -353,9 +416,13 @@ function ComparePanel({ pillar, onClose }: { pillar: Pillar; onClose: () => void
     const currentYYYYMM = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
     dateObj.setMonth(dateObj.getMonth() - 1);
     const prevYYYYMM = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    
-    const [monthA, setMonthA] = useState(prevYYYYMM);
-    const [monthB, setMonthB] = useState(currentYYYYMM);
+
+    const [monthAState, setMonthAState] = useState(prevYYYYMM);
+    const [monthBState, setMonthBState] = useState(currentYYYYMM);
+    const monthA = monthAProp ?? monthAState;
+    const monthB = monthBProp ?? monthBState;
+    const setMonthA = (v: string) => { setMonthAState(v); onMonthsChange?.(v, monthB); };
+    const setMonthB = (v: string) => { setMonthBState(v); onMonthsChange?.(monthA, v); };
 
     const [yearA, monthNumA] = monthA.split('-').map(Number);
     const [yearB, monthNumB] = monthB.split('-').map(Number);
@@ -571,6 +638,15 @@ export default function Dashboard() {
     const sites = useSiteStore(s => s.sites);
     const navigate = useNavigate();
 
+    const dashboardChartOverride = useChatStore(s => s.dashboardChartOverride);
+    const dashboardAnswerText = useChatStore(s => s.dashboardAnswerText);
+    const dashboardOverridePinned = useChatStore(s => s.dashboardOverridePinnedItemId != null);
+    const clearDashboardOverride = useChatStore(s => s.clearDashboardOverride);
+    const pinCurrentDashboardAnswer = useChatStore(s => s.pinCurrentDashboardAnswer);
+    const isChatLoading = useChatStore(s => s.isLoading);
+    const pendingDirectives = useChatStore(s => s.pendingDirectives);
+    const dismissPendingDirectives = useChatStore(s => s.dismissPendingDirectives);
+
     const [activePillar, setActivePillar] = useState<Pillar>('E');
     const [compareMode, setCompareMode] = useState(false);
     const [selectedStat, setSelectedStat] = useState<StatMetric | null>(null);
@@ -585,6 +661,72 @@ export default function Dashboard() {
     const [toPeriod, setToPeriod] = useState<{ year: number, month: number } | null>(null);
 
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+    // ── AI view control ─────────────────────────────────────────────────────
+    // `aiViewSnapshot` captures the *pre-AI* filter state the first time a proposal
+    // is applied, so "Reset" always restores what the user had before any AI
+    // change — even across several applies in a row.
+    const [aiViewSnapshot, setAiViewSnapshot] = useState<{
+        pillar: Pillar; framework: string | null; chartMode: 'indexed' | 'actual' | 'logarithmic';
+        fromPeriod: { year: number, month: number } | null; toPeriod: { year: number, month: number } | null;
+        selectedYear: number; compareMode: boolean; siteId: number | null;
+    } | null>(null);
+    const [aiCompareMonths, setAiCompareMonths] = useState<{ a: string; b: string } | null>(null);
+    const aiViewActive = aiViewSnapshot !== null;
+
+    const applyDirectives = (directives: ViewDirectives) => {
+        if (aiViewSnapshot === null) {
+            setAiViewSnapshot({
+                pillar: activePillar, framework: frameworkFilter, chartMode,
+                fromPeriod, toPeriod, selectedYear, compareMode,
+                siteId: currentSiteId,
+            });
+        }
+
+        const resultingPillar = directives.pillar ?? activePillar;
+        if (directives.pillar != null) setActivePillar(directives.pillar);
+        if (directives.framework != null) setFrameworkFilter(directives.framework);
+        if (directives.chart_mode != null) setChartMode(directives.chart_mode);
+
+        // The E-pillar period <select>s are the only period UI rendered when the
+        // pillar is S/G — routing a period directive there would be invisible.
+        if (resultingPillar === 'S' || resultingPillar === 'G') {
+            const year = directives.to_period?.year ?? directives.from_period?.year ?? directives.selected_year;
+            if (year != null) setSelectedYear(year);
+        } else {
+            if (directives.from_period !== undefined) setFromPeriod(directives.from_period ?? null);
+            if (directives.to_period !== undefined) setToPeriod(directives.to_period ?? null);
+        }
+
+        if (directives.compare_mode != null) setCompareMode(directives.compare_mode);
+        if (directives.compare_a && directives.compare_b) {
+            setAiCompareMonths({
+                a: `${directives.compare_a.year}-${String(directives.compare_a.month).padStart(2, '0')}`,
+                b: `${directives.compare_b.year}-${String(directives.compare_b.month).padStart(2, '0')}`,
+            });
+        }
+        if (directives.site_id !== undefined) useSiteStore.getState().setCurrentSiteId(directives.site_id);
+
+        dismissPendingDirectives();
+        // The real dashboard now reflects the applied view, so the static AI-answer
+        // snapshot card is redundant — drop back to the live "Sustainability Dynamics"
+        // chart automatically instead of leaving the user to click "Back to Overview".
+        clearDashboardOverride();
+    };
+
+    const resetAiView = () => {
+        if (!aiViewSnapshot) return;
+        setActivePillar(aiViewSnapshot.pillar);
+        setFrameworkFilter(aiViewSnapshot.framework);
+        setChartMode(aiViewSnapshot.chartMode);
+        setFromPeriod(aiViewSnapshot.fromPeriod);
+        setToPeriod(aiViewSnapshot.toPeriod);
+        setSelectedYear(aiViewSnapshot.selectedYear);
+        setCompareMode(aiViewSnapshot.compareMode);
+        useSiteStore.getState().setCurrentSiteId(aiViewSnapshot.siteId);
+        setAiCompareMonths(null);
+        setAiViewSnapshot(null);
+    };
     const availableYears = useMemo(() => {
         const years = [];
         for (let y = new Date().getFullYear(); y >= 2019; y--) {
@@ -771,7 +913,8 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                        {aiViewActive && <CurrentPeriodTag t={t} isRtl={isRtl} />}
                         <ScoreRing />
                     </div>
                 </div>
@@ -818,54 +961,78 @@ export default function Dashboard() {
                         {activePillar === 'E' ? (
                             <>
                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('dash.from')}</span>
-                                <select
-                                    value={fromPeriod ? `${fromPeriod.year}-${fromPeriod.month}` : ""}
-                                    onChange={(e) => {
-                                        if (e.target.value === "") {
-                                            setFromPeriod(null);
-                                        } else {
-                                            const [y, m] = e.target.value.split('-');
-                                            setFromPeriod({ year: Number(y), month: Number(m) });
+                                <div 
+                                    style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', minWidth: 90, cursor: 'pointer' }}
+                                    onClick={(e) => {
+                                        const input = e.currentTarget.querySelector('input');
+                                        if (input && 'showPicker' in input) {
+                                            try { (input as any).showPicker(); } catch (err) {}
                                         }
                                     }}
-                                    style={{ 
-                                        background: 'transparent', border: 'none', color: '#f0f2ff', fontSize: 13, fontWeight: 700, 
-                                        cursor: 'pointer', appearance: 'none', padding: '4px 8px', textAlign: 'center', minWidth: 90, outline: 'none'
-                                    }}
                                 >
-                                    <option value="" style={{ background: '#1c1e30' }}>{n(new Date(toPeriod?.year || new Date().getFullYear(), 0, 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' }))}</option>
-                                    {allMonths.map((m, i) => (
-                                        <option key={i} value={`${m.year}-${m.month}`} style={{ background: '#1c1e30' }}>
-                                            {m.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f2ff', pointerEvents: 'none', padding: '4px 8px', textAlign: 'center', width: '100%' }}>
+                                        {fromPeriod 
+                                            ? n(new Date(fromPeriod.year, fromPeriod.month - 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' }))
+                                            : n(new Date(toPeriod?.year || new Date().getFullYear(), 0, 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' }))}
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6, display: 'inline-block', verticalAlign: 'text-bottom', opacity: 0.7 }}>
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                                        </svg>
+                                    </span>
+                                    <input
+                                        type="month"
+                                        value={fromPeriod ? `${fromPeriod.year}-${String(fromPeriod.month).padStart(2, '0')}` : ""}
+                                        onChange={(e) => {
+                                            if (e.target.value === "") {
+                                                setFromPeriod(null);
+                                            } else {
+                                                const [y, m] = e.target.value.split('-');
+                                                setFromPeriod({ year: Number(y), month: Number(m) });
+                                            }
+                                        }}
+                                        style={{
+                                            position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+                                            opacity: 0, cursor: 'pointer', colorScheme: 'dark'
+                                        }}
+                                    />
+                                </div>
 
                                 <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600 }}>{isRtl ? '←' : '→'}</span>
 
                                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('dash.to')}</span>
-                                <select
-                                    value={toPeriod ? `${toPeriod.year}-${toPeriod.month}` : ""}
-                                    onChange={(e) => {
-                                        if (e.target.value === "") {
-                                            setToPeriod(null);
-                                        } else {
-                                            const [y, m] = e.target.value.split('-');
-                                            setToPeriod({ year: Number(y), month: Number(m) });
+                                <div 
+                                    style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', minWidth: 90, cursor: 'pointer' }}
+                                    onClick={(e) => {
+                                        const input = e.currentTarget.querySelector('input');
+                                        if (input && 'showPicker' in input) {
+                                            try { (input as any).showPicker(); } catch (err) {}
                                         }
                                     }}
-                                    style={{ 
-                                        background: 'transparent', border: 'none', color: '#f0f2ff', fontSize: 13, fontWeight: 700, 
-                                        cursor: 'pointer', appearance: 'none', padding: '4px 8px', textAlign: 'center', minWidth: 90, outline: 'none'
-                                    }}
                                 >
-                                    <option value="" style={{ background: '#1c1e30' }}>{t('dash.current')}</option>
-                                    {allMonths.map((m, i) => (
-                                        <option key={i} value={`${m.year}-${m.month}`} style={{ background: '#1c1e30' }}>
-                                            {m.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f2ff', pointerEvents: 'none', padding: '4px 8px', textAlign: 'center', width: '100%' }}>
+                                        {toPeriod 
+                                            ? n(new Date(toPeriod.year, toPeriod.month - 1).toLocaleDateString(locale, { month: 'short', year: 'numeric' }))
+                                            : t('dash.current')}
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6, display: 'inline-block', verticalAlign: 'text-bottom', opacity: 0.7 }}>
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+                                        </svg>
+                                    </span>
+                                    <input
+                                        type="month"
+                                        value={toPeriod ? `${toPeriod.year}-${String(toPeriod.month).padStart(2, '0')}` : ""}
+                                        onChange={(e) => {
+                                            if (e.target.value === "") {
+                                                setToPeriod(null);
+                                            } else {
+                                                const [y, m] = e.target.value.split('-');
+                                                setToPeriod({ year: Number(y), month: Number(m) });
+                                            }
+                                        }}
+                                        style={{
+                                            position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
+                                            opacity: 0, cursor: 'pointer', colorScheme: 'dark'
+                                        }}
+                                    />
+                                </div>
 
                                 {(fromPeriod || toPeriod) && (
                                     <button
@@ -924,6 +1091,11 @@ export default function Dashboard() {
                     </div>
                 )}
 
+                {aiViewActive && (
+                    <div style={{ display: 'flex', justifyContent: isRtl ? 'flex-end' : 'flex-start', marginBottom: -8 }}>
+                        <CurrentPeriodTag t={t} isRtl={isRtl} />
+                    </div>
+                )}
                 <AnomalyAlerts />
 
                 {/* ── Action Buttons ────────────────────────────────────────── */}
@@ -964,10 +1136,23 @@ export default function Dashboard() {
                     </button>
                 </div>
                 
+                {aiViewActive && (
+                    <div style={{ display: 'flex', justifyContent: isRtl ? 'flex-end' : 'flex-start', marginBottom: -8 }}>
+                        <CurrentPeriodTag t={t} isRtl={isRtl} />
+                    </div>
+                )}
                 <CompletenessTracker framework={frameworkFilter} />
 
                 {/* ── Compare Panel ─────────────────────────────────────────── */}
-                {compareMode && <ComparePanel pillar={activePillar} onClose={() => setCompareMode(false)} />}
+                {compareMode && (
+                    <ComparePanel
+                        pillar={activePillar}
+                        onClose={() => setCompareMode(false)}
+                        monthA={aiCompareMonths?.a}
+                        monthB={aiCompareMonths?.b}
+                        onMonthsChange={(a, b) => setAiCompareMonths({ a, b })}
+                    />
+                )}
 
                 {/* ── Stat Cards (E) ──────────────────────────────────── */}
                 {activePillar === 'E' && filteredStats.length > 0 && (
@@ -1014,8 +1199,54 @@ export default function Dashboard() {
                 {/* ── Charts Section (E) ──────────────────────────────── */}
                 {activePillar === 'E' && (
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
-                        {/* Area chart */}
-                        <div className="surface" style={{ padding: 24 }}>
+                        {/* Area chart — replaced by the AI chat's answer when one is active */}
+                        <div className="surface" style={{ padding: 24, position: 'relative' }}>
+                          {isChatLoading && (
+                            <div style={{
+                                position: 'absolute', inset: 0, background: 'rgba(12,13,30,0.55)',
+                                backdropFilter: 'blur(1px)', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', zIndex: 5, borderRadius: 'inherit', gap: 10,
+                            }}>
+                                <div className="spinner" />
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    {t('aiChat.updatingChart', 'Updating chart...')}
+                                </span>
+                            </div>
+                          )}
+                          {dashboardAnswerText ? (
+                            <div>
+                                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
+                                    <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                                        <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{t('aiChat.answerTitle', 'AI Answer')}</h3>
+                                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, maxWidth: 480 }}>{dashboardAnswerText}</p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                                        {dashboardChartOverride && (
+                                            <button
+                                                className="btn btn-secondary btn-sm"
+                                                onClick={pinCurrentDashboardAnswer}
+                                                disabled={dashboardOverridePinned}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: dashboardOverridePinned ? 0.6 : 1, cursor: dashboardOverridePinned ? 'default' : 'pointer' }}
+                                            >
+                                                <Pin size={14} />
+                                                {dashboardOverridePinned ? t('aiChat.pinned', 'Pinned') : t('aiChat.pin', 'Pin to Dashboard')}
+                                            </button>
+                                        )}
+                                        <button className="btn btn-ghost btn-sm" onClick={clearDashboardOverride}>
+                                            {t('aiChat.backToOverview', 'Back to Overview')}
+                                        </button>
+                                    </div>
+                                </div>
+                                {dashboardChartOverride ? (
+                                    <DynamicChart chart={dashboardChartOverride} height={320} />
+                                ) : (
+                                    <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                                        {t('aiChat.noChartForAnswer', 'This answer has no chart to show.')}
+                                    </div>
+                                )}
+                            </div>
+                          ) : (
+                            <>
                             <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexDirection: isRtl ? 'row-reverse' : 'row' }}>
                                 <div style={{ textAlign: isRtl ? 'right' : 'left' }}>
                                     <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)' }}>{t('dash.sustainabilityDynamics')}</h3>
@@ -1210,6 +1441,8 @@ export default function Dashboard() {
                                     {t('dash.noTimeSeriesData')}
                                 </div>
                             )}
+                            </>
+                          )}
                         </div>
 
                         {/* Emissions bar chart */}
@@ -1270,6 +1503,69 @@ export default function Dashboard() {
                         </div>
                     </div>
                 )}
+
+                {/* ── AI Chat + Pinned "My Dashboard" items ─────────────────── */}
+                <div style={{ marginTop: 24 }}>
+                    {/* Sits directly above the chat — this is where the user is looking right
+                        after asking a question, not at the top of a possibly long scrolled page. */}
+                    {aiViewActive && !pendingDirectives && (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                            background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)',
+                            borderRadius: 999, padding: '8px 18px', marginBottom: 12,
+                            flexDirection: isRtl ? 'row-reverse' : 'row',
+                        }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: '#818cf8' }}>
+                                {t('dash.aiViewActive', 'AI view active')}
+                            </span>
+                            <button
+                                onClick={resetAiView}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, textDecoration: 'underline' }}
+                            >
+                                {t('dash.resetView', 'Reset')}
+                            </button>
+                        </div>
+                    )}
+                    {pendingDirectives && (
+                        <div style={{
+                            background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)',
+                            borderRadius: 16, padding: '16px 20px', marginBottom: 12,
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                            flexWrap: 'wrap', flexDirection: isRtl ? 'row-reverse' : 'row',
+                        }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: '#818cf8' }}>
+                                    {t('dash.aiProposalTitle', 'The assistant suggests changing this view:')}
+                                </span>
+                                <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                                    {describeDirectives(pendingDirectives, t, n, locale).join('  ·  ')}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                                <button
+                                    onClick={() => applyDirectives(pendingDirectives)}
+                                    style={{
+                                        padding: '7px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                                        border: '1px solid #6366f1', background: '#6366f1', color: '#fff',
+                                    }}
+                                >
+                                    {t('dash.applyChanges', 'Apply')}
+                                </button>
+                                <button
+                                    onClick={dismissPendingDirectives}
+                                    style={{
+                                        padding: '7px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                                        border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'var(--text-secondary)',
+                                    }}
+                                >
+                                    {t('dash.dismiss', 'Dismiss')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <ChatPanel context="dashboard" />
+                </div>
+                <PinnedDashboardItems />
 
                 {/* ── Help banner ───────────────────────────────────────────── */}
                 <div className="surface" style={{

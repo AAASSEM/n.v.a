@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, DateTime, JSON, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, JSON, ForeignKey, Text, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -15,6 +15,11 @@ class SystemSetting(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    __table_args__ = (
+        # Speeds up the AI chat daily-quota count: COUNT(*) WHERE company_id=? AND
+        # action=? AND created_at >= <today>.
+        Index("ix_audit_logs_company_action_created", "company_id", "action", "created_at"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

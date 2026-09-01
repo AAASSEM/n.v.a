@@ -11,6 +11,7 @@ from .system import SystemSetting, AuditLog
 from .meter_type import MeterType
 from .token import EmailVerificationToken
 from .report import GeneratedReport
+from .ai_dashboard_item import AIDashboardItem
 
 __all__ = [
     "User", "UserProfile",
@@ -24,5 +25,6 @@ __all__ = [
     "MeterType",
     "EmailVerificationToken",
     "GeneratedReport",
+    "AIDashboardItem",
     "Base"
 ]

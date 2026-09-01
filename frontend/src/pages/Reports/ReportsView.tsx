@@ -8,6 +8,7 @@ import { useSiteStore } from '../../stores/siteStore';
 import { canPerformAction } from '../../config/rbac';
 import AccessDenied from '../../components/ui/AccessDenied';
 import { useTranslation } from '../../i18n';
+import ChatPanel from '../../components/ChatPanel/ChatPanel';
 
 export default function ReportsView() {
     const { t, lang, n } = useTranslation();
@@ -335,6 +336,10 @@ export default function ReportsView() {
                         <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: 14 }}>{t('reports.auditable')}</div>
                         <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t('reports.auditableDesc')}</p>
                     </div>
+                </div>
+
+                <div style={{ marginTop: 24 }}>
+                    <ChatPanel context="reports" />
                 </div>
             </div>
 
