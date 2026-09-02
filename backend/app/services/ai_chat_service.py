@@ -16,6 +16,7 @@ other endpoint uses — see _validate_view_directives.
 Numeric correctness: the model never computes "which month was highest" itself — find_extremum
 and compare_periods do that arithmetic in Python. The model's job is narration, not computation.
 """
+import asyncio
 import calendar
 import datetime
 import json
@@ -532,14 +533,37 @@ async def _validate_view_directives(raw: Optional[dict], current_user: User, db:
 async def run_chat_turn(
     db: AsyncSession, current_user: User, site_id: Optional[int], message: str,
 ) -> dict:
-    """Runs the bounded Claude tool-calling loop for one chat turn.
-    Returns {"answer_text": str, "charts": [ChartSpec-shaped dict], "view_directives": dict|None}.
+    """Runs the bounded Claude tool-calling loop for one chat turn, with a hard
+    wall-clock ceiling. Tool-call latency is genuinely nondeterministic — the same
+    question can take 4s or 48s depending on how many rounds the model needs — and
+    an unbounded wait risks losing the race against Render/Cloudflare's own gateway
+    timeout, which surfaces as a raw, unstyled proxy error instead of our own
+    friendly message. This timeout is deliberately set well under that so we always
+    win the race.
     """
+    try:
+        return await asyncio.wait_for(
+            _run_chat_turn_inner(db, current_user, site_id, message),
+            timeout=settings.AI_CHAT_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        return {
+            "answer_text": "That's taking longer than expected — try a shorter or more specific question.",
+            "charts": [], "view_directives": None,
+        }
+
+
+async def _run_chat_turn_inner(
+    db: AsyncSession, current_user: User, site_id: Optional[int], message: str,
+) -> dict:
     if not settings.ANTHROPIC_API_KEY:
         raise RuntimeError("AI chat is not configured (ANTHROPIC_API_KEY unset)")
 
     import anthropic
-    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+    # Per-call timeout well under the overall wall-clock ceiling, so one slow
+    # Anthropic call can't by itself consume the whole budget before the
+    # iteration loop even gets a chance to move on or the outer wait_for fires.
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0)
     company_id = current_user.profile.company_id
 
     today = datetime.date.today()

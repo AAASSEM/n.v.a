@@ -89,7 +89,11 @@ export const useChatStore = create<ChatState>()(
                 }));
 
                 try {
-                    const res = await api.post('/ai-chat/query', { message: text, context });
+                    // Timeout is set above the backend's own 45s wall-clock ceiling on the
+                    // tool-calling loop, so on a slow turn the backend's graceful fallback
+                    // message wins the race — this only fires if something hangs beyond that
+                    // (e.g. the request never reached our backend at all).
+                    const res = await api.post('/ai-chat/query', { message: text, context }, { timeout: 55000 });
                     const charts: ChartSpec[] = res.data.charts || [];
                     const directives: ViewDirectives | null = res.data.view_directives || null;
                     const assistantMsg: ChatMessage = {
@@ -116,11 +120,20 @@ export const useChatStore = create<ChatState>()(
                         } : {}),
                     }));
                 } catch (err: any) {
-                    // The 429 quota response nests its message as {detail: {detail, resets_at}}
-                    // rather than a plain string — unwrap either shape.
-                    const raw = err.response?.data?.detail;
-                    const detail = (raw && typeof raw === 'object' ? raw.detail : raw)
-                        || "Sorry, I couldn't process that question.";
+                    let detail = "Sorry, I couldn't process that question.";
+                    if (err.code === 'ECONNABORTED') {
+                        detail = "That's taking longer than expected — try a shorter or more specific question.";
+                    } else if (err.response?.data && typeof err.response.data === 'object') {
+                        // The 429 quota response nests its message as {detail: {detail, resets_at}}
+                        // rather than a plain string — unwrap either shape. Only trust this when
+                        // the response is genuine JSON from our own backend — a raw infra-level
+                        // error page (Cloudflare/Render gateway text, HTML, etc.) is never an
+                        // object here and always falls through to the generic message above,
+                        // so it can never leak verbatim into the chat.
+                        const raw = err.response.data.detail;
+                        const unwrapped = raw && typeof raw === 'object' ? raw.detail : raw;
+                        if (typeof unwrapped === 'string' && unwrapped) detail = unwrapped;
+                    }
                     const errorMsg: ChatMessage = { role: 'assistant', content: detail };
                     set((state) => ({
                         conversations: {

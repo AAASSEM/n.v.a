@@ -121,6 +121,11 @@ class Settings(BaseSettings):
     AI_CHAT_MODEL: str = "claude-haiku-4-5"
     AI_CHAT_MAX_TOKENS: int = 4096
     AI_CHAT_MAX_TOOL_ITERATIONS: int = 6
+    # Hard wall-clock ceiling on the whole tool-calling loop — tool-call latency is
+    # genuinely nondeterministic (the same question can take 4s or 48s), and this
+    # must fire comfortably before Render/Cloudflare's own gateway timeout does, so
+    # a slow turn ends in our own friendly message instead of a raw proxy error.
+    AI_CHAT_TIMEOUT_SECONDS: int = 45
     AI_CHAT_RATE_LIMIT: str = "10/minute"
     AI_CHAT_DAILY_QUOTA_PER_COMPANY: int = 50
     AI_CHAT_DAILY_QUOTA_DEMO: int = 10
