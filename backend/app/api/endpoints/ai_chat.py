@@ -1,6 +1,7 @@
 from typing import Any, List, Optional
 import datetime
 import logging
+import time
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -160,6 +161,11 @@ async def query(
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(status_code=503, detail="AI chat is not configured on this server.")
 
+    logger.info(
+        f"AI chat query starting: company_id={company_id} user_id={current_user.id} "
+        f"message_len={len(payload.message)}"
+    )
+    _t0 = time.monotonic()
     try:
         result = await ai_chat_service.run_chat_turn(db, current_user, effective_site_id, payload.message)
     except anthropic.RateLimitError:
@@ -170,6 +176,17 @@ async def query(
     except anthropic.APIConnectionError as e:
         logger.error(f"Anthropic connection error: {e}")
         raise HTTPException(status_code=502, detail="AI assistant is temporarily unavailable.")
+    except Exception:
+        # Catch-all: anything not covered above (DB errors, bugs in run_chat_turn's
+        # own logic, etc.) — log the full traceback with request context before it
+        # would otherwise escape as a bare 500. The global request-logging
+        # middleware in main.py also logs a CRASH line for unhandled exceptions,
+        # but this one carries company_id/user_id context that helps correlate.
+        logger.exception(
+            f"AI chat query failed unexpectedly: company_id={company_id} user_id={current_user.id}"
+        )
+        raise HTTPException(status_code=502, detail="AI assistant is temporarily unavailable.")
+    logger.info(f"AI chat query finished in {time.monotonic() - _t0:.1f}s: company_id={company_id}")
 
     # Only successful answers count against quota.
     await audit_service.log_action(

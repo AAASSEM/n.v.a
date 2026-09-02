@@ -567,12 +567,15 @@ async def run_chat_turn(
         "content": f"Today's date is {today.isoformat()}.\n\nQuestion: {message}",
     }]
 
-    for _ in range(settings.AI_CHAT_MAX_TOOL_ITERATIONS):
-        if time.monotonic() - start > settings.AI_CHAT_TIMEOUT_SECONDS:
+    for i in range(settings.AI_CHAT_MAX_TOOL_ITERATIONS):
+        elapsed = time.monotonic() - start
+        if elapsed > settings.AI_CHAT_TIMEOUT_SECONDS:
+            logger.info(f"AI chat: budget exceeded before iteration {i} (elapsed={elapsed:.1f}s)")
             return {
                 "answer_text": "That's taking longer than expected — try a shorter or more specific question.",
                 "charts": [], "view_directives": None,
             }
+        logger.info(f"AI chat: iteration {i} calling Anthropic (elapsed={elapsed:.1f}s)")
         response = await client.messages.create(
             model=settings.AI_CHAT_MODEL,
             max_tokens=settings.AI_CHAT_MAX_TOKENS,
@@ -580,6 +583,7 @@ async def run_chat_turn(
             tools=TOOLS,
             messages=messages,
         )
+        logger.info(f"AI chat: iteration {i} stop_reason={response.stop_reason}")
 
         if response.stop_reason != "tool_use":
             text = "".join(b.text for b in response.content if b.type == "text")
@@ -588,6 +592,7 @@ async def run_chat_turn(
         messages.append({"role": "assistant", "content": response.content})
 
         tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
+        logger.info(f"AI chat: iteration {i} tool_calls={[b.name for b in tool_use_blocks]}")
         tool_results = []
         terminal: Optional[dict] = None
 
