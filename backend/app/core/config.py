@@ -83,7 +83,16 @@ class Settings(BaseSettings):
             ]
         else:
             self.parsed_developer_emails = []
-            
+
+        # Trailing whitespace/newlines are an easy paste artifact in a dashboard's
+        # env var field, and httpcore2 rejects any header value containing one
+        # outright (LocalProtocolError) — fails fast client-side before any network
+        # call, which looks identical to a real connectivity problem. Strip it here
+        # once so this class of misconfiguration can never silently break the
+        # feature again, however the value ends up set.
+        if self.ANTHROPIC_API_KEY:
+            self.ANTHROPIC_API_KEY = self.ANTHROPIC_API_KEY.strip()
+
         return self
 
     # JWT Authentication
