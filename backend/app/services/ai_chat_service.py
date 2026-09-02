@@ -16,11 +16,11 @@ other endpoint uses — see _validate_view_directives.
 Numeric correctness: the model never computes "which month was highest" itself — find_extremum
 and compare_periods do that arithmetic in Python. The model's job is narration, not computation.
 """
-import asyncio
 import calendar
 import datetime
 import json
 import logging
+import time
 from typing import Any, Optional
 
 from sqlalchemy import select, func
@@ -538,33 +538,28 @@ async def run_chat_turn(
     question can take 4s or 48s depending on how many rounds the model needs — and
     an unbounded wait risks losing the race against Render/Cloudflare's own gateway
     timeout, which surfaces as a raw, unstyled proxy error instead of our own
-    friendly message. This timeout is deliberately set well under that so we always
-    win the race.
+    friendly message.
+
+    IMPORTANT: this ceiling is enforced by checking elapsed time between loop
+    iterations, NOT by wrapping the whole function in asyncio.wait_for/timeout.
+    Cancelling an in-flight DB-bound coroutine mid-await is a known asyncpg/
+    SQLAlchemy pitfall on a pooled connection (production uses Postgres with a
+    real pool) — a query cancelled mid-flight can leave the connection in a
+    broken state that then poisons the NEXT unrelated request that reuses it
+    from the pool. So a DB operation or an Anthropic call already in flight is
+    always allowed to finish; only the decision to START another round is
+    time-boxed.
     """
-    try:
-        return await asyncio.wait_for(
-            _run_chat_turn_inner(db, current_user, site_id, message),
-            timeout=settings.AI_CHAT_TIMEOUT_SECONDS,
-        )
-    except asyncio.TimeoutError:
-        return {
-            "answer_text": "That's taking longer than expected — try a shorter or more specific question.",
-            "charts": [], "view_directives": None,
-        }
-
-
-async def _run_chat_turn_inner(
-    db: AsyncSession, current_user: User, site_id: Optional[int], message: str,
-) -> dict:
     if not settings.ANTHROPIC_API_KEY:
         raise RuntimeError("AI chat is not configured (ANTHROPIC_API_KEY unset)")
 
     import anthropic
-    # Per-call timeout well under the overall wall-clock ceiling, so one slow
-    # Anthropic call can't by itself consume the whole budget before the
-    # iteration loop even gets a chance to move on or the outer wait_for fires.
+    # Per-call timeout — this is httpx2's own request timeout inside the SDK, not
+    # asyncio task cancellation, so it can't corrupt the DB session. Safe to let
+    # this fire independently of the loop's own elapsed-time budget below.
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=20.0)
     company_id = current_user.profile.company_id
+    start = time.monotonic()
 
     today = datetime.date.today()
     messages: list = [{
@@ -573,6 +568,11 @@ async def _run_chat_turn_inner(
     }]
 
     for _ in range(settings.AI_CHAT_MAX_TOOL_ITERATIONS):
+        if time.monotonic() - start > settings.AI_CHAT_TIMEOUT_SECONDS:
+            return {
+                "answer_text": "That's taking longer than expected — try a shorter or more specific question.",
+                "charts": [], "view_directives": None,
+            }
         response = await client.messages.create(
             model=settings.AI_CHAT_MODEL,
             max_tokens=settings.AI_CHAT_MAX_TOKENS,
