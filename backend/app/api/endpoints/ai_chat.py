@@ -181,7 +181,15 @@ async def query(
         print(f"[AI-CHAT] APIStatusError: status={e.status_code} message={e!r}", flush=True)
         raise HTTPException(status_code=502, detail="AI assistant is temporarily unavailable.")
     except anthropic.APIConnectionError as e:
-        print(f"[AI-CHAT] APIConnectionError: {e!r}", flush=True)
+        import traceback
+        # APIConnectionError's own message is a generic wrapper ("Connection error.")
+        # — the actual cause (DNS failure, TLS/cert error, egress block, etc.) is on
+        # __cause__ / the underlying httpx2 exception, which only the traceback shows.
+        print(f"[AI-CHAT] APIConnectionError: {e!r} __cause__={e.__cause__!r}", flush=True)
+        traceback.print_exc()
+        import sys as _sys
+        _sys.stdout.flush()
+        _sys.stderr.flush()
         raise HTTPException(status_code=502, detail="AI assistant is temporarily unavailable.")
     except Exception as e:
         import traceback
