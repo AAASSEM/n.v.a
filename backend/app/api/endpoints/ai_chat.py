@@ -161,32 +161,37 @@ async def query(
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(status_code=503, detail="AI chat is not configured on this server.")
 
-    logger.info(
-        f"AI chat query starting: company_id={company_id} user_id={current_user.id} "
-        f"message_len={len(payload.message)}"
+    # print(flush=True) rather than logger.* here — logger output was not
+    # reliably showing up in Render's log viewer for this request path (verified:
+    # a request that demonstrably executed this code, confirmed by its own JSON
+    # error response, produced zero logger output), while main.py's startup
+    # print(flush=True) lines always show up. Using the proven-working mechanism
+    # until the logging-visibility mystery itself is resolved.
+    print(
+        f"[AI-CHAT] query starting: company_id={company_id} user_id={current_user.id} "
+        f"message_len={len(payload.message)}", flush=True,
     )
     _t0 = time.monotonic()
     try:
         result = await ai_chat_service.run_chat_turn(db, current_user, effective_site_id, payload.message)
-    except anthropic.RateLimitError:
+    except anthropic.RateLimitError as e:
+        print(f"[AI-CHAT] RateLimitError: {e!r}", flush=True)
         raise HTTPException(status_code=503, detail="AI assistant is busy right now — please try again shortly.")
     except anthropic.APIStatusError as e:
-        logger.error(f"Anthropic API error: {e}")
+        print(f"[AI-CHAT] APIStatusError: status={e.status_code} message={e!r}", flush=True)
         raise HTTPException(status_code=502, detail="AI assistant is temporarily unavailable.")
     except anthropic.APIConnectionError as e:
-        logger.error(f"Anthropic connection error: {e}")
+        print(f"[AI-CHAT] APIConnectionError: {e!r}", flush=True)
         raise HTTPException(status_code=502, detail="AI assistant is temporarily unavailable.")
-    except Exception:
-        # Catch-all: anything not covered above (DB errors, bugs in run_chat_turn's
-        # own logic, etc.) — log the full traceback with request context before it
-        # would otherwise escape as a bare 500. The global request-logging
-        # middleware in main.py also logs a CRASH line for unhandled exceptions,
-        # but this one carries company_id/user_id context that helps correlate.
-        logger.exception(
-            f"AI chat query failed unexpectedly: company_id={company_id} user_id={current_user.id}"
-        )
+    except Exception as e:
+        import traceback
+        print(f"[AI-CHAT] UNEXPECTED EXCEPTION: {e!r}", flush=True)
+        traceback.print_exc()
+        import sys as _sys
+        _sys.stdout.flush()
+        _sys.stderr.flush()
         raise HTTPException(status_code=502, detail="AI assistant is temporarily unavailable.")
-    logger.info(f"AI chat query finished in {time.monotonic() - _t0:.1f}s: company_id={company_id}")
+    print(f"[AI-CHAT] query finished in {time.monotonic() - _t0:.1f}s: company_id={company_id}", flush=True)
 
     # Only successful answers count against quota.
     await audit_service.log_action(

@@ -570,12 +570,12 @@ async def run_chat_turn(
     for i in range(settings.AI_CHAT_MAX_TOOL_ITERATIONS):
         elapsed = time.monotonic() - start
         if elapsed > settings.AI_CHAT_TIMEOUT_SECONDS:
-            logger.info(f"AI chat: budget exceeded before iteration {i} (elapsed={elapsed:.1f}s)")
+            print(f"[AI-CHAT] budget exceeded before iteration {i} (elapsed={elapsed:.1f}s)", flush=True)
             return {
                 "answer_text": "That's taking longer than expected — try a shorter or more specific question.",
                 "charts": [], "view_directives": None,
             }
-        logger.info(f"AI chat: iteration {i} calling Anthropic (elapsed={elapsed:.1f}s)")
+        print(f"[AI-CHAT] iteration {i} calling Anthropic (elapsed={elapsed:.1f}s)", flush=True)
         response = await client.messages.create(
             model=settings.AI_CHAT_MODEL,
             max_tokens=settings.AI_CHAT_MAX_TOKENS,
@@ -583,7 +583,7 @@ async def run_chat_turn(
             tools=TOOLS,
             messages=messages,
         )
-        logger.info(f"AI chat: iteration {i} stop_reason={response.stop_reason}")
+        print(f"[AI-CHAT] iteration {i} stop_reason={response.stop_reason}", flush=True)
 
         if response.stop_reason != "tool_use":
             text = "".join(b.text for b in response.content if b.type == "text")
@@ -592,7 +592,7 @@ async def run_chat_turn(
         messages.append({"role": "assistant", "content": response.content})
 
         tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
-        logger.info(f"AI chat: iteration {i} tool_calls={[b.name for b in tool_use_blocks]}")
+        print(f"[AI-CHAT] iteration {i} tool_calls={[b.name for b in tool_use_blocks]}", flush=True)
         tool_results = []
         terminal: Optional[dict] = None
 
@@ -613,7 +613,9 @@ async def run_chat_turn(
                     "content": json.dumps(result, default=str),
                 })
             except Exception as e:
-                logger.exception(f"AI chat tool {block.name} failed")
+                import traceback
+                print(f"[AI-CHAT] tool {block.name} failed: {e!r}", flush=True)
+                traceback.print_exc()
                 tool_results.append({
                     "type": "tool_result", "tool_use_id": block.id,
                     "content": f"Tool error: {e}", "is_error": True,
